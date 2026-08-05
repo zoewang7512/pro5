@@ -1,0 +1,66 @@
+{
+  "id": "TASK-012",
+  "title": "顧客預約流程 前端：填寫資訊與預約成功",
+  "content": "接續 app/page.tsx 實作填寫聯絡資訊表單、送出（擴充 lib/booking/ 呼叫 create_appointment）與預約成功畫面，含驗證、五種錯誤 Toast、npm test、行動裝置尺寸截圖。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "顧客預約流程",
+  "userStory": "填寫聯絡資訊並確認預約、預約成功頁面／確認顯示",
+  "track": "frontend",
+  "dependsOn": ["TASK-010", "TASK-011"],
+  "order": 12,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/顧客預約流程/feature-spec.md",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-顧客前台預約流程.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-顧客前台.md",
+    "taskCard": "ai/artifacts/顧客預約流程/task-cards/TASK-012.md",
+    "verificationReport": "ai/artifacts/顧客預約流程/verification/TASK-012.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/專案設置/mockups/customer-flow-variant-b.html",
+    "app/page.tsx",
+    "components/ui/ToastProvider.tsx",
+    "lib/booking/validation.ts",
+    "lib/booking/error-messages.ts",
+    "app/_components/booking/ContactFormSection.tsx",
+    "app/_components/booking/SuccessSection.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit / npm run lint / npm run build",
+      "npm test（34/34，含新增的 validation／api createAppointment 單元測試）",
+      "Browser 工具行動裝置尺寸對真實 Supabase 專案手動走查：驗證錯誤、成功送出、成功頁摘要、重新整理不重複送出、剛送出時段變 disabled"
+    ],
+    "findings": [],
+    "residual": "送出中 loading 按鈕、SERVICE_INACTIVE／BOOKING_LIMIT_EXCEEDED／INTERNAL_ERROR 三種錯誤 Toast 未在真實環境視覺驗證（邏輯已由型別窮舉與單元測試保證）；真正並發搶時段的 SLOT_CONFLICT toast 即時畫面已於 TASK-013 補上"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "（於 TASK-013 核准時一併確認）是，一併核准 TASK-012。"
+    }
+  ]
+}

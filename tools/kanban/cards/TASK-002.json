@@ -1,0 +1,69 @@
+{
+  "id": "TASK-002",
+  "title": "環境變數與金鑰設定",
+  "content": "建立 .env.example 與金鑰存放規範，涵蓋 Supabase 連線資訊與 Email 服務金鑰，確保任何真實金鑰都不進版控。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "環境變數與金鑰設定",
+  "track": "n/a",
+  "dependsOn": [],
+  "order": 2,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": true,
+    "test": false,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-002.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-002.md",
+    "pr": ""
+  },
+  "refs": [
+    ".env.example",
+    ".gitignore",
+    "README.md",
+    "ai/artifacts/專案設置/task-cards/TASK-003.md"
+  ],
+  "evidence": {
+    "commands": [
+      "git check-ignore -v .env.example",
+      "npm run build",
+      "bash scripts/check-governance.sh",
+      "security-reviewer 子代理審查（掃描 repo 內金鑰樣式）"
+    ],
+    "findings": [
+      "既有 .env.* 萬用規則會誤擋 .env.example 本身，已加 !.env.example 例外並驗證修復",
+      "補上 .envrc/*.pem/*.key/*.p12/secrets.json/service-account*.json 等常見金鑰載體的 gitignore 規則",
+      ".claude/settings.local.json 補進 repo 的 .gitignore，避免其他協作者不小心 commit",
+      "README「anon key 受 RLS 限制」目前僅為文件宣稱，已在 TASK-003 加入明確驗收標準要求實際落地"
+    ],
+    "residual": "CI 尚無自動化 secret scanning（gitleaks/trufflehog），已另外記錄為獨立的低優先待辦，不阻塞本卡；Email 服務商未選定，EMAIL_API_KEY 為通用佔位名稱，選定後於對應 Epic 更新。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-04",
+      "text": "驗證證據確認沒問題，核准推進到 Done。"
+    }
+  ]
+}

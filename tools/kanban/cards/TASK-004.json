@@ -1,0 +1,67 @@
+{
+  "id": "TASK-004",
+  "title": "UI 設計系統 S1：底層框架與元件庫策略",
+  "content": "決定元件庫策略（採用現成如 shadcn/ui、MUI、Ant Design，或自建）與樣式方案（如 Tailwind），列出 2-3 個合理選項與建議，供人工核准。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "n/a",
+  "dependsOn": [],
+  "order": 4,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-004.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-004.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/context/design-system.md",
+    "app/layout.tsx",
+    "package.json"
+  ],
+  "evidence": {
+    "commands": [
+      "npm install @mui/material @emotion/react @emotion/styled @mui/material-nextjs",
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "瀏覽器手動確認首頁載入無 hydration 警告"
+    ],
+    "findings": [
+      "用 AskUserQuestion 呈現 shadcn/ui+Tailwind／MUI／Ant Design 三個選項的優缺點，使用者選定 MUI（優先考量後台表格/表單/Modal 的開發速度）",
+      "已加入 App Router 下 MUI SSR 必要的 AppRouterCacheProvider（基礎設施，非視覺實作）；ThemeProvider／自訂主題／實際元件用法留給 S2/S3 階段"
+    ],
+    "residual": "S2-S5（風格方向、design token、元件庫 inventory、版面）仍是範本佔位符，需依序展開；元件庫 inventory 目前全空。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "驗證證據確認沒問題，核准推進到 Done。"
+    }
+  ]
+}

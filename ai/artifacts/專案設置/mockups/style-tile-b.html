@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Style Tile B · 現代簡約</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root[data-theme="light"] {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F2F2F3;
+    --ink-1: #17181A;
+    --ink-2: #5C5F66;
+    --ink-3: #9A9DA6;
+    --border: #E3E4E8;
+    --accent: #12693F;
+    --accent-ink: #FFFFFF;
+  }
+  :root[data-theme="dark"] {
+    --bg: #101113;
+    --surface: #17181B;
+    --surface-2: #1E2023;
+    --ink-1: #F2F3F5;
+    --ink-2: #A8ABB3;
+    --ink-3: #6B6E76;
+    --border: #2B2D31;
+    --accent: #3FD98A;
+    --accent-ink: #0A1F14;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink-1);
+    font-family: 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', -apple-system, sans-serif;
+    letter-spacing: -0.01em;
+    padding: 48px 24px 96px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; gap: 16px; flex-wrap: wrap; }
+  .eyebrow { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 8px; }
+  h1 { font-size: 30px; font-weight: 700; margin: 0 0 8px; line-height: 1.25; letter-spacing: -0.02em; }
+  .sub { font-size: 14px; color: var(--ink-2); margin: 0; line-height: 1.6; max-width: 46ch; }
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; padding: 2px; gap: 2px; background: var(--surface); }
+  .toggle button { border: none; background: transparent; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; color: var(--ink-2); cursor: pointer; font-family: inherit; }
+  .toggle button.active { background: var(--surface-2); color: var(--ink-1); }
+
+  section { margin-bottom: 32px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 12px; }
+
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .swatch { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .swatch .fill { height: 56px; }
+  .swatch .label { padding: 6px 8px; font-size: 11px; color: var(--ink-2); background: var(--surface); }
+  .swatch .label b { display: block; font-size: 11px; color: var(--ink-1); font-weight: 600; }
+
+  .type-specimen { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 24px; }
+  .type-specimen .h { font-size: 24px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .type-specimen .h2 { font-size: 16px; font-weight: 600; margin: 16px 0 4px; }
+  .type-specimen p { font-size: 14px; line-height: 1.6; color: var(--ink-2); margin: 0 0 4px; max-width: 52ch; }
+  .type-specimen .caption { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; }
+  .card h3 { font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+  .card p { font-size: 12px; color: var(--ink-2); line-height: 1.5; margin: 0 0 12px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 14px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; }
+  .btn-secondary { background: transparent; color: var(--ink-1); border: 1px solid var(--border); margin-left: 6px; }
+
+  .density-demo { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .density-demo .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .density-demo .item:last-child { border-bottom: none; }
+  .density-demo .item .name { font-size: 13px; font-weight: 500; }
+  .density-demo .item .meta { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  .refs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ref-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; font-size: 12px; color: var(--ink-2); }
+  .ref-chip b { color: var(--ink-1); }
+
+  .meta-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .meta-table th, .meta-table td { text-align: left; padding: 10px 14px; font-size: 12px; border-bottom: 1px solid var(--border); }
+  .meta-table th { color: var(--ink-3); font-weight: 500; width: 160px; }
+  .meta-table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <p class="eyebrow">Style Tile · 變體 B</p>
+        <h1>現代簡約</h1>
+        <p class="sub">近乎黑白灰的中性色階＋單一飽和強調色，幾何無襯線字體，邊框取代陰影，追求後台管理的效率與清晰。</p>
+      </div>
+      <div class="toggle">
+        <button class="active" onclick="setTheme('light', this)">亮色</button>
+        <button onclick="setTheme('dark', this)">暗色</button>
+      </div>
+    </div>
+
+    <section>
+      <p class="section-title">色彩情緒</p>
+      <div class="swatches">
+        <div class="swatch"><div class="fill" style="background:#17181A"></div><div class="label"><b>Ink</b>#17181A</div></div>
+        <div class="swatch"><div class="fill" style="background:#5C5F66"></div><div class="label"><b>Ink 2</b>#5C5F66</div></div>
+        <div class="swatch"><div class="fill" style="background:#FAFAFA"></div><div class="label"><b>Bg</b>#FAFAFA</div></div>
+        <div class="swatch"><div class="fill" style="background:#E3E4E8"></div><div class="label"><b>Border</b>#E3E4E8</div></div>
+        <div class="swatch"><div class="fill" style="background:#12693F"></div><div class="label"><b>Accent</b>#12693F</div></div>
+        <div class="swatch"><div class="fill" style="background:#B3271A"></div><div class="label"><b>Danger</b>#B3271A</div></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">字體個性</p>
+      <div class="type-specimen">
+        <p class="h">剪髮 · 染燙 · 造型設計</p>
+        <p class="h2">單一幾何無襯線字體</p>
+        <p>設計師為您量身打造專屬造型，從諮詢到完成，每一步都細心對待。預約時段彈性，讓您安心享受屬於自己的美好時光。</p>
+        <p class="caption">Inter + Noto Sans TC，700 / 600 / 500 / 400 四種字重 · 字距 -0.01~-0.02em · 標題行高 1.25 · 內文行高 1.6</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">圓角與陰影傾向</p>
+      <div class="row">
+        <div class="card">
+          <h3>邊框取代陰影</h3>
+          <p>不使用陰影，全部以 1px 邊框界定卡片與區塊，扁平、乾淨、適合資訊密集的後台。</p>
+          <button class="btn">立即預約</button><button class="btn btn-secondary">了解更多</button>
+        </div>
+        <div class="card">
+          <h3>圓角尺度</h3>
+          <p>元件圓角統一 4–6px：按鈕 4px、卡片 6px，銳利俐落，強調效率感。</p>
+        </div>
+        <div class="card">
+          <h3>互動狀態</h3>
+          <p>主按鈕 hover 加深 10%、focus 顯示 2px 外框、disabled 降低不透明度至 40%。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">密度：緊湊</p>
+      <div class="density-demo">
+        <div class="item"><span class="name">剪髮造型</span><span class="meta">45 分鐘 · NT$800</span></div>
+        <div class="item"><span class="name">染髮設計</span><span class="meta">120 分鐘 · NT$2,400</span></div>
+        <div class="item"><span class="name">頭皮護理</span><span class="meta">60 分鐘 · NT$1,200</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">亮／暗模式</p>
+      <p class="sub">右上角切換按鈕即時預覽；暗色模式反轉明度、強調色改用高亮綠以維持在深色底上的對比與可讀性。</p>
+    </section>
+
+    <section>
+      <p class="section-title">參考產品</p>
+      <div class="refs">
+        <div class="ref-chip"><b>Cal.com</b> — 極簡排程 UI 與邊框系統</div>
+        <div class="ref-chip"><b>Linear</b> — 後台效率感與緊湊密度</div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">摘要</p>
+      <table class="meta-table">
+        <tr><th>密度</th><td>緊湊（間距 8–12px 起跳）</td></tr>
+        <tr><th>圓角</th><td>4–6px</td></tr>
+        <tr><th>Depth</th><td>邊框（border-only，不使用陰影）</td></tr>
+        <tr><th>字體</th><td>Inter（英數）＋ Noto Sans TC（中文），PingFang TC／微軟正黑體 fallback</td></tr>
+        <tr><th>適合場景</th><td>設計師後台：預約列表、顧客管理、服務項目設定</td></tr>
+      </table>
+    </section>
+  </div>
+  <script>
+    function setTheme(mode, btn) {
+      document.documentElement.setAttribute('data-theme', mode);
+      document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

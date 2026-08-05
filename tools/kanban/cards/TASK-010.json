@@ -1,0 +1,83 @@
+{
+  "id": "TASK-010",
+  "title": "顧客預約流程 架構基礎（資料庫層）",
+  "content": "新增 business_hours 表、撤銷 TASK-003 的 anon 直接 INSERT policy、get_available_slots／create_appointment 兩個 SECURITY DEFINER RPC（含 exclusion constraint 併發防護）、種子資料腳本。不含前端（移至 TASK-011）。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "顧客預約流程",
+  "userStory": "不適用（架構基礎）",
+  "track": "backend",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009"],
+  "order": 10,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/顧客預約流程/feature-spec.md",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-顧客前台預約流程.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-顧客前台.md",
+    "taskCard": "ai/artifacts/顧客預約流程/task-cards/TASK-010.md",
+    "verificationReport": "ai/artifacts/顧客預約流程/verification/TASK-010.md",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0002_booking_flow.sql",
+    "supabase/migrations/0002_booking_flow_down.sql",
+    "scripts/seed-booking-data.mjs",
+    "ai/context/decisions.md",
+    "tests/rls.integration.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "0002_booking_flow.sql 由使用者手動貼到 Supabase SQL Editor 執行，成功",
+      "npm run seed:booking（兩次，第二次確認冪等）",
+      "npx tsc --noEmit / npm run lint / npm run build",
+      "手動驗證腳本（暫存執行後刪除）：anon 直接 insert 被拒絕、get_available_slots 正確、create_appointment 成功建立與衝突擋下、顧客去重正確、business_hours RLS 正確"
+    ],
+    "findings": [
+      "計畫審查抓到的 Critical/High 問題（anon INSERT 路徑、併發防護設計、PII 列舉、防濫用不足）皆已在實作中修正並手動驗證通過",
+      "業務邏輯驗證：exclusion constraint 正確擋下同時段重複預約，顧客去重正確關聯同一 customer_id"
+    ],
+    "residual": "併發（多請求同時搶同一時段）與 npm run test:rls 回歸尚未正式重跑，明確交由 TASK-013 負責；customers unique constraint 極低機率併發撞號回傳通用 INTERNAL_ERROR，非精準處理"
+  },
+  "comments": [
+    {
+      "name": "architect",
+      "time": "2026-08-05",
+      "text": "計畫審查：Request Changes。anon 仍可直接 INSERT appointments（TASK-003 既有 policy）與新計畫矛盾；exclusion constraint 不應以 service_id 分割；for update 鎖不成立；缺時區/錯誤契約定義；建議把 lib/booking/ 與 app/page.tsx 移出本卡。已依此修正任務卡與 feature-spec。"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-05",
+      "text": "計畫審查：2 Critical（anon INSERT 路徑未撤銷；併發防護方案不安全）、2 High（顧客去重回應成為 PII 列舉 oracle；防濫用機制不足）、3 Medium。已依此修正 feature-spec 與 TASK-010。"
+    },
+    {
+      "name": "test-engineer",
+      "time": "2026-08-05",
+      "text": "計畫審查：既有 rls.integration.test.ts 斷言與新計畫矛盾需同步更新；TASK-010 檔案範圍與其驗證契約矛盾（已收斂整合測試至 TASK-013）；併發測試需加固為多輪/多請求；需補相鄰時段邊界測試與去重衝突案例。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "核准，推進到 Done。"
+    }
+  ]
+}

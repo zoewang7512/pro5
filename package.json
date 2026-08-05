@@ -1,0 +1,42 @@
+{
+  "name": "pro5",
+  "private": true,
+  "description": "理髮廳線上預約系統。A gate-based governance workflow for AI coding agents. Nothing ships without evidence.",
+  "license": "MIT",
+  "scripts": {
+    "kanban": "node tools/kanban/server.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:rls": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts",
+    "test:booking": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking.config.ts",
+    "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
+    "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs"
+  },
+  "dependencies": {
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@mui/material": "9.2.0",
+    "@mui/material-nextjs": "9.1.1",
+    "@supabase/ssr": "0.12.4",
+    "@supabase/supabase-js": "2.112.0",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "jsdom": "^27.4.0",
+    "typescript": "^5",
+    "vitest": "^3"
+  }
+}

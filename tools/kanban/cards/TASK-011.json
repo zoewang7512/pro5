@@ -1,0 +1,66 @@
+{
+  "id": "TASK-011",
+  "title": "顧客預約流程 前端：頁面骨架、服務列表與選時段",
+  "content": "建立 app/page.tsx 骨架與 lib/booking/ RPC 封裝（原規劃在 TASK-010，依 architect 審查建議移入本卡），實作服務列表（可選擇）與選時段（呼叫 get_available_slots），依 S5 單頁捲動變體 B 版型，含 loading/空狀態，行動裝置尺寸截圖。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "顧客預約流程",
+  "userStory": "顧客瀏覽服務並選日期時段",
+  "track": "frontend",
+  "dependsOn": ["TASK-010"],
+  "order": 11,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/顧客預約流程/feature-spec.md",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-顧客前台預約流程.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-顧客前台.md",
+    "taskCard": "ai/artifacts/顧客預約流程/task-cards/TASK-011.md",
+    "verificationReport": "ai/artifacts/顧客預約流程/verification/TASK-011.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/專案設置/mockups/customer-flow-variant-b.html",
+    "app/page.tsx",
+    "lib/booking/",
+    "app/_components/booking/",
+    "tests/booking/"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit / npm run lint / npm run build",
+      "npm test（13/13，含新增的 date-range／slot-grid／api 純函式單元測試）",
+      "Browser 工具行動裝置尺寸對真實 Supabase 專案手動走查：服務列表、選時段收合互動、時段格數與 TASK-010 記錄一致"
+    ],
+    "findings": [
+      "自我審查（security-maintainability-review）發現 lib/booking/api.ts 錯誤形狀轉換缺單元測試，已補上 tests/booking/api.test.ts"
+    ],
+    "residual": "未取得像素螢幕截圖（改用 accessibility tree／文字擷取驗證）；部分時段 disabled 的真實環境視覺畫面未擷取，邏輯已由單元測試覆蓋"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "我看到畫面，確認沒問題了。核准，推進到 Done。"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "id": "TASK-007",
+  "title": "UI 設計系統 S4：核心元件庫",
+  "content": "只用 S3 的 token 做出基礎元件（button、input、select、checkbox/radio、card、nav、modal、table、form、toast），涵蓋必要狀態，並登記進 design-system.md 的元件庫 inventory。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-006"],
+  "order": 7,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-007.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-007.md",
+    "pr": ""
+  },
+  "refs": [
+    "components/ui/Nav.tsx",
+    "components/ui/ConfirmDialog.tsx",
+    "components/ui/FormSection.tsx",
+    "components/ui/ToastProvider.tsx",
+    "app/design-system/page.tsx",
+    "tests/components/confirm-dialog.test.tsx",
+    "tests/components/select.test.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm test（6/6 通過）",
+      "npm run build",
+      "瀏覽器互動驗證 /design-system：Select 選取切換、ConfirmDialog 開關、Toast 觸發"
+    ],
+    "findings": [
+      "10 種必要元件（button/input/select/checkbox/radio/card/nav/modal/dialog/table/form/toast/alert）皆已完成並登記進 design-system.md 的 S4 inventory；Nav/Modal/Form/Toast 因 MUI 無對應單一元件而客製，其餘直接用 MUI+theme",
+      "過程修正 3 個問題：Stack flexWrap 型別錯誤、ToastProvider 違反 react-hooks/set-state-in-effect、測試環境 MUI ripple/transition 計時器造成 unhandled error"
+    ],
+    "residual": "Browser 工具螢幕截圖本次逾時，改用 console/page_text/互動點擊佐證；Button hover/focus 未逐一截圖比對；app/page.tsx 等畫面尚未套用這批元件，留給 S5"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "親自開瀏覽器看過 /design-system 展示頁，看起來沒問題，核准推進到 Done。"
+    }
+  ]
+}

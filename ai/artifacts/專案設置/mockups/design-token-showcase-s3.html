@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>S3 Design Token Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F6F3EE; --surface: #FFFFFF; --ink-1: #2B2622; --ink-2: #6B6259; --ink-3: #A79E92; --border: #E4DDD1;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink-1); font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; padding: 48px 24px 96px; }
+  .serif { font-family: 'Noto Serif TC', 'PingFang TC', 'Microsoft JhengHei', serif; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 30px; font-weight: 700; margin: 0 0 4px; }
+  .lead { color: var(--ink-2); font-size: 14px; margin: 0 0 40px; }
+  section { margin-bottom: 40px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; }
+  .swatch .fill { height: 56px; border-radius: 8px 8px 0 0; border: 1px solid var(--border); border-bottom: none; }
+  .swatch .label { background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; padding: 6px 8px; font-size: 11px; color: var(--ink-2); }
+  .semantic-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 12px; }
+  .semantic-card { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-1); }
+  .semantic-card .fill { height: 48px; }
+  .semantic-card .body { background: var(--surface); padding: 12px 16px; }
+  .semantic-card .body b { display: block; font-size: 13px; }
+  .semantic-card .body span { font-size: 11px; color: var(--ink-2); }
+  .type-row { display: flex; align-items: baseline; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .type-row .size-label { width: 90px; font-size: 12px; color: var(--ink-3); flex-shrink: 0; }
+  .spacing-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .spacing-bar { height: 16px; background: #A9812F; border-radius: 4px; }
+  .spacing-label { width: 60px; font-size: 12px; color: var(--ink-2); }
+  .misc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: var(--surface); border-radius: 12px; padding: 20px; }
+  .card.shadow1 { box-shadow: var(--shadow-1); }
+  .card.shadow2 { box-shadow: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08); }
+  .card h3 { margin: 0 0 8px; font-size: 14px; }
+  .card p { margin: 0; font-size: 12px; color: var(--ink-2); }
+  .radius-demo { display: flex; gap: 16px; }
+  .radius-demo div { width: 80px; height: 80px; background: #A9812F; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="serif">S3 Design Token Showcase</h1>
+  <p class="lead">依 `lib/theme/tokens.ts` 產生的靜態預覽，用於驗證色票／字級／間距／圓角／陰影數值。實際套用見 `lib/theme/index.ts`（MUI theme）。</p>
+
+  <section>
+    <p class="section-title">Grey Scale</p>
+    <div class="grid">
+      <div class="swatch"><div class="fill" style="background:#FBF9F6"></div><div class="label">50</div></div>
+      <div class="swatch"><div class="fill" style="background:#F6F3EE"></div><div class="label">100</div></div>
+      <div class="swatch"><div class="fill" style="background:#EFEAE2"></div><div class="label">200</div></div>
+      <div class="swatch"><div class="fill" style="background:#E4DDD1"></div><div class="label">300</div></div>
+      <div class="swatch"><div class="fill" style="background:#CFC5B6"></div><div class="label">400</div></div>
+      <div class="swatch"><div class="fill" style="background:#A79E92"></div><div class="label">500</div></div>
+      <div class="swatch"><div class="fill" style="background:#8C8276"></div><div class="label">600</div></div>
+      <div class="swatch"><div class="fill" style="background:#6B6259;color:#fff"></div><div class="label">700</div></div>
+      <div class="swatch"><div class="fill" style="background:#4A433C"></div><div class="label">800</div></div>
+      <div class="swatch"><div class="fill" style="background:#2B2622"></div><div class="label">900</div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">Primary Scale（Accent Gold）</p>
+    <div class="grid">
+      <div class="swatch"><div class="fill" style="background:#FBF4E2"></div><div class="label">50</div></div>
+      <div class="swatch"><div class="fill" style="background:#F3E2B8"></div><div class="label">100</div></div>
+      <div class="swatch"><div class="fill" style="background:#E9CD87"></div><div class="label">200</div></div>
+      <div class="swatch"><div class="fill" style="background:#DDB55A"></div><div class="label">300</div></div>
+      <div class="swatch"><div class="fill" style="background:#C89F3E"></div><div class="label">400</div></div>
+      <div class="swatch"><div class="fill" style="background:#A9812F;color:#fff"></div><div class="label">500 main</div></div>
+      <div class="swatch"><div class="fill" style="background:#8C6A26;color:#fff"></div><div class="label">600</div></div>
+      <div class="swatch"><div class="fill" style="background:#6F531E;color:#fff"></div><div class="label">700</div></div>
+      <div class="swatch"><div class="fill" style="background:#523D16;color:#fff"></div><div class="label">800</div></div>
+      <div class="swatch"><div class="fill" style="background:#38290F;color:#fff"></div><div class="label">900</div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">Semantic Colors</p>
+    <div class="semantic-row">
+      <div class="semantic-card"><div class="fill" style="background:#7A8B76"></div><div class="body"><b>Success</b><span>#7A8B76</span></div></div>
+      <div class="semantic-card"><div class="fill" style="background:#C97A3D"></div><div class="body"><b>Warning</b><span>#C97A3D</span></div></div>
+      <div class="semantic-card"><div class="fill" style="background:#B3462E"></div><div class="body"><b>Danger</b><span>#B3462E</span></div></div>
+      <div class="semantic-card"><div class="fill" style="background:#5B7C99"></div><div class="body"><b>Info</b><span>#5B7C99</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">Type Scale</p>
+    <div>
+      <div class="type-row"><span class="size-label">48 / 5xl</span><span class="serif" style="font-size:48px;font-weight:700;line-height:1.25">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">36 / 4xl</span><span class="serif" style="font-size:36px;font-weight:700;line-height:1.25">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">30 / 3xl</span><span style="font-size:30px;font-weight:700">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">24 / 2xl</span><span style="font-size:24px;font-weight:600">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">20 / xl</span><span style="font-size:20px;font-weight:600">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">18 / lg</span><span style="font-size:18px;font-weight:600">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">16 / md</span><span style="font-size:16px;font-weight:500">剪髮造型設計 body1/subtitle1</span></div>
+      <div class="type-row"><span class="size-label">14 / base</span><span style="font-size:14px;font-weight:400">剪髮造型設計 body2/button</span></div>
+      <div class="type-row"><span class="size-label">13 / sm+</span><span style="font-size:13px;font-weight:400">剪髮造型設計</span></div>
+      <div class="type-row"><span class="size-label">12 / sm</span><span style="font-size:12px;font-weight:400">剪髮造型設計 caption</span></div>
+      <div class="type-row"><span class="size-label">11 / xs</span><span style="font-size:11px;font-weight:600">剪髮造型設計 overline</span></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">Spacing Scale（4 的倍數）</p>
+    <div class="spacing-row"><span class="spacing-label">4</span><div class="spacing-bar" style="width:4px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">8</span><div class="spacing-bar" style="width:8px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">12</span><div class="spacing-bar" style="width:12px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">16</span><div class="spacing-bar" style="width:16px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">20</span><div class="spacing-bar" style="width:20px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">24</span><div class="spacing-bar" style="width:24px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">32</span><div class="spacing-bar" style="width:32px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">40</span><div class="spacing-bar" style="width:40px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">48</span><div class="spacing-bar" style="width:48px"></div></div>
+    <div class="spacing-row"><span class="spacing-label">64</span><div class="spacing-bar" style="width:64px"></div></div>
+  </section>
+
+  <section>
+    <p class="section-title">圓角 / 陰影</p>
+    <div class="misc-grid">
+      <div>
+        <div class="radius-demo">
+          <div style="border-radius:8px">sm 8</div>
+          <div style="border-radius:12px">md 12</div>
+        </div>
+      </div>
+      <div class="card shadow1"><h3>Elevation 1</h3><p>預設卡片陰影</p></div>
+      <div class="card shadow2"><h3>Elevation 2</h3><p>hover／dialog 陰影</p></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

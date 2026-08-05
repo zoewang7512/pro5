@@ -1,0 +1,67 @@
+{
+  "id": "TASK-005",
+  "title": "UI 設計系統 S2：視覺風格方向",
+  "content": "依 S1 選定的框架，產出 2-3 個 style tile（風格方向），呈現色彩情緒、字體個性、圓角／陰影傾向、密度、亮暗模式與參考產品，供人工選定一個方向。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-004"],
+  "order": 5,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-style-direction.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-005.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-005.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/專案設置/mockups/style-tile-a.html",
+    "ai/artifacts/專案設置/mockups/style-tile-b.html",
+    "ai/artifacts/專案設置/mockups/style-tile-c.html"
+  ],
+  "evidence": {
+    "commands": [
+      "Browser 工具開啟三個 style tile HTML，確認渲染正常並測試亮／暗模式切換"
+    ],
+    "findings": [
+      "已產出 3 個 style tile（A 質感沉靜／B 現代簡約／C 溫暖放鬆），比較表記錄於 mockup-decision-style-direction.md，使用者選定變體 A「質感沉靜」，已寫入 design-system.md 的 S2 章節"
+    ],
+    "residual": "後台（表格/表單密集場景）是否需要不同密度設定，留待 S3/S4 階段視需要調整，S2 不另立第二套風格"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "TASK-004 已核准完成，繼續執行 TASK-005。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "選定變體 A「質感沉靜」，核准推進到 Done。"
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>設計師後台 Variant C · 側邊欄+日曆優先</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --warning:#C97A3D; --danger:#B3462E; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 720px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 720px; height: 460px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; }
+
+  .login-wrap { width: 100%; display: flex; align-items: center; justify-content: center; }
+  .login-card { width: 320px; background: var(--surface); border-radius: var(--radius-md); padding: 32px; box-shadow: var(--shadow-1); }
+  .login-card h2 { font-size: 18px; margin: 0 0 4px; color: var(--grey-900); }
+  .login-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 20px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--grey-700); margin-bottom: 5px; }
+  .field input { width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 10px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .btn { display: block; width: 100%; height: 40px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 600; border: none; text-align: center; line-height: 40px; margin-top: 4px; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 20px 24px; overflow: hidden; }
+  .main h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0 0 16px; display: flex; justify-content: space-between; align-items: center; }
+  .view-toggle { display: flex; gap: 4px; background: var(--grey-200); border-radius: var(--radius-sm); padding: 2px; }
+  .view-toggle span { font-size: 11px; padding: 4px 10px; border-radius: 6px; color: var(--grey-700); }
+  .view-toggle span.active { background: var(--surface); color: var(--grey-900); font-weight: 600; box-shadow: var(--shadow-1); }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .cal-day { background: var(--surface); border-radius: var(--radius-sm); padding: 8px; box-shadow: var(--shadow-1); min-height: 140px; }
+  .cal-day .d { font-size: 11px; font-weight: 600; color: var(--grey-700); margin-bottom: 6px; }
+  .cal-event { background: var(--grey-200); border-left: 3px solid var(--primary-500); border-radius: 4px; padding: 4px 6px; font-size: 10px; color: var(--grey-900); margin-bottom: 4px; }
+  .cal-event.warning { border-left-color: var(--warning); }
+
+  .service-row { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; box-shadow: var(--shadow-1); font-size: 12px; }
+  .service-row .name { font-weight: 600; color: var(--grey-900); }
+  .hours-form { background: var(--surface); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-1); margin-top: 16px; }
+  .hours-row { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--grey-200); }
+  .hours-row:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">設計師後台 · Variant C：側邊欄＋日曆優先（Sidebar + Calendar-first）— 側邊欄同 A，但預約主視覺是週曆網格，適合大量預約管理</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 登入</div>
+      <div class="screen">
+        <div class="login-wrap">
+          <div class="login-card">
+            <h2 class="serif">設計師登入</h2>
+            <p class="sub">理髮廳線上預約系統・後台管理</p>
+            <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+            <div class="field"><label>密碼</label><input type="password" value="••••••••" /></div>
+            <div class="btn">登入</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 預約週曆</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <h2>本週預約 <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span></h2>
+          <div class="cal-grid">
+            <div class="cal-day"><div class="d">一 8/10</div><div class="cal-event">10:00 王小美</div></div>
+            <div class="cal-day"><div class="d">二 8/11</div></div>
+            <div class="cal-day"><div class="d">三 8/12</div><div class="cal-event">11:00 李大明</div><div class="cal-event warning">14:00 陳小華</div></div>
+            <div class="cal-day"><div class="d">四 8/13</div><div class="cal-event">09:30 張美玲</div></div>
+            <div class="cal-day"><div class="d">五 8/14</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 服務與營業時間設定</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item active">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <h2>服務項目</h2>
+          <div class="service-row"><span class="name">剪髮造型</span><span>45 分鐘 · NT$800</span></div>
+          <div class="service-row"><span class="name">染髮設計</span><span>120 分鐘 · NT$2,400</span></div>
+          <div class="hours-form">
+            <div class="hours-row"><span>週一至週五</span><span>10:00–19:00</span></div>
+            <div class="hours-row"><span>週六</span><span>10:00–17:00</span></div>
+            <div class="hours-row"><span>週日</span><span>公休</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{
+  "id": "TASK-008",
+  "title": "UI 設計系統 S5：顧客前台版面 mockup",
+  "content": "用已定案的 token 與元件庫，拼出顧客前台（瀏覽服務、選時段、預約）2-3 個版面變體，供人工選定一個版型。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-007"],
+  "order": 8,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-顧客前台預約流程.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-顧客前台.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-008.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-008.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/專案設置/mockups/customer-flow-variant-a.html",
+    "ai/artifacts/專案設置/mockups/customer-flow-variant-b.html",
+    "ai/artifacts/專案設置/mockups/customer-flow-variant-c.html"
+  ],
+  "evidence": {
+    "commands": [
+      "Browser 工具開啟三個版面變體 HTML，確認渲染正常"
+    ],
+    "findings": [
+      "已產出 3 個顧客前台版面變體（A 分步精靈／B 單頁捲動／C 列表優先+底部彈出），比較表記錄於 mockup-decision-顧客前台.md，使用者選定變體 B「單頁捲動」，已寫入 design-system.md 的 S5 章節"
+    ],
+    "residual": "版面骨架決策，不含最終文案與真實資料串接，留給「顧客預約流程」Epic 實作；TASK-009（設計師後台版面）尚未處理"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "選定變體 B「單頁捲動」，核准推進到 Done。"
+    }
+  ]
+}

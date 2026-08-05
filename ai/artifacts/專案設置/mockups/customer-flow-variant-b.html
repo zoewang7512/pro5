@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>顧客前台 Variant B · 單頁捲動</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --danger:#B3462E; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; align-items: flex-start; }
+  .frame { flex: 0 0 auto; width: 375px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 375px; height: 720px; background: var(--grey-100); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; flex-direction: column; }
+  .topbar { padding: 16px 20px; background: var(--surface); border-bottom: 1px solid var(--grey-300); font-size: 15px; font-weight: 600; color: var(--grey-900); }
+  .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 12px; font-weight: 700; color: var(--grey-700); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .section-title .badge { width: 18px; height: 18px; border-radius: 50%; background: var(--primary-500); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; margin-right: 6px; }
+
+  .summary-line { background: var(--surface); border-radius: var(--radius-sm); padding: 12px 14px; box-shadow: var(--shadow-1); display: flex; justify-content: space-between; font-size: 13px; color: var(--grey-900); }
+  .summary-line .change { color: var(--primary-700); font-weight: 600; }
+
+  .service-card { background: var(--surface); border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-1); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .service-card.selected { outline: 2px solid var(--primary-500); }
+  .service-card .name { font-size: 14px; font-weight: 600; color: var(--grey-900); }
+  .service-card .meta { font-size: 11px; color: var(--grey-700); margin-top: 2px; }
+
+  .date-row { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; }
+  .date-chip { flex: 0 0 auto; width: 48px; height: 54px; border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-1); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: var(--grey-700); }
+  .date-chip.active { background: var(--primary-500); color: #fff; }
+  .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .slot { background: var(--surface); border-radius: var(--radius-sm); padding: 8px 0; text-align: center; font-size: 12px; color: var(--grey-900); box-shadow: var(--shadow-1); }
+  .slot.active { background: var(--primary-500); color: #fff; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--grey-700); margin-bottom: 5px; }
+  .field input { width: 100%; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+
+  .locked { opacity: 0.45; pointer-events: none; }
+  .btn { display: block; width: 100%; height: 46px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 14px; font-weight: 600; border: none; text-align: center; line-height: 46px; }
+
+  .success-badge { width: 56px; height: 56px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 8px auto 16px; }
+  .summary-card { background: var(--surface); border-radius: var(--radius-md); padding: 20px; box-shadow: var(--shadow-1); }
+  .summary-card .row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--grey-200); }
+  .summary-card .row:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">顧客前台 · Variant B：單頁捲動（Single-page Accordion）— 選好上一步後，下一區塊自動展開，可隨時回頭修改</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 開始（僅服務展開）</div>
+      <div class="screen">
+        <div class="topbar">預約 · 剪髮造型設計</div>
+        <div class="content">
+          <div class="section">
+            <div class="section-title"><span><span class="badge">1</span>選擇服務</span></div>
+            <div class="service-card selected"><div><div class="name">剪髮造型</div><div class="meta">45 分鐘 · NT$800</div></div></div>
+            <div class="service-card"><div><div class="name">染髮設計</div><div class="meta">120 分鐘 · NT$2,400</div></div></div>
+            <div class="service-card"><div><div class="name">頭皮護理</div><div class="meta">60 分鐘 · NT$1,200</div></div></div>
+          </div>
+          <div class="section locked">
+            <div class="section-title"><span><span class="badge">2</span>選擇時段</span></div>
+            <div class="summary-line"><span>請先選擇服務</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 服務收合，時段展開</div>
+      <div class="screen">
+        <div class="topbar">預約 · 剪髮造型設計</div>
+        <div class="content">
+          <div class="section">
+            <div class="section-title"><span>✓ 服務</span><span class="change">修改</span></div>
+            <div class="summary-line"><span>剪髮造型 · 45 分鐘</span><span>NT$800</span></div>
+          </div>
+          <div class="section">
+            <div class="section-title"><span><span class="badge">2</span>選擇時段</span></div>
+            <div class="date-row">
+              <div class="date-chip active">三<br/>12</div>
+              <div class="date-chip">四<br/>13</div>
+              <div class="date-chip">五<br/>14</div>
+            </div>
+            <div class="slot-grid">
+              <div class="slot">10:00</div><div class="slot active">11:00</div><div class="slot">13:00</div>
+            </div>
+          </div>
+          <div class="section locked">
+            <div class="section-title"><span><span class="badge">3</span>填寫資訊</span></div>
+            <div class="summary-line"><span>請先選擇時段</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 表單展開，準備送出</div>
+      <div class="screen">
+        <div class="topbar">預約 · 剪髮造型設計</div>
+        <div class="content">
+          <div class="section">
+            <div class="section-title"><span>✓ 服務</span><span class="change">修改</span></div>
+            <div class="summary-line"><span>剪髮造型 · 45 分鐘</span><span>NT$800</span></div>
+          </div>
+          <div class="section">
+            <div class="section-title"><span>✓ 時段</span><span class="change">修改</span></div>
+            <div class="summary-line"><span>週三 8/12</span><span>11:00</span></div>
+          </div>
+          <div class="section">
+            <div class="section-title"><span><span class="badge">3</span>填寫資訊</span></div>
+            <div class="field"><label>姓名</label><input placeholder="請輸入姓名" /></div>
+            <div class="field"><label>電話</label><input placeholder="請輸入電話" /></div>
+            <div class="btn">送出預約</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 預約成功</div>
+      <div class="screen">
+        <div class="topbar">預約 · 剪髮造型設計</div>
+        <div class="content">
+          <div class="success-badge">✓</div>
+          <h2 style="text-align:center;font-size:18px;margin:0 0 4px">預約成功！</h2>
+          <p style="text-align:center;font-size:13px;color:var(--grey-700);margin:0 0 16px">已為您保留時段</p>
+          <div class="summary-card">
+            <div class="row"><span>服務</span><span>剪髮造型</span></div>
+            <div class="row"><span>時段</span><span>週三 8/12 · 11:00</span></div>
+            <div class="row"><span>姓名</span><span>王小美</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

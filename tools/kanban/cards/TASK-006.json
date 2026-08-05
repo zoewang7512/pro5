@@ -1,0 +1,69 @@
+{
+  "id": "TASK-006",
+  "title": "UI 設計系統 S3：Design Token",
+  "content": "從 S2 選定的風格方向，定義 primitive token（色票、字級、字重、行高、間距、圓角、陰影、z-index、動效）與 semantic token，並在專案內產出真實 token 檔。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-005"],
+  "order": 6,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-006.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-006.md",
+    "pr": ""
+  },
+  "refs": [
+    "lib/theme/tokens.ts",
+    "lib/theme/index.ts",
+    "lib/theme/ThemeRegistry.tsx",
+    "app/layout.tsx",
+    "app/globals.css",
+    "ai/artifacts/專案設置/mockups/design-token-showcase-s3.html"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build（第一次失敗：theme 物件跨 Server/Client 邊界序列化錯誤；改用 ThemeRegistry client component 後第二次通過）",
+      "瀏覽器手動驗證首頁亮／暗色模式與 design-token-showcase-s3.html"
+    ],
+    "findings": [
+      "已定義完整 primitive／semantic token（grey/primary 10 階、semantic 色、type scale、間距、圓角、陰影、z-index、動效），映射進 MUI theme 並實際套用於 app/layout.tsx",
+      "延續 S2 已核准的變體 A「質感沉靜」，未新增未經核准的視覺方向"
+    ],
+    "residual": "MUI theme.shadows 完整 0-24 elevation 與暗色模式完整 grey 色階未展開，僅定義 S2 範圍內數值；app/page.tsx 等畫面內容未改用 MUI 元件，留給 S4/S5"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "驗證證據確認沒問題，核准推進到 Done。"
+    }
+  ]
+}

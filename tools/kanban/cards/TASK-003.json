@@ -1,0 +1,84 @@
+{
+  "id": "TASK-003",
+  "title": "核心資料模型與認證框架基礎",
+  "content": "在 Supabase 建立服務項目、預約、顧客三張核心資料表與 RLS 規則，並建立單一設計師帳號的登入認證與後台路由保護基礎。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "核心資料模型與認證框架基礎",
+  "track": "backend",
+  "dependsOn": [],
+  "order": 3,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-003.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-003.md",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0001_core_schema.sql",
+    "supabase/migrations/0001_core_schema_down.sql",
+    "lib/supabase/client.ts",
+    "lib/supabase/server.ts",
+    "lib/supabase/middleware.ts",
+    "proxy.ts",
+    "app/login/page.tsx",
+    "app/login/login-form.tsx",
+    "app/admin/page.tsx",
+    "app/admin/logout-button.tsx",
+    "scripts/seed-designer-account.mjs",
+    "tests/rls.integration.test.ts",
+    "vitest.integration.config.ts",
+    "ai/context/decisions.md",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npm install @supabase/supabase-js @supabase/ssr",
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npm test",
+      "npm run seed:designer",
+      "npm run test:rls（對真實 Supabase 專案，8/8 通過）",
+      "瀏覽器手動驗證登入/登出/未登入導向/非管理者阻擋（Claude Browser 工具）"
+    ],
+    "findings": [
+      "Phase 4 計畫審查（Critical）：用 authenticated 角色代表設計師身分會讓任何自行註冊帳號拿到全部顧客 PII 權限，已改用 admins 表 + is_admin()（SECURITY DEFINER）",
+      "Phase 4 計畫審查（High）：appointments 的 anon INSERT 原本 with check(true) 過寬，已用欄位層級 GRANT + 收緊 WITH CHECK 修正",
+      "Phase 8 實作審查（High）：app/admin/page.tsx 一開始沒呼叫 is_admin()，已補上二次確認；修復過程中自行測出這會與 /login 的導向邏輯疊加成無限重導迴圈，已一併修好並用拋棄式帳號重現驗證",
+      "Phase 8 實作審查（Medium）：appointments 的 INSERT policy 原本也開放給 authenticated，讓非管理者已登入帳號能繞過欄位限制，已收斂為只給 anon（需重新執行一次 migration，已完成並重新驗證）"
+    ],
+    "residual": "Migration 仍靠人工貼 SQL Editor 執行，無 CLI/CI 自動化；建議另找時間到 Supabase 後台關閉公開註冊/開啟 leaked-password protection（防禦縱深，非安全邊界必要條件）；access_token 自助查詢與顧客去重延後到未來預約流程 Epic 用 RPC 實作；單一 Supabase 專案供開發與測試共用。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-04",
+      "text": "驗證證據確認沒問題，核准推進到 Done。"
+    }
+  ]
+}

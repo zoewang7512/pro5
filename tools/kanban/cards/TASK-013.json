@@ -1,0 +1,79 @@
+{
+  "id": "TASK-013",
+  "title": "顧客預約流程 前後端串接驗證與端到端測試",
+  "content": "建立並執行 npm run test:booking（原部分規劃在 TASK-010，已收斂至本卡），涵蓋多輪併發衝突防護、相鄰時段邊界、顧客去重（含衝突案例）、視野/上限、RLS 邊界；重跑 test:rls 確認無回歸；Browser 工具行動裝置尺寸 E2E 走查完整流程與錯誤路徑。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "顧客預約流程",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-011", "TASK-012"],
+  "order": 13,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/顧客預約流程/feature-spec.md",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-顧客前台預約流程.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/顧客預約流程/task-cards/TASK-013.md",
+    "verificationReport": "ai/artifacts/顧客預約流程/verification/TASK-013.md",
+    "pr": ""
+  },
+  "refs": [
+    "tests/booking.integration.test.ts",
+    "vitest.booking.config.ts",
+    "vitest.integration.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit / npm run lint / npm run build",
+      "npm test（預設，34/34，確認未撿到 test:booking）",
+      "npm run test:booking（穩定 19/19，含審查修正前後共執行 5 次）",
+      "npm run test:rls（6/6，無回歸）",
+      "每次 test:booking 執行後用 service role 查詢確認無殘留 __TEST__ 測試資料",
+      "Browser 工具行動裝置尺寸對真實 Supabase 專案完整走查：成功路徑＋模擬真實並發搶單觸發 SLOT_CONFLICT toast（436ms 內量到，欄位未清空）"
+    ],
+    "findings": [
+      "architect 審查：同號碼上限測試時段落在營業時間外、afterAll 清除用的 LIKE pattern 未跳脫萬用字元、全域 exclusion constraint 使測試暫時佔用真實時段——皆已修復或緩解",
+      "security-reviewer 審查：防列舉去重測試未實際比對回傳值、anon insert 拒絕斷言太鬆未比對錯誤代碼、anon select 拒絕斷言可能恆真、缺 anon delete 邊界測試——皆已修復；同電話併發撞號路徑記錄為已知殘留風險（沿用 TASK-010 已記錄的簡化取捨）"
+    ],
+    "residual": "併發測試每輪用不同電話，未涵蓋同電話併發撞號觸發 customers_phone_key 導致 INTERNAL_ERROR（TASK-010 已記錄的刻意簡化取捨）；get_available_slots 空閒營業日回傳 18 格的斷言依賴當下無其他資料落在該日期，已移到接近 90 天視野降低機率但無法完全消除（全域 exclusion constraint 的既有設計限制）"
+  },
+  "comments": [
+    {
+      "name": "architect",
+      "time": "2026-08-05",
+      "text": "審查 tests/booking.integration.test.ts：模式與 rls.integration.test.ts 一致、無不必要抽象、無 migration/rollback 風險。發現 3 項非阻擋問題（見 evidence.findings），建議核准。"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-05",
+      "text": "審查結論：Changes needed。2 項必須修（防列舉斷言恆真、insert 拒絕比對太鬆）、多項應該修（vacuous select、缺 DELETE 測試、afterAll 吞錯誤、LIKE 萬用字元未跳脫）。密鑰使用、注入風險、PII 記錄皆確認乾淨。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "沒問題"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "id": "TASK-009",
+  "title": "UI 設計系統 S5：設計師後台版面 mockup",
+  "content": "用已定案的 token 與元件庫，拼出設計師後台（登入、預約列表/日曆、服務與營業時間設定）2-3 個版面變體，供人工選定一個版型。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-007"],
+  "order": 9,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-設計師後台核心畫面.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-設計師後台.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-009.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-009.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/專案設置/mockups/admin-variant-a.html",
+    "ai/artifacts/專案設置/mockups/admin-variant-b.html",
+    "ai/artifacts/專案設置/mockups/admin-variant-c.html"
+  ],
+  "evidence": {
+    "commands": [
+      "Browser 工具開啟三個版面變體 HTML，確認渲染正常"
+    ],
+    "findings": [
+      "已產出 3 個設計師後台版面變體（A 側邊欄導覽／B 頂部導覽+頁籤／C 側邊欄+日曆優先），比較表記錄於 mockup-decision-設計師後台.md，使用者選定變體 C「側邊欄＋日曆優先」，已寫入 design-system.md 的 S5 章節"
+    ],
+    "residual": "版面骨架決策，不含最終資料串接；變體 C 需要新增 Sidebar 與週曆格狀檢視兩個 S4 inventory 目前沒有的元件，留給對應功能 Epic 實作時新做並登記回 inventory。Epic 0 五階段（S1-S5）至此全數完成"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-05",
+      "text": "選定變體 C「側邊欄＋日曆優先」，核准推進到 Done。"
+    }
+  ]
+}

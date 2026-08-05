@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Style Tile A · 質感沉靜</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root[data-theme="light"] {
+    --bg: #F6F3EE;
+    --surface: #FFFFFF;
+    --surface-2: #EFEAE2;
+    --ink-1: #2B2622;
+    --ink-2: #6B6259;
+    --ink-3: #A79E92;
+    --border: #E4DDD1;
+    --accent: #A9812F;
+    --accent-ink: #FFFFFF;
+    --shadow: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  :root[data-theme="dark"] {
+    --bg: #201C18;
+    --surface: #2A241F;
+    --surface-2: #332C25;
+    --ink-1: #F3EEE6;
+    --ink-2: #C9BFB1;
+    --ink-3: #8A8074;
+    --border: #423A31;
+    --accent: #D4A84B;
+    --accent-ink: #201C18;
+    --shadow: 0 8px 24px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink-1);
+    font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', -apple-system, sans-serif;
+    letter-spacing: 0;
+    padding: 48px 24px 96px;
+  }
+  .serif { font-family: 'Noto Serif TC', 'PingFang TC', 'Microsoft JhengHei', serif; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; gap: 16px; flex-wrap: wrap; }
+  .eyebrow { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
+  h1 { font-size: 36px; font-weight: 700; margin: 0 0 8px; line-height: 1.25; }
+  .sub { font-size: 16px; color: var(--ink-2); margin: 0; line-height: 1.6; max-width: 46ch; }
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 4px; gap: 4px; background: var(--surface); }
+  .toggle button { border: none; background: transparent; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; font-family: inherit; }
+  .toggle button.active { background: var(--ink-1); color: var(--surface); }
+
+  section { margin-bottom: 40px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 16px; }
+
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .swatch { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .swatch .fill { height: 64px; }
+  .swatch .label { padding: 8px 10px; font-size: 12px; color: var(--ink-2); background: var(--surface); }
+  .swatch .label b { display: block; font-size: 12px; color: var(--ink-1); font-weight: 600; }
+
+  .type-specimen { background: var(--surface); border-radius: 12px; padding: 32px; box-shadow: var(--shadow); }
+  .type-specimen .h { font-size: 30px; font-weight: 700; margin: 0 0 4px; }
+  .type-specimen .h2 { font-size: 20px; font-weight: 600; margin: 24px 0 4px; }
+  .type-specimen p { font-size: 16px; line-height: 1.7; color: var(--ink-2); margin: 0 0 4px; max-width: 52ch; }
+  .type-specimen .caption { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: var(--surface); border-radius: 12px; padding: 24px; box-shadow: var(--shadow); }
+  .card h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
+  .card p { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 0 0 16px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; }
+  .btn-secondary { background: transparent; color: var(--ink-1); border: 1px solid var(--border); margin-left: 8px; }
+
+  .density-demo { background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .density-demo .item { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .density-demo .item:last-child { border-bottom: none; }
+  .density-demo .item .name { font-size: 14px; font-weight: 500; }
+  .density-demo .item .meta { font-size: 12px; color: var(--ink-3); }
+
+  .refs { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ref-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; font-size: 13px; color: var(--ink-2); }
+  .ref-chip b { color: var(--ink-1); }
+
+  .meta-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .meta-table th, .meta-table td { text-align: left; padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .meta-table th { color: var(--ink-3); font-weight: 500; width: 160px; }
+  .meta-table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <p class="eyebrow">Style Tile · 變體 A</p>
+        <h1 class="serif">質感沉靜</h1>
+        <p class="sub">溫暖大地色系搭配低調金屬金，襯線標題營造沙龍的專業與從容；留白寬鬆，步調放慢。</p>
+      </div>
+      <div class="toggle">
+        <button class="active" onclick="setTheme('light', this)">亮色</button>
+        <button onclick="setTheme('dark', this)">暗色</button>
+      </div>
+    </div>
+
+    <section>
+      <p class="section-title">色彩情緒</p>
+      <div class="swatches">
+        <div class="swatch"><div class="fill" style="background:#2B2622"></div><div class="label"><b>Ink</b>#2B2622</div></div>
+        <div class="swatch"><div class="fill" style="background:#6B6259"></div><div class="label"><b>Ink 2</b>#6B6259</div></div>
+        <div class="swatch"><div class="fill" style="background:#F6F3EE"></div><div class="label"><b>Bg</b>#F6F3EE</div></div>
+        <div class="swatch"><div class="fill" style="background:#E4DDD1"></div><div class="label"><b>Border</b>#E4DDD1</div></div>
+        <div class="swatch"><div class="fill" style="background:#A9812F"></div><div class="label"><b>Accent</b>#A9812F</div></div>
+        <div class="swatch"><div class="fill" style="background:#7A8B76"></div><div class="label"><b>Success</b>#7A8B76</div></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">字體個性</p>
+      <div class="type-specimen">
+        <p class="h serif">剪髮 · 染燙 · 造型設計</p>
+        <p class="h2">襯線標題＋無襯線內文</p>
+        <p>設計師為您量身打造專屬造型，從諮詢到完成，每一步都細心對待。預約時段彈性，讓您安心享受屬於自己的美好時光。</p>
+        <p class="caption">標題 Noto Serif TC 700 · 內文 Noto Sans TC 400 / 500 · 中文字距 0 · 標題行高 1.25 · 內文行高 1.7</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">圓角與陰影傾向</p>
+      <div class="row">
+        <div class="card">
+          <h3>柔和陰影</h3>
+          <p>卡片以 12px 圓角＋柔和陰影浮起，模擬自然光源，不使用邊框疊加陰影。</p>
+          <button class="btn">立即預約</button><button class="btn btn-secondary">了解更多</button>
+        </div>
+        <div class="card">
+          <h3>圓角尺度</h3>
+          <p>元件圓角統一 8–12px：按鈕 8px、卡片 12px，介於銳利與圓潤之間，維持專業質感。</p>
+        </div>
+        <div class="card">
+          <h3>互動狀態</h3>
+          <p>主按鈕 hover 加深 8%、focus 顯示 2px 外框、disabled 降低不透明度至 40%。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">密度：舒適</p>
+      <div class="density-demo">
+        <div class="item"><span class="name">剪髮造型</span><span class="meta">45 分鐘 · NT$800</span></div>
+        <div class="item"><span class="name">染髮設計</span><span class="meta">120 分鐘 · NT$2,400</span></div>
+        <div class="item"><span class="name">頭皮護理</span><span class="meta">60 分鐘 · NT$1,200</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">亮／暗模式</p>
+      <p class="sub">右上角切換按鈕即時預覽；暗色模式維持相同色相、僅調整明度與飽和度，金色點綴在深色底上更顯質感。</p>
+    </section>
+
+    <section>
+      <p class="section-title">參考產品</p>
+      <div class="refs">
+        <div class="ref-chip"><b>Fresha</b> — 預約流程的沉穩留白與資訊層次</div>
+        <div class="ref-chip"><b>Aesop 官網</b> — 大地色系與襯線標題的品牌質感</div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">摘要</p>
+      <table class="meta-table">
+        <tr><th>密度</th><td>舒適（間距 20–24px 起跳）</td></tr>
+        <tr><th>圓角</th><td>8–12px</td></tr>
+        <tr><th>Depth</th><td>陰影（shadow-only，不疊邊框）</td></tr>
+        <tr><th>字體</th><td>Noto Serif TC（標題）＋ Noto Sans TC（內文），PingFang TC／微軟正黑體 fallback</td></tr>
+        <tr><th>適合場景</th><td>顧客前台品牌頁、服務項目介紹、預約確認頁</td></tr>
+      </table>
+    </section>
+  </div>
+  <script>
+    function setTheme(mode, btn) {
+      document.documentElement.setAttribute('data-theme', mode);
+      document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

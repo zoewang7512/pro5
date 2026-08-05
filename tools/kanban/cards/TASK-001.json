@@ -1,0 +1,76 @@
+{
+  "id": "TASK-001",
+  "title": "技術骨架初始化",
+  "content": "初始化 Next.js（App Router + TypeScript）專案骨架，建立目錄結構、lint/test 管線與 Vercel 部署設定，讓專案維持可建置、可啟動的狀態。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": false,
+  "createdAt": "2026-08-03",
+  "epic": "專案設置",
+  "userStory": "技術骨架初始化",
+  "track": "n/a",
+  "dependsOn": [],
+  "order": 1,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-001.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-001.md",
+    "pr": ""
+  },
+  "refs": [
+    "app/page.tsx",
+    "app/layout.tsx",
+    "app/globals.css",
+    "next.config.ts",
+    "tsconfig.json",
+    "eslint.config.mjs",
+    "vitest.config.ts",
+    "tests/smoke.test.ts",
+    "package.json",
+    "README.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npm install",
+      "npm run lint",
+      "npx tsc --noEmit",
+      "npm run build",
+      "npm test",
+      "npm run dev（手動確認首頁可開啟）",
+      "bash scripts/check-governance.sh"
+    ],
+    "findings": [
+      "next dev 內建功能自動在 AGENTS.md 尾端附加 agent-rules 區塊，已於 next.config.ts 設定 agentRules:false 停用並還原檔案內容",
+      "螢幕截圖工具本次逾時，改用 get_page_text 取得渲染內容作為 UI 佐證"
+    ],
+    "residual": "E2E（Playwright）延後到有實際使用者流程頁面時再引入；.env.example 由 TASK-002 負責；Vercel 專案綁定需人工於 Vercel 後台操作。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-04",
+      "text": "驗證證據確認沒問題，核准推進到 Done。"
+    }
+  ]
+}

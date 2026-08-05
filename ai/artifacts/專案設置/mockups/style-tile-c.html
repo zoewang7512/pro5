@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Style Tile C · 溫暖放鬆</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root[data-theme="light"] {
+    --bg: #FDF6EF;
+    --surface: #FFFFFF;
+    --surface-2: #FCEEE0;
+    --ink-1: #3A2E27;
+    --ink-2: #8A7669;
+    --ink-3: #C2B0A2;
+    --border: #F2E1CE;
+    --accent: #E0784A;
+    --accent-ink: #FFFFFF;
+  }
+  :root[data-theme="dark"] {
+    --bg: #241C17;
+    --surface: #2E241D;
+    --surface-2: #382C23;
+    --ink-1: #F7EDE3;
+    --ink-2: #D2BBA9;
+    --ink-3: #8F7A6B;
+    --border: #46362B;
+    --accent: #F0916A;
+    --accent-ink: #241C17;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink-1);
+    font-family: 'Nunito', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', -apple-system, sans-serif;
+    letter-spacing: 0;
+    padding: 48px 24px 96px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 48px; gap: 16px; flex-wrap: wrap; }
+  .eyebrow { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
+  h1 { font-size: 36px; font-weight: 800; margin: 0 0 8px; line-height: 1.3; }
+  .sub { font-size: 16px; color: var(--ink-2); margin: 0; line-height: 1.7; max-width: 46ch; }
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 4px; gap: 4px; background: var(--surface); }
+  .toggle button { border: none; background: transparent; padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink-2); cursor: pointer; font-family: inherit; }
+  .toggle button.active { background: var(--accent); color: var(--accent-ink); }
+
+  section { margin-bottom: 48px; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 16px; }
+
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .swatch { border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+  .swatch .fill { height: 64px; }
+  .swatch .label { padding: 8px 10px; font-size: 12px; color: var(--ink-2); background: var(--surface); }
+  .swatch .label b { display: block; font-size: 12px; color: var(--ink-1); font-weight: 700; }
+
+  .type-specimen { background: var(--surface-2); border-radius: 20px; padding: 32px; }
+  .type-specimen .h { font-size: 30px; font-weight: 800; margin: 0 0 4px; }
+  .type-specimen .h2 { font-size: 18px; font-weight: 700; margin: 24px 0 4px; }
+  .type-specimen p { font-size: 16px; line-height: 1.7; color: var(--ink-2); margin: 0 0 4px; max-width: 52ch; }
+  .type-specimen .caption { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: var(--surface); border-radius: 20px; padding: 24px; box-shadow: 0 10px 24px rgba(224,120,74,0.12); }
+  .card h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+  .card p { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 0 0 16px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 22px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; }
+  .btn-secondary { background: var(--surface-2); color: var(--ink-1); border: none; margin-left: 8px; }
+
+  .density-demo { background: var(--surface); border-radius: 20px; box-shadow: 0 10px 24px rgba(224,120,74,0.12); overflow: hidden; }
+  .density-demo .item { display: flex; justify-content: space-between; align-items: center; padding: 24px 28px; border-bottom: 1px solid var(--border); }
+  .density-demo .item:last-child { border-bottom: none; }
+  .density-demo .item .name { font-size: 15px; font-weight: 700; }
+  .density-demo .item .meta { font-size: 12px; color: var(--ink-3); }
+
+  .refs { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ref-chip { background: var(--surface); border-radius: 999px; padding: 8px 18px; font-size: 13px; color: var(--ink-2); box-shadow: 0 4px 12px rgba(224,120,74,0.10); }
+  .ref-chip b { color: var(--ink-1); }
+
+  .meta-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 24px rgba(224,120,74,0.12); }
+  .meta-table th, .meta-table td { text-align: left; padding: 14px 20px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .meta-table th { color: var(--ink-3); font-weight: 600; width: 160px; }
+  .meta-table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <p class="eyebrow">Style Tile · 變體 C</p>
+        <h1>溫暖放鬆</h1>
+        <p class="sub">奶油、蜜桃與焦糖橘的暖色調，圓潤親和的字體與大圓角，讓顧客一進門就感受到放鬆與親切。</p>
+      </div>
+      <div class="toggle">
+        <button class="active" onclick="setTheme('light', this)">亮色</button>
+        <button onclick="setTheme('dark', this)">暗色</button>
+      </div>
+    </div>
+
+    <section>
+      <p class="section-title">色彩情緒</p>
+      <div class="swatches">
+        <div class="swatch"><div class="fill" style="background:#3A2E27"></div><div class="label"><b>Ink</b>#3A2E27</div></div>
+        <div class="swatch"><div class="fill" style="background:#8A7669"></div><div class="label"><b>Ink 2</b>#8A7669</div></div>
+        <div class="swatch"><div class="fill" style="background:#FDF6EF"></div><div class="label"><b>Bg</b>#FDF6EF</div></div>
+        <div class="swatch"><div class="fill" style="background:#FCEEE0"></div><div class="label"><b>Surface 2</b>#FCEEE0</div></div>
+        <div class="swatch"><div class="fill" style="background:#E0784A"></div><div class="label"><b>Accent</b>#E0784A</div></div>
+        <div class="swatch"><div class="fill" style="background:#8FA77C"></div><div class="label"><b>Success</b>#8FA77C</div></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">字體個性</p>
+      <div class="type-specimen">
+        <p class="h">剪髮 · 染燙 · 造型設計</p>
+        <p class="h2">圓潤親和的無襯線字體</p>
+        <p>設計師為您量身打造專屬造型，從諮詢到完成，每一步都細心對待。預約時段彈性，讓您安心享受屬於自己的美好時光。</p>
+        <p class="caption">Nunito + Noto Sans TC，800 / 700 / 400 字重 · 字距 0 · 標題行高 1.3 · 內文行高 1.7</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">圓角與陰影傾向</p>
+      <div class="row">
+        <div class="card">
+          <h3>柔和暖色陰影</h3>
+          <p>卡片以 20px 大圓角＋帶橘色調的柔光陰影，營造蓬鬆、親和、不生硬的氛圍。</p>
+          <button class="btn">立即預約</button><button class="btn btn-secondary">了解更多</button>
+        </div>
+        <div class="card">
+          <h3>圓角尺度</h3>
+          <p>元件圓角統一 16–20px：按鈕採全圓角（999px）藥丸造型，卡片 20px，親切而不失質感。</p>
+        </div>
+        <div class="card">
+          <h3>互動狀態</h3>
+          <p>主按鈕 hover 微亮 6%＋輕微放大、focus 顯示暖色外框、disabled 降低不透明度至 40%。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">密度：寬鬆</p>
+      <div class="density-demo">
+        <div class="item"><span class="name">剪髮造型</span><span class="meta">45 分鐘 · NT$800</span></div>
+        <div class="item"><span class="name">染髮設計</span><span class="meta">120 分鐘 · NT$2,400</span></div>
+        <div class="item"><span class="name">頭皮護理</span><span class="meta">60 分鐘 · NT$1,200</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">亮／暗模式</p>
+      <p class="sub">右上角切換按鈕即時預覽；暗色模式改用深焦糖棕底，強調色微微提亮以維持暖度與可讀性。</p>
+    </section>
+
+    <section>
+      <p class="section-title">參考產品</p>
+      <div class="refs">
+        <div class="ref-chip"><b>Airbnb（局部）</b> — 大圓角與親和字體的溫暖感</div>
+        <div class="ref-chip"><b>Calm App</b> — 暖色調與放鬆的整體氣質</div>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-title">摘要</p>
+      <table class="meta-table">
+        <tr><th>密度</th><td>寬鬆（間距 24–32px 起跳）</td></tr>
+        <tr><th>圓角</th><td>16–20px（按鈕全圓角）</td></tr>
+        <tr><th>Depth</th><td>柔和暖色陰影（低對比、大範圍模糊）</td></tr>
+        <tr><th>字體</th><td>Nunito（英數）＋ Noto Sans TC（中文），PingFang TC／微軟正黑體 fallback</td></tr>
+        <tr><th>適合場景</th><td>顧客前台：服務瀏覽、預約流程、行動裝置體驗</td></tr>
+      </table>
+    </section>
+  </div>
+  <script>
+    function setTheme(mode, btn) {
+      document.documentElement.setAttribute('data-theme', mode);
+      document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>
