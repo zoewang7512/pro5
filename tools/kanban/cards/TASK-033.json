@@ -1,0 +1,52 @@
+{
+  "id": "TASK-033",
+  "title": "商店基本資料設定 前後端串接驗證與端到端測試",
+  "content": "新增 npm run test:store-settings 涵蓋 store_settings/Storage bucket 的 RLS 邊界與後台編輯/上傳對真實資料的行為、前台讀取降級行為；重跑 test:rls/test:booking/test:admin-booking/test:business-hours 確認無回歸；Browser 工具桌面尺寸 E2E 走查後台商店設定頁與前台品牌顯示完整流程；更新 project-map.md。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-07",
+  "epic": "商店基本資料設定",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-029", "TASK-030", "TASK-031", "TASK-032"],
+  "order": 33,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/商店基本資料設定/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/商店基本資料設定/task-cards/TASK-033.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/store-settings.integration.test.ts",
+    "vitest.store-settings.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": []
+}

@@ -1,0 +1,72 @@
+{
+  "id": "TASK-015",
+  "title": "預約管理後台 事件詳情 Modal、標記完成與取消預約",
+  "content": "接上「點選預約→開啟詳情 Modal」互動，實作標記完成與取消預約（含 ConfirmDialog 二次確認）。改期按鈕先顯示但不實作內容，留給 TASK-016。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "預約管理後台",
+  "userStory": "標記預約完成、取消預約",
+  "track": "frontend",
+  "dependsOn": ["TASK-014"],
+  "order": 15,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約管理後台/feature-spec.md",
+    "screenSpec": "ai/artifacts/預約管理後台/screen-spec-預約週曆列表.md",
+    "mockupDecision": "ai/artifacts/預約管理後台/mockup-decision-預約週曆列表.md",
+    "taskCard": "ai/artifacts/預約管理後台/task-cards/TASK-015.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/預約管理後台/mockups/booking-admin-variant-b.html",
+    "app/admin/_components/AppointmentDetailDialog.tsx",
+    "components/ui/ConfirmDialog.tsx",
+    "lib/admin/appointments.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npx vitest run（9 files / 47 tests passed，含新增/擴充 tests/admin/appointments.test.ts 7 tests）",
+      "npm run build（成功）",
+      "瀏覽器（Browser 工具）對真實 Supabase 專案手動走查：開啟詳情 Modal 顯示姓名/電話/服務/時段/狀態、改期 placeholder Toast、取消二次確認（含再想想）、確認取消後狀態同步更新為已取消且 Toast 提示、重開已取消預約僅顯示唯讀+關閉、標記完成成功流程與狀態同步"
+    ],
+    "findings": [
+      "security-reviewer 審查：要求修改（已全部處理必要項目，核准）。必要修復 1（中）：AppointmentDetailDialog 原本用整週查詢的舊快照 appointment.status 判斷可操作按鈕，但 updateAppointmentStatus 對狀態轉換完全無條件，若同一筆預約已在另一分頁被改成 cancelled，本分頁仍可能誤將其標記完成、重新佔用時段——已改用 getAppointmentDetail 單筆取回的權威 status 計算 effectiveStatus，並在 updateAppointmentStatus 加上 .in(\"status\", [\"pending\",\"confirmed\"]) 伺服器端狀態條件作為最終防線。必要修復 2（中）：markAppointmentCompleted/cancelAppointment 的 RLS 阻擋判定完全沒有單元測試，已補上涵蓋 PostgrestError/空結果/成功/呼叫參數斷言的測試。已處理的低嚴重度：ConfirmDialog 在 loading 中忽略 onClose 嘗試。記錄為殘留風險未處理：AppointmentDetailDialog 關閉後 detailResult（含電話）未清除，嘗試用 useEffect 清除會觸發本專案的 react-hooks/set-state-in-effect 規則錯誤，且風險本身低（未進 console/URL/localStorage），故不強行繞過 lint 實作。PII 處理、授權邊界、注入面、供應鏈皆確認乾淨"
+    ],
+    "residual": "1) AppointmentDetailDialog 關閉後 detailResult（含電話）未從元件 state 清除，見上；2) 狀態變更無稽核軌跡（不記操作者與舊值），單一設計師情境影響有限；3) 更新失敗一律顯示泛用錯誤 Toast，不細分原因（刻意設計避免資訊洩漏）；4) getAppointmentDetail/markAppointmentCompleted/cancelAppointment 對 appointmentId 無 uuid 格式驗證，目前僅內部呼叫無風險；5) 改期僅為 placeholder，留給 TASK-016；6) 失敗情境 Toast 未能在本機環境實測觸發，已用單元測試涵蓋對應錯誤分支。"
+  },
+  "comments": [
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "要求修改：狀態轉換完全無伺服器端條件，UI 用舊快照判斷可能誤操作已變動狀態的預約；RLS 阻擋判定缺單元測試。皆已修復，其餘低嚴重度項目已處理或記錄為殘留風險。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "沒問題"
+    }
+  ]
+}

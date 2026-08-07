@@ -1,0 +1,81 @@
+{
+  "id": "TASK-018",
+  "title": "營業時間與可預約時段管理 架構基礎（頁面骨架、Switch 元件、七天現況唯讀顯示）",
+  "content": "在 /admin/business-hours 建立受保護頁面骨架，唯讀顯示七天 business_hours 現況（表格式，比照已核准 mockup 變體 A），Sidebar「營業時間」連結從停用改為可點擊，新增 Switch 元件並登記回 S4 inventory。不含任何編輯/儲存邏輯。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定每週固定營業時間",
+  "track": "frontend",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010", "TASK-014"],
+  "order": 18,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "ai/artifacts/營業時間與可預約時段管理/mockup-decision-營業時間設定.md",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-018.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/營業時間與可預約時段管理/mockups/business-hours-variant-a.html",
+    "app/admin/business-hours/page.tsx",
+    "app/admin/_components/BusinessHoursForm.tsx",
+    "lib/admin/business-hours.ts",
+    "app/admin/_components/AdminDashboard.tsx",
+    "app/admin/layout.tsx",
+    "app/admin/_components/AdminShell.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npx vitest run（11 files / 59 tests passed，含新增 tests/admin/business-hours.test.ts 3 tests）",
+      "npm run build（成功，/admin 與 /admin/business-hours 皆為 dynamic route）",
+      "瀏覽器（Browser 工具）對真實 Supabase 專案手動走查：Sidebar 連結啟用、七天現況正確顯示（含時間格式修正）、Sidebar active 狀態雙向正確切換、未登入導回 /login、padding/scroll 修正後重新驗證"
+    ],
+    "findings": [
+      "architect 審查：核准。範圍擴增（新增 app/admin/layout.tsx／AdminShell.tsx，把 Sidebar 與 is_admin() 驗證從頁面層上移到 layout）判定為 TASK-014 完成證據已預先核准的必要修正，非本卡自行擴權。要求修復 2 項已處理：BusinessHoursForm 缺 padding/scroll 導致內容被裁切（已在該元件自己補上，不動共用 AdminShell 避免影響已驗證的 /admin 週曆頁）；open_time/close_time 含秒數格式與 <input type=time> 不符（已新增 formatTimeInput() 截斷，提前解決 TASK-019 會踩到的問題）",
+      "security-reviewer 審查：核准。確認 layout.tsx 的 redirect() 無法被繞過（無 route.ts/parallel routes/route group）。重要澄清：business_hours 讀取 policy 是 anon+authenticated using(true)，非 is_admin()，layout 的驗證只是 UI 層防呆，真正權限邊界要到 TASK-019 接上寫入時才由既有的 admin-only policy 把關。已處理建議：加上 export const dynamic = \"force-dynamic\" 作為顯式宣告。記錄殘留風險：AdminLayout 本身缺自動化測試、同 layout 下的 client-side 軟導航不會重新檢查 is_admin()（真正邊界仍是 RLS，不受影響）"
+    ],
+    "residual": "1) business_hours 讀取對 anon/authenticated 皆開放（既有 policy），layout.tsx 的 is_admin() 只是 UI 層防呆，TASK-019 接上寫入時才真正依賴 RLS 邊界；2) AdminLayout 的 client-side 軟導航不會重新檢查 is_admin()，真正權限邊界是 RLS，不受影響；3) 缺少針對 AdminLayout 本身（!user/!isAdmin 兩種情況）的自動化測試，僅靠瀏覽器手動走查驗證；4) 螢幕截圖沿用既有 Browser pane 限制，改以 accessibility tree/get_page_text/javascript_tool 讀取取得驗證證據。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "沒問題，繼續做 TASK-018（指名要求，視為核准開始實作）"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "核准。範圍擴增（layout.tsx／AdminShell.tsx）判定為 TASK-014 已預先核准的必要修正。2 項必要修復（padding/scroll、時間格式）已處理。"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "核准。layout.tsx 的驗證關卡無法被繞過。澄清 business_hours 讀取本來就對 anon 開放，layout 驗證只是 UI 層防呆，真正邊界在 TASK-019 的寫入 RLS policy。已加上 force-dynamic 宣告。"
+    }
+  ]
+}

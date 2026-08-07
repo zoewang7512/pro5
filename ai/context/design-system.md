@@ -81,16 +81,36 @@
 | space.page | 24（行動裝置）／40（桌面） | 頁面外距 |
 | space.card | 24 | 卡片內距 |
 
+### 暗色模式 Primitive Token
+
+延續同一份色相語彙，暗色模式的 `grey`／`success`／`warning`／`danger`（error）／`info` 另外
+在 `lib/theme/index.ts` 的 dark colorScheme 定義（不是重用亮色模式的 hex 值，因為暗色底需要
+反過來的明暗方向）；完整原始值與設計理由見該檔案的行內註解。摘要：
+
+| 類別 | 值 | 備註 |
+|---|---|---|
+| 色彩：grey | grey.50 #17140F → grey.900 #F3EEE6（10 階） | 50/100 貼近暗色 background（深）、900 貼近暗色 text.primary（近白），與亮色模式相反方向；100=background.default、300=divider、500=text.disabled、700=text.secondary |
+| 色彩：success | light #232A1E／main #9DB393／dark #6F8567 | contrastText #201C18 |
+| 色彩：warning | light #3A2A1C／main #E0A868／dark #B37C42 | contrastText #201C18 |
+| 色彩：danger | light #35201A／main #E37A5C／dark #A85138 | contrastText #201C18 |
+| 色彩：info | light #202A32／main #7FA3BE／dark #5B7C99 | contrastText #201C18 |
+
+light↔main 與 main↔contrastText 皆量測 WCAG 對比 ≥ 4.5:1（AA），修正 TASK-023 review 發現的
+MonthPicker 已標記日期徽章（`warning.light`+`warning.main`）在暗色模式 fallback 回 MUI 預設
+橙色、對比僅約 1.12:1 的問題；同批修正涵蓋 WeekCalendar 公休格背景（`grey.200`）等其他既有
+用到這些色槽的暗色模式元件。
+
 ### 實際 token 檔位置
 
-- Primitive token 原始值：[`lib/theme/tokens.ts`](../../lib/theme/tokens.ts)
-- MUI theme（primitive → semantic 映射，含 light/dark colorSchemes）：[`lib/theme/index.ts`](../../lib/theme/index.ts)
+- Primitive token 原始值：[`lib/theme/tokens.ts`](../../lib/theme/tokens.ts)（亮色模式）
+- MUI theme（primitive → semantic 映射，含 light/dark colorSchemes；暗色模式的 grey/success/
+  warning/danger/info/primary/background/text/divider 直接定義於此檔）：
+  [`lib/theme/index.ts`](../../lib/theme/index.ts)
 - Provider 掛載（client boundary，避免 theme 物件跨 RSC 邊界序列化錯誤）：[`lib/theme/ThemeRegistry.tsx`](../../lib/theme/ThemeRegistry.tsx)，於 `app/layout.tsx` 套用
 - 中文字體：`next/font/google` 的 Noto Sans TC（內文）／Noto Serif TC（h1/h2 標題），
   PingFang TC／微軟正黑體 fallback；`html lang="zh-Hant"`
-- 已知限制：MUI `theme.shadows`（0–24 完整 elevation tuple）與暗色模式的 `grey` 色階尚未展開，
-  目前只定義 S2 已核准的 elevation1/2 與暗色 background/text/divider/primary；若 S4 元件確實需要
-  更多階，屆時再依實際需求擴充，避免現在過度設計。
+- 已知限制：MUI `theme.shadows`（0–24 完整 elevation tuple）尚未展開，目前只定義 S2 已核准的
+  elevation1/2；若 S4 元件確實需要更多階，屆時再依實際需求擴充，避免現在過度設計。
 - 人工核准：使用者，2026-08-05
 
 ## S4 元件庫 Inventory
@@ -108,14 +128,19 @@ Toast 佇列）才在 `components/ui/` 新增客製元件。
 | Input | 已完成 | 預設/停用/錯誤（`error`+`helperText`） | grey/primary 色、radius.sm、typography | 直接用 `@mui/material/TextField`；樣式來自 theme | `app/design-system` Input 區塊 | S4 |
 | Select | 已完成 | 預設/開啟選單/選取切換（單元測試涵蓋） | grey/primary 色、radius.sm | 直接用 `@mui/material/Select`＋`MenuItem`；樣式來自 theme | `app/design-system` Select 區塊；測試見 `tests/components/select.test.tsx` | S4 |
 | Checkbox/Radio | 已完成 | 勾選/未勾選/停用（Checkbox 與 Radio 皆涵蓋） | primary 色 | 直接用 `@mui/material/Checkbox`／`Radio`；樣式來自 theme | `app/design-system` Checkbox/Radio 區塊 | S4 |
+| Switch | 已完成 | 開啟/關閉/停用 | primary 色 | 直接用 `@mui/material/Switch`；不需要額外 theme override（沿用 `Checkbox`／`Radio` 當初做法，MUI 元件預設讀取 `theme.palette.primary`） | `/admin/business-hours`（營業時間設定頁的公休切換） | TASK-018 |
 | Card | 已完成 | 預設（含 hover 由 theme 陰影統一處理）；`CardActionArea` 可點擊選取狀態（顧客前台服務卡片） | radius.md、elevation1 陰影 | 直接用 `@mui/material/Card`／`CardActionArea`；樣式來自 `MuiCard` override | `app/design-system` Card 區塊；`CardActionArea` 選取態見 `/`（顧客前台服務列表） | S4 |
 | Nav | 已完成 | 預設（含連結 hover/active 狀態） | grey.divider、primary 色、typography.subtitle2 | `components/ui/Nav.tsx`（MUI 未提供單一 Nav 元件，客製 AppBar+Toolbar 組合） | `app/design-system` 頁首 | S4 |
-| Modal/Dialog | 已完成 | 開啟/關閉/loading（單元測試涵蓋） | radius.md、elevation2 陰影 | `components/ui/ConfirmDialog.tsx`（客製確認對話框 pattern，內部用 MUI Dialog） | `app/design-system` Modal/Dialog 區塊；測試見 `tests/components/confirm-dialog.test.tsx` | S4 |
+| Modal/Dialog | 已完成 | 開啟/關閉/loading（單元測試涵蓋）；可選 `children` 插槽渲染於 description 下方，供結構化內容（例如清單）使用，純文字仍用 `description` | radius.md、elevation2 陰影 | `components/ui/ConfirmDialog.tsx`（客製確認對話框 pattern，內部用 MUI Dialog） | `app/design-system` Modal/Dialog 區塊；測試見 `tests/components/confirm-dialog.test.tsx`；`children` 插槽用法見 `/admin/business-hours` 的受影響預約警告 | S4（`children` 插槽：TASK-019） |
 | Table | 已完成 | 預設 | grey 色、typography | 直接用 `@mui/material/Table` 系列元件；樣式來自 theme | `app/design-system` Table 區塊 | S4 |
 | Form | 已完成 | 預設欄位間距／標籤慣例 | spacing scale（4 的倍數） | `components/ui/FormSection.tsx`（客製表單版面間距 pattern） | `app/design-system` Form 區塊 | S4 |
 | Toast/Alert | 已完成 | success/warning/error/info 四種 severity；全域佇列（一次顯示一則） | semantic 色（success/warning/danger/info） | `components/ui/ToastProvider.tsx`（客製全域 toast 佇列，內部用 MUI Snackbar+Alert），掛載於 `lib/theme/ThemeRegistry.tsx` | `app/design-system` Toast/Alert 區塊 | S4 |
 | Chip | 已完成 | 預設/選取（filled+primary）/未選取（outlined） | primary 色、radius.sm | 直接用 `@mui/material/Chip`；樣式來自 theme | `/`（顧客前台選時段日期 chip 列） | TASK-011 |
 | Skeleton | 已完成 | rounded 變體，用於資料載入中的區塊佔位 | radius.sm/md | 直接用 `@mui/material/Skeleton` | `/`（顧客前台服務列表／選時段載入中狀態） | TASK-011 |
+| Sidebar | 已完成 | 預設（使用中／停用／hover 狀態），登出項目渲染既有 `LogoutButton` | grey/primary 色、typography.subtitle2 | MUI 沒有對應單一元件，比照 `components/ui/Nav.tsx` 用 `Box`／`List`／`ListItemButton` 拼出：`components/ui/Sidebar.tsx` | `/admin` 後台頁面 | TASK-014 |
+| WeekCalendar | 已完成 | 預設（今天標示、公休日弱化）、載入中（Skeleton）、空狀態（該週無預約） | grey/primary 色、success/warning/danger 狀態色（透過 Chip）、radius.sm/md、elevation1 陰影 | MUI 沒有現成週曆格狀元件，用既有 `Card`／`CardActionArea`／`Chip` 組合：`app/admin/_components/WeekCalendar.tsx`（本頁面專用，非跨頁共用，未放入 `components/ui/`） | `/admin` 後台頁面（週曆檢視） | TASK-014 |
+| MonthPicker | 已完成 | 預設/今天標示/已標記/過去日期停用/跨月導覽（含跨年邊界） | grey/primary/warning 色、radius.sm | MUI 沒有現成月曆格狀選取元件，比照 `WeekCalendar.tsx` 的 Box grid 拼版面模式客製：`components/ui/MonthPicker.tsx`（跨頁共用，放入 `components/ui/`）；日期運算純函式見 `lib/admin/month-range.ts` | `app/design-system` MonthPicker 區塊 | TASK-023 |
+| ImageUploadField | 已完成 | 預設（虛線邊框拖放區）／上傳中（遮罩＋`CircularProgress`）／預覽（縮圖＋更換／移除按鈕）／錯誤（邊框變色＋行內錯誤文字） | grey/error 色、radius.sm | MUI 沒有現成檔案上傳元件，本專案首次檔案上傳功能，依既有 token 客製：`components/ui/ImageUploadField.tsx`（跨頁共用，放入 `components/ui/`；目前唯一使用場景是商店設定頁的 Logo／封面圖，元件本身不寫死 store_settings 以外的假設）；驗證與上傳／移除純函式見 `lib/store-settings.ts` | `/admin/store-settings`（商店設定頁「品牌圖片」卡片） | TASK-031 |
 
 （「來源階段」記錄這個元件是 S4 初建，還是後續某個功能 Epic 補做並回登的。）
 
@@ -127,3 +152,6 @@ Toast 佇列）才在 `components/ui/` 新增客製元件。
 |---|---|---|---|
 | 顧客前台（服務列表→選時段→填寫資訊→預約成功） | B 單頁捲動（Single-page Accordion）：所有步驟同一頁，選好上一步自動展開下一區塊，已完成區塊收合為摘要列（可點「修改」回頭調整） | [`mockup-decision-顧客前台.md`](mockup-decision-顧客前台.md)；mockup 檔案：[`customer-flow-variant-a/b/c.html`](mockups/) | 使用者，2026-08-05 |
 | 設計師後台（登入、預約列表／日曆、服務與營業時間設定） | C 側邊欄＋日曆優先（Sidebar + Calendar-first）：左側固定 sidebar 導覽，預約主視覺為週曆網格（可切換列表檢視），服務/營業時間為列表+表單 | [`mockup-decision-設計師後台.md`](mockup-decision-設計師後台.md)；mockup 檔案：[`admin-variant-a/b/c.html`](mockups/) | 使用者，2026-08-05 |
+| 預約管理後台 · 預約週曆／列表（「預約管理後台」Epic，S5 shell 的實際落地畫面） | B 展開事件卡＋Modal 操作：週曆格內是完整資訊事件卡（時間／姓名／服務／狀態徽章），點選開啟置中 Modal 完成標記完成／改期／取消 | [`../預約管理後台/mockup-decision-預約週曆列表.md`](../預約管理後台/mockup-decision-預約週曆列表.md)；mockup 檔案：[`../預約管理後台/mockups/booking-admin-variant-a/b/c.html`](../預約管理後台/mockups/) | 使用者，2026-08-05 |
+| 商店基本資料設定 · 後台商店設定頁（「商店基本資料設定」Epic） | B 分卡片，各自獨立動作：「基本資訊」文字欄位自己儲存，「品牌圖片」選檔即自動上傳 | [`../商店基本資料設定/mockup-decision-商店設定.md`](../商店基本資料設定/mockup-decision-商店設定.md)；mockup 檔案：[`../商店基本資料設定/mockups/store-settings-variant-a/b.html`](../商店基本資料設定/mockups/) | 使用者，2026-08-07 |
+| 商店基本資料設定 · 顧客前台品牌顯示區塊 | B 精簡頁首列＋矮版封面圖：小 Logo＋店名取代原「預約」標題，不明顯增加既有預約流程的版面深度 | [`../商店基本資料設定/mockup-decision-前台品牌顯示.md`](../商店基本資料設定/mockup-decision-前台品牌顯示.md)；mockup 檔案：[`../商店基本資料設定/mockups/customer-brand-variant-a/b.html`](../商店基本資料設定/mockups/) | 使用者，2026-08-07 |

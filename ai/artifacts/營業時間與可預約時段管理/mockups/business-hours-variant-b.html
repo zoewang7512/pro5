@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>營業時間管理 Variant B · 卡片式逐日編輯</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 600px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.disabled { color: var(--grey-500); }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .toolbar .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+
+  .day-card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 20px; }
+  .day-card.closed { background: var(--grey-200); box-shadow: none; }
+  .day-name { width: 56px; font-size: 14px; font-weight: 700; color: var(--grey-900); flex-shrink: 0; }
+  .day-card.closed .day-name { color: var(--grey-700); }
+  .toggle-group { display: flex; align-items: center; gap: 8px; width: 110px; flex-shrink: 0; }
+  .switch { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--grey-300); display: inline-block; }
+  .switch.on { background: var(--primary-500); }
+  .switch .knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-1); }
+  .switch.on .knob { left: 18px; }
+  .toggle-label { font-size: 12px; color: var(--grey-700); font-weight: 500; }
+  .hours-fields { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .time-input { width: 96px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 10px; font-size: 12px; color: var(--grey-900); font-family: inherit; }
+  .time-input:disabled { background: var(--grey-100); color: var(--grey-500); border-color: var(--grey-200); }
+  .time-input.error { border-color: var(--danger); }
+  .time-sep { color: var(--grey-500); font-size: 12px; }
+  .closed-badge { font-size: 12px; color: var(--grey-500); font-style: italic; }
+  .row-error { font-size: 10px; color: var(--danger); margin-left: 8px; }
+
+  .footer-bar { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--grey-300); display: flex; justify-content: flex-end; gap: 8px; }
+  .btn { display: inline-block; height: 40px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 600; border: none; text-align: center; line-height: 40px; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); line-height: 38px; }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; }
+
+  .modal-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .modal-card { width: 420px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .modal-card h3 { font-size: 16px; margin: 0 0 4px; color: var(--grey-900); }
+  .modal-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; }
+  .warn-list { max-height: 180px; overflow-y: auto; border: 1px solid var(--grey-200); border-radius: var(--radius-sm); }
+  .warn-row { display: flex; justify-content: space-between; font-size: 12px; padding: 10px 12px; border-bottom: 1px solid var(--grey-200); background: var(--warning-light); }
+  .warn-row:last-child { border-bottom: none; }
+  .warn-row .name { font-weight: 600; color: var(--grey-900); }
+  .warn-row .when { color: var(--grey-700); }
+  .modal-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">營業時間管理 · Variant B：卡片式逐日編輯（每天獨立卡片，較寬鬆的間距與更大的觸控區域）</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設（卡片列表，含公休卡與驗證錯誤示例）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item active">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>營業時間設定</h2><div class="hint">逐日設定開店/打烊時間，或切換為公休</div></div></div>
+
+          <div class="day-card">
+            <div class="day-name">週一</div>
+            <div class="toggle-group"><span class="switch"><span class="knob"></span></span><span class="toggle-label">公休</span></div>
+            <div class="hours-fields"><input class="time-input" value="10:00" /><span class="time-sep">–</span><input class="time-input" value="19:00" /></div>
+          </div>
+          <div class="day-card">
+            <div class="day-name">週二</div>
+            <div class="toggle-group"><span class="switch"><span class="knob"></span></span><span class="toggle-label">公休</span></div>
+            <div class="hours-fields"><input class="time-input error" value="10:00" /><span class="time-sep">–</span><input class="time-input error" value="09:30" /><span class="row-error">打烊時間須晚於開店時間</span></div>
+          </div>
+          <div class="day-card">
+            <div class="day-name">週三</div>
+            <div class="toggle-group"><span class="switch"><span class="knob"></span></span><span class="toggle-label">公休</span></div>
+            <div class="hours-fields"><input class="time-input" value="10:00" /><span class="time-sep">–</span><input class="time-input" value="19:00" /></div>
+          </div>
+          <div class="day-card closed">
+            <div class="day-name">週日</div>
+            <div class="toggle-group"><span class="switch on"><span class="knob"></span></span><span class="toggle-label">公休</span></div>
+            <div class="hours-fields"><span class="closed-badge">本日不營業</span></div>
+          </div>
+
+          <div class="footer-bar"><span class="btn outline">重設</span><span class="btn">儲存變更</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 送出→受影響預約警告（二次確認）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item active">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>營業時間設定</h2><div class="hint">逐日設定開店/打烊時間，或切換為公休</div></div></div>
+          <div class="day-card closed">
+            <div class="day-name">週一</div>
+            <div class="toggle-group"><span class="switch on"><span class="knob"></span></span><span class="toggle-label">公休</span></div>
+            <div class="hours-fields"><span class="closed-badge">本日不營業</span></div>
+          </div>
+          <div class="day-card">
+            <div class="day-name">週二</div>
+            <div class="toggle-group"><span class="switch"><span class="knob"></span></span><span class="toggle-label">公休</span></div>
+            <div class="hours-fields"><input class="time-input" value="10:00" /><span class="time-sep">–</span><input class="time-input" value="19:00" /></div>
+          </div>
+          <div class="footer-bar"><span class="btn outline">重設</span><span class="btn">儲存變更</span></div>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">部分預約將落在新的營業時間之外</h3>
+            <p class="sub">週一已改為公休，以下 2 筆未來預約會受影響：</p>
+            <div class="warn-list">
+              <div class="warn-row"><span class="name">王小美</span><span class="when">週一 8/17 · 10:00</span></div>
+              <div class="warn-row"><span class="name">李大明</span><span class="when">週一 8/24 · 14:00</span></div>
+            </div>
+            <div class="modal-actions">
+              <div class="btn">仍要儲存</div>
+              <div class="btn text">再想想</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

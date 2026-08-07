@@ -1,0 +1,86 @@
+{
+  "id": "TASK-017",
+  "title": "預約管理後台 前後端串接驗證與端到端測試",
+  "content": "建立並執行 npm run test:admin-booking，涵蓋 admin 讀取權限邊界、標記完成/取消、改期時 exclusion constraint（含相鄰/重疊邊界）、anon 直接寫入被拒；重跑 test:rls/test:booking 確認無回歸；Browser 工具桌面尺寸 E2E 走查完整流程與錯誤路徑。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "預約管理後台",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-014", "TASK-015", "TASK-016"],
+  "order": 17,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約管理後台/feature-spec.md",
+    "screenSpec": "ai/artifacts/預約管理後台/screen-spec-預約週曆列表.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/預約管理後台/task-cards/TASK-017.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/admin-booking.integration.test.ts",
+    "vitest.admin-booking.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npm run build（成功）",
+      "npx vitest run（預設，10 files / 56 tests passed，未撿到 admin-booking 整合測試）",
+      "npm run test:admin-booking（1 file / 13 tests passed，審查修正後最終結果）",
+      "npm run test:booking（1 file / 19 tests passed，無回歸）",
+      "npm run test:rls（失敗，已確認與本卡變更無關，見 findings）",
+      "瀏覽器（Browser 工具）桌面尺寸對真實 Supabase 專案完整走查：登入→週曆/列表切換→標記完成→取消（含二次確認）→改期成功→改期衝突錯誤路徑（競態模擬）→唯讀狀態檢視，完成後清除所有測試資料"
+    ],
+    "findings": [
+      "architect 審查：核准（4 項非阻擋建議已全部處理）：STATUS_DATE／RLS_WRITE_DATE 部分 fixture 落在營業時間外（09:00-09:30，早於 seed 的 10:00-19:00），已改到 10:00 以後；合成電話固定重複，已改用遞增序號 testPhone()；appointmentIdsToCleanup 與 service_id 批次刪除重複，已移除；標出 getAppointmentDetail（唯一回傳 customer_phone 的路徑）原本缺 anon PII 邊界測試，已新增",
+      "security-reviewer 審查：Changes needed（2 項阻擋已修復，3 項次要建議已處理）：「anon 讀不到本測試建立的任何 appointments」原本沒有先用 service role 確認底下確實有資料，屬恆真斷言風險，已補上正向確認；afterAll 三個刪除步驟原本依序 throw、第一步失敗會讓後面完全不執行且 testServiceId 可能為 undefined 掩蓋真正失敗原因，已改成收集所有錯誤最後彙整丟出並guard testServiceId；anon delete 回傳值原本被忽略、anon update/改期失敗後只驗證 start_at 不變、檔案開頭未說明全域 exclusion constraint 風險，皆已補上。密鑰使用與 PII 記錄行為確認乾淨",
+      "test:rls 失敗與本卡變更無關：資料庫裡一筆既有真實/示範預約（Mr. Wang，2026-08-06 07:00-07:45 UTC）與 rls.integration.test.ts 的 beforeAll「now+1hr~now+1.5hr」fixture 時段重疊，導致 exclusion constraint 擋下 fixture 建立。rls.integration.test.ts 完全沒有 import 任何 lib/admin/ 程式碼，純屬既有測試（TASK-003 範圍）的時間點碰撞設計缺陷，已與使用者確認記錄為已知問題、另開追蹤任務（task_ef95f63d），不在本卡允許變更的檔案清單內"
+    ],
+    "residual": "1) npm run test:rls 目前會間歇性失敗，原因與本卡無關（見上），已另開任務追蹤修正 rls.integration.test.ts 的 fixture 時段策略；2) test:admin-booking 沿用既有整合測試「不對正式環境高頻率重複執行」的注意事項（全域 exclusion constraint）；3) 螢幕截圖沿用 TASK-014/015/016 記錄過的既有限制（Browser pane 部分操作未穩定顯示 screenshot），改以 accessibility tree／get_page_text／javascript_tool 讀取（僅用於讀取驗證）取得同等強度證據"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "沒問題，繼續做 TASK-017（指名要求，前置任務 TASK-014/015/016 皆已 done，視為核准開始實作）"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "核准（4 項非阻擋建議，已全部處理）：fixture 時段落在營業時間外、合成電話重複、多餘的 id 清理陣列、getAppointmentDetail 缺 PII 邊界測試。"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "Changes needed（2 項阻擋已修復）：恆真的 anon 讀取斷言缺正向確認、afterAll 清除失敗可能中途中止殘留 PII。3 項次要建議已處理。密鑰與 PII 記錄行為確認乾淨。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "test:rls 失敗記錄為已知問題，暫不處理（另開追蹤任務）"
+    }
+  ]
+}

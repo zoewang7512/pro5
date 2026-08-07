@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>商店設定 Variant B · 分卡片，各自獨立動作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 760px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 24px 28px; overflow-y: auto; display: flex; gap: 20px; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 20px; }
+  .col.left { flex: 1.3; }
+  .col.right { flex: 1; }
+  .toolbar { grid-column: 1 / -1; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .toolbar .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+
+  .card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 22px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .card-head h3 { font-size: 14px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .card-head .status { font-size: 11px; color: var(--success); font-weight: 600; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field:last-of-type { margin-bottom: 0; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input, .field textarea { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 10px 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field textarea { resize: none; height: 64px; }
+  .field input.error, .field textarea.error { border-color: var(--danger); background: var(--danger-light); }
+  .field .err-text { font-size: 11px; color: var(--danger); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 16px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 600; border: none; cursor: pointer; }
+  .btn.disabled { background: var(--grey-300); color: var(--grey-500); }
+  .btn.loading { background: var(--primary-300); }
+  .spinner { width: 12px; height: 12px; border-radius: 999px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; margin-right: 6px; }
+  .form-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+  .upload-box { margin-bottom: 16px; }
+  .upload-box:last-child { margin-bottom: 0; }
+  .upload-box label { font-size: 12px; font-weight: 600; color: var(--grey-700); display: block; margin-bottom: 8px; }
+  .dropzone { height: 120px; border-radius: var(--radius-sm); border: 1.5px dashed var(--grey-300); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--grey-500); font-size: 11px; background: var(--grey-100); text-align: center; }
+  .dropzone .icon { width: 26px; height: 26px; border-radius: 999px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; color: var(--grey-700); font-size: 13px; }
+  .preview { height: 120px; border-radius: var(--radius-sm); position: relative; overflow: hidden; display: flex; align-items: flex-end; }
+  .preview .fill { position: absolute; inset: 0; background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); opacity: .55; }
+  .preview .fill.logo { background: linear-gradient(135deg, var(--info), var(--grey-700)); }
+  .preview-actions { position: relative; z-index: 1; width: 100%; display: flex; justify-content: flex-end; gap: 6px; padding: 8px; }
+  .chip-btn { font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.92); color: var(--grey-900); border: none; cursor: pointer; }
+  .chip-btn.danger { color: var(--danger); }
+  .upload-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #fff; font-size: 10px; border-radius: var(--radius-sm); }
+  .upload-overlay .ring { width: 18px; height: 18px; border-radius: 999px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; }
+  .upload-hint { font-size: 10px; color: var(--grey-500); margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">商店設定 · Variant B：左右分卡片，「基本資訊」自己儲存，「品牌圖片」選檔即自動上傳</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設（已有完整設定）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item active">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div style="position:absolute; top:24px; left:228px;"><h2 style="font-size:16px;font-weight:600;color:var(--grey-900);margin:0;">商店設定</h2><div style="font-size:12px;color:var(--grey-700);margin-top:2px;">設定店家基本資訊與品牌圖片，顧客前台會同步顯示</div></div>
+          <div class="col left" style="margin-top:44px;">
+            <div class="card">
+              <div class="card-head"><h3>基本資訊</h3></div>
+              <div class="field"><label>店名</label><input value="王牌理髮廳" /></div>
+              <div class="field"><label>電話</label><input value="02-1234-5678" /></div>
+              <div class="field"><label>地址</label><input value="台北市大安區忠孝東路四段 1 號" /></div>
+              <div class="field"><label>簡介</label><textarea>成立於 2015 年，專注男士理容與經典油頭造型，每一次剪髮都從細節開始。</textarea></div>
+              <div class="form-actions"><span class="btn disabled">儲存</span></div>
+            </div>
+          </div>
+          <div class="col right" style="margin-top:44px;">
+            <div class="card">
+              <div class="card-head"><h3>品牌圖片</h3><span class="status">已儲存</span></div>
+              <div class="upload-box">
+                <label>Logo</label>
+                <div class="preview"><div class="fill logo"></div><div class="preview-actions"><span class="chip-btn">更換</span><span class="chip-btn danger">移除</span></div></div>
+              </div>
+              <div class="upload-box">
+                <label>封面圖</label>
+                <div class="preview"><div class="fill"></div><div class="preview-actions"><span class="chip-btn">更換</span><span class="chip-btn danger">移除</span></div></div>
+              </div>
+              <div class="upload-hint">選擇檔案後立即上傳，無需另外按儲存</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 空狀態（首次使用）＋店名驗證錯誤</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item active">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div style="position:absolute; top:24px; left:228px;"><h2 style="font-size:16px;font-weight:600;color:var(--grey-900);margin:0;">商店設定</h2><div style="font-size:12px;color:var(--grey-700);margin-top:2px;">設定店家基本資訊與品牌圖片，顧客前台會同步顯示</div></div>
+          <div class="col left" style="margin-top:44px;">
+            <div class="card">
+              <div class="card-head"><h3>基本資訊</h3></div>
+              <div class="field"><label>店名</label><input class="error" placeholder="請輸入店名" /><span class="err-text">店名為必填</span></div>
+              <div class="field"><label>電話</label><input placeholder="選填" /></div>
+              <div class="field"><label>地址</label><input placeholder="選填" /></div>
+              <div class="field"><label>簡介</label><textarea placeholder="選填，簡短介紹店家特色"></textarea></div>
+              <div class="form-actions"><span class="btn">儲存</span></div>
+            </div>
+          </div>
+          <div class="col right" style="margin-top:44px;">
+            <div class="card">
+              <div class="card-head"><h3>品牌圖片</h3></div>
+              <div class="upload-box">
+                <label>Logo</label>
+                <div class="dropzone"><span class="icon">＋</span>點擊或拖曳上傳<br/>JPG／PNG／WebP，5MB 內</div>
+              </div>
+              <div class="upload-box">
+                <label>封面圖</label>
+                <div class="dropzone"><span class="icon">＋</span>點擊或拖曳上傳<br/>JPG／PNG／WebP，5MB 內</div>
+              </div>
+              <div class="upload-hint">選擇檔案後立即上傳，無需另外按儲存</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · Logo 上傳中／封面圖上傳錯誤／基本資訊儲存中</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item active">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div style="position:absolute; top:24px; left:228px;"><h2 style="font-size:16px;font-weight:600;color:var(--grey-900);margin:0;">商店設定</h2><div style="font-size:12px;color:var(--grey-700);margin-top:2px;">設定店家基本資訊與品牌圖片，顧客前台會同步顯示</div></div>
+          <div class="col left" style="margin-top:44px;">
+            <div class="card">
+              <div class="card-head"><h3>基本資訊</h3></div>
+              <div class="field"><label>店名</label><input value="王牌理髮廳" /></div>
+              <div class="field"><label>電話</label><input value="02-1234-5678" /></div>
+              <div class="field"><label>地址</label><input value="台北市大安區忠孝東路四段 1 號" /></div>
+              <div class="field"><label>簡介</label><textarea>成立於 2015 年，專注男士理容與經典油頭造型。</textarea></div>
+              <div class="form-actions"><span class="btn loading"><span class="spinner"></span>儲存中…</span></div>
+            </div>
+          </div>
+          <div class="col right" style="margin-top:44px;">
+            <div class="card">
+              <div class="card-head"><h3>品牌圖片</h3></div>
+              <div class="upload-box">
+                <label>Logo</label>
+                <div class="preview"><div class="fill logo"></div><div class="upload-overlay"><div class="ring"></div>上傳中…</div></div>
+              </div>
+              <div class="upload-box">
+                <label>封面圖</label>
+                <div class="dropzone" style="border-color: var(--danger); background: var(--danger-light); color: var(--danger);"><span class="icon" style="background: var(--danger-light); color: var(--danger);">！</span>檔案大小需小於 5MB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

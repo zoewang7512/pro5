@@ -1,0 +1,81 @@
+{
+  "id": "TASK-031",
+  "title": "商店基本資料設定 品牌圖片（Logo／封面圖）上傳、更換、移除",
+  "content": "接上 TASK-029 頁面骨架的「品牌圖片」卡片：Logo/封面圖各自選檔即自動上傳、更換、移除，新做圖片上傳（Image Upload Field）元件並登記回 design-system.md S4 inventory。本專案首次檔案上傳功能。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-07",
+  "epic": "商店基本資料設定",
+  "userStory": "上傳／更換 Logo 或封面圖",
+  "track": "frontend",
+  "dependsOn": ["TASK-029"],
+  "order": 31,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/商店基本資料設定/feature-spec.md",
+    "screenSpec": "ai/artifacts/商店基本資料設定/screen-spec-商店設定.md",
+    "mockupDecision": "ai/artifacts/商店基本資料設定/mockup-decision-商店設定.md",
+    "taskCard": "ai/artifacts/商店基本資料設定/task-cards/TASK-031.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/StoreSettingsForm.tsx",
+    "components/ui/ImageUploadField.tsx",
+    "lib/store-settings.ts",
+    "ai/context/design-system.md",
+    "tests/components/image-upload-field.test.tsx",
+    "tests/store-settings.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npm run build（成功）",
+      "npx vitest run（17 files / 130 tests passed，含新增 22 個 store-settings.test.ts 測試與 6 個 image-upload-field.test.tsx 元件測試，既有測試無回歸）",
+      "Browser 工具對真實 Supabase 專案手動走查：用 service role 腳本上傳測試圖片並寫入 logo_url、重新整理確認 UI 正確顯示縮圖預覽＋更換/移除按鈕、點擊移除確認畫面切回未上傳狀態並以腳本查詢資料庫確認 logo_url 真的被清空、清除測試用 Storage 物件"
+    ],
+    "findings": [
+      "security-reviewer 首輪審查：Approve with required fixes。F1（必修）validateStoreImageFile 用 `in` 運算子會命中 Object.prototype 繼承屬性（如 constructor），讓白名單名不符實——已改用 Object.hasOwn() 並補測試。F4（必修，治理）任務卡完成證據與 kanban evidence/gates/stage 原本空白——已補齊。另外 4 項建議皆採納：F2 handleFile/handleRemove 補 try/finally 避免例外時卡在處理中狀態；F3 加 mountedRef guard 避免元件卸載後 setState 與 objectURL 洩漏；F5 補齊 uploadStoreImage/removeStoreImage 原本零覆蓋的單元測試（含核心不變量：上傳路徑與使用者可控檔名完全無關）；F6 修正任務卡「同時檢查副檔名與實際 MIME type」的失準描述（實作只檢查 File.type，bucket 層才是內容格式的伺服器端強制）。順帶處理拖放區塊缺乏鍵盤可及性的觀察（補 role/tabIndex/onKeyDown）。",
+      "審查確認無阻擋性問題：上傳路徑完全由固定查表的副檔名＋crypto.randomUUID() 組成，使用者可控的原始檔名/內容不會進入路徑（無路徑穿越）；前端驗證正確定位為體驗優化，真正安全邊界是 TASK-029 已審查通過的 bucket file_size_limit/allowed_mime_types 與 storage.objects 的 is_admin() RLS policy，本卡未新增任何新的伺服器端信任決策；圖片顯示走安全的 <img src> sink；INTERNAL_ERROR 泛用錯誤模式正確套用於新函式，不外洩原始 Storage/Postgres 錯誤。",
+      "Browser 工具無法原生模擬『開啟系統選檔對話框並選檔』這個第一步，改以元件測試（mock uploadStoreImage 驗證前端邏輯）＋真實 Supabase 腳本直接呼叫同一組 Storage API（驗證後端與 UI 顯示銜接）兩者互補涵蓋，已於完成證據記錄此工具限制。"
+    ],
+    "residual": "1) 移除只清空 store_settings 對應 URL 欄位，不刪除 Storage 舊檔案物件，孤兒檔案仍可透過原 public URL 存取，為 TASK-029/031 規劃階段已記錄的既知取捨；2) 額外發現的孤兒物件來源（security-reviewer 審查新發現）：Storage 上傳成功但 store_settings 更新失敗時，即使沒點移除也會留下孤兒物件，發生機率低、不影響安全邊界，接受為已知限制；3) 無使用者層級的儲存配額限制，單一管理員信任網域下接受此風險；4) store_settings.logo_url/cover_image_url 欄位本身沒有資料庫層限制必須是 store-assets bucket 網址，目前唯一寫入者是本卡程式碼、風險有界，留意未來若有其他寫入路徑加入需重新評估；5) Browser 工具無法驅動真實檔案選擇器，選檔上傳的第一步只能透過元件測試 mock 驗證，非同一次端到端瀏覽器操作，已於完成證據說明。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-07",
+      "text": "Done，接著做 TASK-031（指名要求，視為核准開始實作）"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-07",
+      "text": "Approve with required fixes。F1（Object.hasOwn 修正）與 F4（完成證據補齊）已處理，F2/F3/F5/F6 建議皆採納。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-07",
+      "text": "Done（人工驗收通過，轉 Done）"
+    }
+  ]
+}

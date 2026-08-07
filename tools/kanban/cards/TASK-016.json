@@ -1,0 +1,84 @@
+{
+  "id": "TASK-016",
+  "title": "預約管理後台 改期預約",
+  "content": "在 AppointmentDetailDialog 的「改期」按鈕接上表單：選新日期時段、送出更新 start_at/end_at，正確處理與既有預約重疊時的 exclusion constraint 拒絕。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "預約管理後台",
+  "userStory": "改期預約",
+  "track": "frontend",
+  "dependsOn": ["TASK-014", "TASK-015"],
+  "order": 16,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約管理後台/feature-spec.md",
+    "screenSpec": "ai/artifacts/預約管理後台/screen-spec-預約週曆列表.md",
+    "mockupDecision": "ai/artifacts/預約管理後台/mockup-decision-預約週曆列表.md",
+    "taskCard": "ai/artifacts/預約管理後台/task-cards/TASK-016.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/預約管理後台/mockups/booking-admin-variant-b.html",
+    "app/admin/_components/AppointmentDetailDialog.tsx",
+    "lib/admin/appointments.ts",
+    "lib/booking/slot-grid.ts",
+    "supabase/migrations/0002_booking_flow.sql"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npx vitest run（10 files / 56 tests passed，含新增 tests/admin/reschedule-slots.test.ts 5 tests、擴充 tests/admin/appointments.test.ts 的 rescheduleAppointment 4 case）",
+      "npm run build（成功）",
+      "瀏覽器對真實 Supabase 專案手動走查：建立兩筆測試預約驗證時段格點正確停用重疊時段、直接對 PostgREST 送出重疊 PATCH 確認資料庫真的回傳 23P01、成功改期到空檔並確認週曆/列表即時反映、模擬競態條件（選定時段後被搶先佔用）確認 UI 正確顯示衝突錯誤且原資料不受影響、驗證樂觀鎖修復後正常改期路徑未被誤擋，完成後清除所有測試資料"
+    ],
+    "findings": [
+      "security-reviewer 審查：核准（條件為修復下列必要項目，已完成）。必要修復（中）：rescheduleAppointment 原本只保護狀態機（.in status），完全沒保護 start_at/end_at 這兩個真正要改的欄位，若同一筆預約在表單開著時被另一分頁改期，會用陳舊資料造成 lost update——已加上 .eq(\"start_at\", currentStartAt) 樂觀鎖，並補上單元測試與瀏覽器手動驗證（含真實競態條件模擬）。確認：is_admin() 邊界未動、getOccupiedRangesForDate 查詢不含 PII、error.code===23P01 判斷可靠（來自資料庫非使用者輸入）、重疊防護完全由資料庫把關無 TOCTOU 空窗。記錄為殘留風險：改期時間合法性（未來時間/30分格點對齊/duration一致）僅前端驗證，長期建議收斂成 SECURITY DEFINER RPC 但需新 migration，超出本卡範圍；23P01 判斷與「只有一個 exclusion constraint」的隱含假設耦合，已加註解",
+      "architect 審查（補跑）：核准。AdminDashboard.tsx 的範圍擴增判定為不可避免且最小——AC 要求週曆/列表即時反映新時段，無不動此檔案的設計能達成；refetchToken 比照既有 effect-keyed-by-deps 模式非新抽象；選 refetch 而非本地 patch 正確，因改期可能把預約移出目前顯示週次。修正任務卡措辭：寫入呼叫非全部集中在 AdminDashboard.tsx，正確慣例是「寫入在父層、讀取就近於使用端」。另提出兩項非阻擋性後續建議（已另開任務卡）：改期樂觀鎖應優先採用詳情頁權威 start_at 並用專屬 STALE_APPOINTMENT 錯誤碼；reschedule-slots.ts 與 lib/booking/slot-grid.ts 的格點邏輯重複，建議未來抽共用函式"
+    ],
+    "residual": "1) 改期時間合法性（未來時間、30分格點對齊、duration 推導）僅前端驗證，資料庫層只保證不重疊與 end_at>start_at；2) error.code===23P01 判斷與 appointments 表只有一個 exclusion constraint 的隱含假設耦合；3) getOccupiedRangesForDate 當日視窗只用 start_at 篩選，若未來支援跨夜營業則跨夜預約佔用不會被算入（目前 business_hours 已排除此可能）；4) 改期表單 21 天日期視窗為簡化選擇；5) 樂觀鎖鎖定鍵與錯誤碼細化、格點邏輯重複，已列為後續小卡。"
+  },
+  "comments": [
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "核准（條件式）：rescheduleAppointment 缺乏樂觀鎖會造成 lost update，已要求並確認修復（.eq(\"start_at\",...)）。23P01 判斷可靠、PII 處理與授權邊界皆確認乾淨。"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "審查中斷（工作階段 API 用量上限，session limit · resets 2pm），未完成。待用量恢復後補跑，特別確認 AdminDashboard.tsx 的檔案範圍決策。"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "補跑完成，核准。AdminDashboard.tsx 範圍擴增合理且最小。兩項非阻擋性後續建議已記錄為殘留風險。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "沒問題，繼續做 TASK-017"
+    }
+  ]
+}

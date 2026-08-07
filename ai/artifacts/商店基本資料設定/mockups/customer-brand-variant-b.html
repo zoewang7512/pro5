@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>前台品牌顯示 Variant B · 精簡頁首列＋矮版封面圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 375px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 375px; height: 780px; background: var(--grey-100); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; flex-direction: column; }
+  .scroll { overflow-y: auto; flex: 1; }
+
+  .header-row { display: flex; align-items: center; gap: 10px; padding: 18px 20px 12px; }
+  .mini-logo { width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0; overflow: hidden; background: var(--grey-200); display: flex; align-items: center; justify-content: center; }
+  .mini-logo .fill { width: 100%; height: 100%; background: linear-gradient(135deg, var(--info), var(--grey-700)); }
+  .mini-logo.none::after { content: '王'; font-family: 'Noto Serif TC'; font-weight: 700; color: var(--grey-700); font-size: 13px; }
+  .header-text .name { font-size: 16px; font-weight: 700; color: var(--grey-900); font-family: 'Noto Serif TC'; line-height: 1.2; }
+  .header-text .desc { font-size: 11px; color: var(--grey-700); margin-top: 2px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .mini-banner { height: 64px; margin: 0 20px 14px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); }
+  .mini-banner.none { display: none; }
+
+  .contact-strip { display: flex; gap: 14px; padding: 0 20px 14px; font-size: 11px; color: var(--grey-700); flex-wrap: wrap; }
+  .contact-strip span { display: inline-flex; align-items: center; gap: 4px; }
+  .contact-strip .ico { width: 14px; height: 14px; border-radius: 999px; background: var(--info-light); color: var(--info); display: flex; align-items: center; justify-content: center; font-size: 8px; }
+
+  .divider { height: 1px; background: var(--grey-300); margin: 0 20px 16px; }
+  .body-pad { padding: 0 20px 24px; }
+  .fallback-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 24px 20px 16px; font-family: 'Noto Serif TC'; }
+  .section-title { font-size: 11px; font-weight: 700; color: var(--grey-700); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; display: flex; align-items: center; }
+  .section-title .badge { width: 18px; height: 18px; border-radius: 50%; background: var(--primary-500); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; margin-right: 6px; }
+  .svc-card { background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow-1); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .svc-card .name { font-size: 13px; font-weight: 600; color: var(--grey-900); }
+  .svc-card .meta { font-size: 11px; color: var(--grey-700); }
+  .svc-card .price { font-size: 13px; color: var(--grey-900); }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">前台品牌顯示 · Variant B：精簡頁首列（小 Logo＋店名取代原「預約」標題）＋矮版封面圖，優先保留預約流程可視深度</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 完整已設定</div>
+      <div class="screen">
+        <div class="scroll">
+          <div class="header-row">
+            <div class="mini-logo"><div class="fill"></div></div>
+            <div class="header-text"><div class="name">王牌理髮廳</div><div class="desc">成立於 2015 年，專注男士理容與經典油頭造型</div></div>
+          </div>
+          <div class="mini-banner"></div>
+          <div class="contact-strip">
+            <span><span class="ico">📍</span>忠孝東路四段 1 號</span>
+            <span><span class="ico">☎</span>02-1234-5678</span>
+          </div>
+          <div class="divider"></div>
+          <div class="body-pad">
+            <div class="section-title"><span class="badge">1</span>選擇服務</div>
+            <div class="svc-card"><div><div class="name">經典剪髮</div><div class="meta">45 分鐘</div></div><div class="price">NT$600</div></div>
+            <div class="svc-card"><div><div class="name">剪髮＋洗剪</div><div class="meta">60 分鐘</div></div><div class="price">NT$800</div></div>
+            <div class="svc-card"><div><div class="name">燙髮</div><div class="meta">90 分鐘</div></div><div class="price">NT$1,800</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 部分未設定（無封面圖、無電話）</div>
+      <div class="screen">
+        <div class="scroll">
+          <div class="header-row">
+            <div class="mini-logo none"></div>
+            <div class="header-text"><div class="name">王牌理髮廳</div><div class="desc">成立於 2015 年，專注男士理容與經典油頭造型</div></div>
+          </div>
+          <div class="contact-strip">
+            <span><span class="ico">📍</span>忠孝東路四段 1 號</span>
+          </div>
+          <div class="divider"></div>
+          <div class="body-pad">
+            <div class="section-title"><span class="badge">1</span>選擇服務</div>
+            <div class="svc-card"><div><div class="name">經典剪髮</div><div class="meta">45 分鐘</div></div><div class="price">NT$600</div></div>
+            <div class="svc-card"><div><div class="name">剪髮＋洗剪</div><div class="meta">60 分鐘</div></div><div class="price">NT$800</div></div>
+            <div class="svc-card"><div><div class="name">燙髮</div><div class="meta">90 分鐘</div></div><div class="price">NT$1,800</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 全部未設定／載入失敗（回退既有純文字標題）</div>
+      <div class="screen">
+        <div class="scroll">
+          <h1 class="fallback-title">預約</h1>
+          <div class="body-pad">
+            <div class="section-title"><span class="badge">1</span>選擇服務</div>
+            <div class="svc-card"><div><div class="name">經典剪髮</div><div class="meta">45 分鐘</div></div><div class="price">NT$600</div></div>
+            <div class="svc-card"><div><div class="name">剪髮＋洗剪</div><div class="meta">60 分鐘</div></div><div class="price">NT$800</div></div>
+            <div class="svc-card"><div><div class="name">燙髮</div><div class="meta">90 分鐘</div></div><div class="price">NT$1,800</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>預約管理後台 Variant A · 緊湊週曆＋右側詳情面板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 600px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.disabled { color: var(--grey-500); }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 20px 24px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .week-nav { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--grey-700); }
+  .week-nav .arrow { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-1); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .view-toggle { display: flex; gap: 4px; background: var(--grey-200); border-radius: var(--radius-sm); padding: 2px; }
+  .view-toggle span { font-size: 11px; padding: 4px 10px; border-radius: 6px; color: var(--grey-700); }
+  .view-toggle span.active { background: var(--surface); color: var(--grey-900); font-weight: 600; box-shadow: var(--shadow-1); }
+
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--grey-700); margin-bottom: 10px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+  .body-row { display: flex; gap: 16px; flex: 1; min-height: 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; flex: 1; }
+  .cal-day { background: var(--surface); border-radius: var(--radius-sm); padding: 8px; box-shadow: var(--shadow-1); min-height: 220px; }
+  .cal-day.today { outline: 2px solid var(--primary-500); }
+  .cal-day .d { font-size: 11px; font-weight: 600; color: var(--grey-700); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .cal-day.closed { background: var(--grey-200); opacity: .6; }
+  .cal-day.closed .d { color: var(--grey-500); }
+  .cal-event { border-radius: 4px; padding: 4px 6px; font-size: 10px; color: var(--grey-900); margin-bottom: 4px; border-left: 3px solid var(--warning); background: var(--warning-light); cursor: pointer; }
+  .cal-event.completed { border-left-color: var(--success); background: var(--success-light); }
+  .cal-event.cancelled { border-left-color: var(--danger); background: var(--danger-light); text-decoration: line-through; opacity: .7; }
+  .cal-event.selected { outline: 2px solid var(--primary-500); }
+
+  .detail-panel { width: 260px; flex-shrink: 0; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 18px; }
+  .detail-panel h3 { font-size: 14px; margin: 0 0 4px; color: var(--grey-900); }
+  .detail-panel .sub { font-size: 11px; color: var(--grey-700); margin: 0 0 14px; }
+  .detail-row { display: flex; justify-content: space-between; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--grey-200); }
+  .status-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--warning-light); color: var(--warning); }
+  .status-badge.completed { background: var(--success-light); color: var(--success); }
+  .action-btns { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .btn { display: block; width: 100%; height: 38px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 600; border: none; text-align: center; line-height: 38px; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); line-height: 36px; }
+  .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); line-height: 36px; }
+
+  .confirm-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.4); display: flex; align-items: center; justify-content: center; }
+  .confirm-card { width: 300px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 20px; }
+  .confirm-card h3 { font-size: 15px; margin: 0 0 8px; color: var(--grey-900); }
+  .confirm-card p { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 8px; }
+  .confirm-actions .btn { flex: 1; }
+
+  table.list { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.list th { text-align: left; font-size: 11px; color: var(--grey-700); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--grey-300); }
+  table.list td { padding: 10px 8px; border-bottom: 1px solid var(--grey-200); color: var(--grey-900); }
+
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--grey-700); }
+  .empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+  .empty-state .msg { font-size: 13px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">預約管理後台 · Variant A：緊湊週曆＋右側詳情面板 — 事件用細條色標＋淡底色一眼辨識狀態，點選開啟右側固定詳情面板做操作，不擋住週曆</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 週曆預設（本週）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="legend">
+            <span><span class="dot" style="background:var(--warning)"></span>待處理</span>
+            <span><span class="dot" style="background:var(--success)"></span>已完成</span>
+            <span><span class="dot" style="background:var(--danger)"></span>已取消</span>
+          </div>
+          <div class="body-row">
+            <div class="cal-grid">
+              <div class="cal-day today"><div class="d">一 8/10</div><div class="cal-event">10:00 王小美</div></div>
+              <div class="cal-day"><div class="d">二 8/11</div></div>
+              <div class="cal-day"><div class="d">三 8/12</div><div class="cal-event">11:00 李大明</div><div class="cal-event completed">14:00 陳小華</div></div>
+              <div class="cal-day"><div class="d">四 8/13</div><div class="cal-event">09:30 張美玲</div></div>
+              <div class="cal-day"><div class="d">五 8/14</div></div>
+              <div class="cal-day"><div class="d">六 8/15</div><div class="cal-event cancelled">13:00 周先生</div></div>
+              <div class="cal-day closed"><div class="d">日 8/16<span>公休</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 點選事件，右側面板顯示詳情與操作</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="legend">
+            <span><span class="dot" style="background:var(--warning)"></span>待處理</span>
+            <span><span class="dot" style="background:var(--success)"></span>已完成</span>
+            <span><span class="dot" style="background:var(--danger)"></span>已取消</span>
+          </div>
+          <div class="body-row">
+            <div class="cal-grid">
+              <div class="cal-day today"><div class="d">一 8/10</div><div class="cal-event selected">10:00 王小美</div></div>
+              <div class="cal-day"><div class="d">二 8/11</div></div>
+              <div class="cal-day"><div class="d">三 8/12</div><div class="cal-event">11:00 李大明</div><div class="cal-event completed">14:00 陳小華</div></div>
+              <div class="cal-day"><div class="d">四 8/13</div><div class="cal-event">09:30 張美玲</div></div>
+              <div class="cal-day"><div class="d">五 8/14</div></div>
+              <div class="cal-day"><div class="d">六 8/15</div><div class="cal-event cancelled">13:00 周先生</div></div>
+              <div class="cal-day closed"><div class="d">日 8/16<span>公休</span></div></div>
+            </div>
+            <div class="detail-panel">
+              <h3 class="serif">王小美</h3>
+              <p class="sub">週一 8/10 · 10:00–10:45</p>
+              <div class="detail-row"><span>服務</span><span>剪髮造型</span></div>
+              <div class="detail-row"><span>電話</span><span>0912345678</span></div>
+              <div class="detail-row"><span>狀態</span><span class="status-badge">待處理</span></div>
+              <div class="action-btns">
+                <div class="btn">標記完成</div>
+                <div class="btn outline">改期</div>
+                <div class="btn danger">取消預約</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 取消預約二次確認</div>
+      <div class="screen" style="position:relative">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="body-row">
+            <div class="cal-grid">
+              <div class="cal-day today"><div class="d">一 8/10</div><div class="cal-event selected">10:00 王小美</div></div>
+              <div class="cal-day"><div class="d">二 8/11</div></div>
+              <div class="cal-day"><div class="d">三 8/12</div></div>
+              <div class="cal-day"><div class="d">四 8/13</div></div>
+              <div class="cal-day"><div class="d">五 8/14</div></div>
+              <div class="cal-day"><div class="d">六 8/15</div></div>
+              <div class="cal-day closed"><div class="d">日 8/16</div></div>
+            </div>
+            <div class="detail-panel"></div>
+          </div>
+        </div>
+        <div class="confirm-overlay">
+          <div class="confirm-card">
+            <h3 class="serif">確認取消預約？</h3>
+            <p>將取消王小美 8/10 10:00 的剪髮造型預約，此動作無法復原，該時段會立即釋出。</p>
+            <div class="confirm-actions">
+              <div class="btn outline">再想想</div>
+              <div class="btn danger" style="background:var(--danger); color:#fff; border:none;">確認取消</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 列表檢視</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span>週曆</span><span class="active">列表</span></span>
+          </div>
+          <table class="list">
+            <thead><tr><th>日期</th><th>時段</th><th>顧客</th><th>服務</th><th>狀態</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>週一 8/10</td><td>10:00</td><td>王小美</td><td>剪髮造型</td><td><span class="status-badge">待處理</span></td><td>標記完成 · 改期 · 取消</td></tr>
+              <tr><td>週三 8/12</td><td>11:00</td><td>李大明</td><td>染髮設計</td><td><span class="status-badge">待處理</span></td><td>標記完成 · 改期 · 取消</td></tr>
+              <tr><td>週三 8/12</td><td>14:00</td><td>陳小華</td><td>頭皮護理</td><td><span class="status-badge completed">已完成</span></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">5 · 空狀態</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>9/21 – 9/27</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="empty-state">
+            <div class="icon">📅</div>
+            <div class="msg">本週沒有預約</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

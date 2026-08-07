@@ -1,0 +1,75 @@
+{
+  "id": "TASK-025",
+  "title": "營業時間與可預約時段管理 特殊公休日設定頁串接",
+  "content": "在 /admin/business-hours 新增「特殊公休日」區塊：用 MonthPicker 讓設計師點選日期新增/移除整天公休標記，寫入 closed_dates；新增時若有受影響的未來預約顯示二次確認警告，沿用 TASK-019 建立的既有互動模式。新建獨立元件 ClosedDatesSection.tsx，不修改 BusinessHoursForm.tsx 既有邏輯。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定公休日／特殊假期",
+  "track": "frontend",
+  "dependsOn": ["TASK-022", "TASK-023"],
+  "order": 25,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "ai/artifacts/營業時間與可預約時段管理/mockup-decision-特殊公休日.md",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-025.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/ClosedDatesSection.tsx",
+    "app/admin/_components/BusinessHoursForm.tsx",
+    "lib/admin/closed-dates.ts",
+    "lib/admin/format.ts",
+    "components/ui/MonthPicker.tsx",
+    "components/ui/ConfirmDialog.tsx",
+    "tests/components/closed-dates-section.test.tsx",
+    "tests/admin/format.test.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm test（97 tests passed，含新增的 tests/components/closed-dates-section.test.tsx 7 案例、tests/admin/format.test.ts 2 案例）",
+      "npm run build"
+    ],
+    "findings": [
+      "architect 發現：ClosedDatesSection 的 handleRemove／handleDayClick 缺少 in-flight 鎖，快速連續點擊會讓過期的 loadDates() 回應蓋掉較新的狀態；已加入 busy state 鎖定月曆與清單（pointerEvents+opacity），並在 handleRemove/handleDayClick 入口加上 guard。",
+      "architect 發現：handleConfirmAddWithWarning 的 setWarningConfirmLoading(false) 在 await loadDates() 之前就解鎖，與 BusinessHoursForm.tsx 的既有慣例（doSave() 內先 await 完成才解鎖）不一致；已修正為成功時等 loadDates() 完成後才解鎖。",
+      "architect 發現：formatDateSlash 應依任務卡驗證契約移入 lib/admin/format.ts 並補測試，而非留在元件內私有；已移入並新增 tests/admin/format.test.ts。同步更新 ai/context/project-map.md 補上 ClosedDatesSection.tsx／closed-dates.ts／month-range.ts。",
+      "security-reviewer 審查結論：通過（無新增可繞過 RLS 的寫入路徑、無 PII 外洩、無注入面、無密鑰問題）。附帶建議 #1（closed_dates 目前無 RLS 邊界測試）已確認 TASK-027 的既有範圍已涵蓋（'擴充 tests/business-hours.integration.test.ts 涵蓋 closed_dates 讀寫權限邊界'），不重複開卡；建議 #2（無 in-flight 防護）已隨 architect 的第一項發現一併修正；建議 #3（TOCTOU：受影響預約清單與寫入之間非原子）比照 TASK-019 既有流程的已知殘留風險，不在本卡處理；建議 #4／#5（today 僅掛載時計算一次、date 缺格式驗證）為資料層縱深防禦建議，不在本卡（ClosedDatesSection 不得觸碰 lib/admin/closed-dates.ts）處理範圍。",
+      "test-engineer 發現：ClosedDatesSection 完全零自動化測試（含失敗分支、清單移除按鈕路徑皆未被瀏覽器走查覆蓋）；已新增 tests/components/closed-dates-section.test.tsx（7 案例：空狀態、載入失敗、清單移除按鈕成功／失敗、新增無警告、新增有警告需二次確認、警告確認失敗保留 Modal），覆蓋原本走查遺漏的清單移除鈕路徑與兩個失敗 Toast 分支。",
+      "test-engineer 指出螢幕截圖（任務卡驗證契約要求的 3 種畫面）未能取得，僅有 accessibility tree／get_page_text 佐證——已重試 Browser 工具的 screenshot 多次仍逾時（\"the Browser pane is not displayed\"），與 TASK-023 記錄的同一個工具限制相同，非本次新增的問題；列為殘留風險，非本卡可修復（環境限制，需人工在有畫面顯示的環境下另行走查確認視覺）。"
+    ],
+    "residual": "1) （已解決，見下方留言）螢幕截圖原本未能取得，人工核准後、Browser 面板重新顯示時已補拍到「預設（含清單）」「空狀態」「受影響預約警告 Modal」三種畫面，皆與預期一致。2) lib/admin/closed-dates.ts／components/ui/MonthPicker.tsx 至今仍無任何單元測試（TASK-022/023 遺留缺口，非本卡範圍），TASK-025 的新測試只覆蓋 ClosedDatesSection 自身邏輯（mock 掉這兩個依賴）。3) closed_dates 的 RLS 邊界目前仍無整合測試覆蓋——已確認 TASK-027 範圍已包含，待該卡執行。4) architect 建議的 AffectedAppointmentList 共用元件抽取、清單過濾過去日期、mockup 卡片視覺對齊（Paper 外框、圖例）為非阻斷建議，未在本卡處理，留給後續任務卡評估。5) security-reviewer 的 TOCTOU（受影響預約清單查詢與寫入之間非原子）為比照 TASK-019 既有流程的已知殘留風險，未在本卡處理。"
+  },
+  "comments": [
+    { "author": "user", "text": "繼續做TASK-025（指名要求，視為核准開始實作）", "date": "2026-08-07" },
+    { "author": "agent", "text": "實作與自我驗證完成（tsc/lint/test/build 皆通過，含瀏覽器互動走查），並經 architect／security-reviewer／test-engineer 三個子代理審查、依審查結果修正後重新驗證通過。依專案慣例，stage 設為 verify，待人工核准後才轉 done。", "date": "2026-08-07" },
+    { "author": "user", "text": "沒問題", "date": "2026-08-07" },
+    { "author": "agent", "text": "核准後使用者重新打開 Browser 面板，screenshot 工具恢復正常，已補拍齊驗證契約要求的 3 種畫面（預設含清單、空狀態、警告 Modal），視覺與預期一致，殘留風險 #1 解除。", "date": "2026-08-07" }
+  ]
+}

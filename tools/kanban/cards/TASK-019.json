@@ -1,0 +1,78 @@
+{
+  "id": "TASK-019",
+  "title": "營業時間與可預約時段管理 編輯、驗證與儲存（含受影響預約警告）",
+  "content": "接上 TASK-018 唯讀表格的編輯能力：公休切換、開店/打烊時間編輯、前端驗證、送出儲存；送出前偵測受影響的既有預約並顯示警告清單，需二次確認才真正寫入 business_hours。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定每週固定營業時間",
+  "track": "frontend",
+  "dependsOn": ["TASK-018"],
+  "order": 19,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "ai/artifacts/營業時間與可預約時段管理/mockup-decision-營業時間設定.md",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-019.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/營業時間與可預約時段管理/mockups/business-hours-variant-a.html",
+    "lib/admin/business-hours.ts",
+    "app/admin/_components/BusinessHoursForm.tsx",
+    "components/ui/ConfirmDialog.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npx vitest run（11 files / 75 tests passed，含擴充後 tests/admin/business-hours.test.ts 19 tests）",
+      "npm run build（成功）",
+      "瀏覽器（Browser 工具）對真實 Supabase 專案手動走查：驗證錯誤阻擋送出並正確 focus、無衝突直接儲存並持久化、建立測試預約後觸發受影響預約警告、「再想想」不寫入／「仍要儲存」正確寫入、公休切換清空鎖定時間欄位、touched 狀態修正後不會提早顯示錯誤、未儲存變更重新整理後正確捨棄，完成後清除測試資料並還原 business_hours"
+    ],
+    "findings": [
+      "architect 審查：核准（1 項必要修復已處理）：handleSubmit 原本在查詢受影響預約後就把 submitting 設回 false，寫入期間按鈕可再次點擊、欄位可再編輯，已改用 try/finally 讓 submitting 涵蓋整個送出流程。次要建議已處理：警告 Dialog 失敗時原本無條件關閉，已改成只有成功才關閉（比照 AdminDashboard 既有慣例）；行內錯誤原本一改就顯示，已加上 touched 狀態改成失焦或送出才顯示；updateRow 對缺列 weekday 靜默 no-op，已在 toEditableRows 保底建滿 7 天；updateBusinessHours 原本只看 error 是否為 null，已加 .select(\"weekday\") 檢查受影響列數避免 RLS 悄悄擋下卻誤報成功。核准 upsert-all-7 無樂觀鎖、findAffectedAppointments 每次重新掃描全部未來預約等簡化設計，判定為符合單一設計師網域的合理取捨",
+      "security-reviewer 審查：核准（2 項低嚴重度建議已處理）：確認 business_hours 寫入 RLS 邊界正確、anon 無寫入 policy、AffectedAppointment 僅含最小必要欄位無額外個資、錯誤處理不外洩底層訊息。已處理：findAffectedAppointments 原本查詢無上界，已加 90 天視野上限與 200 筆數上限避免無界下載預約姓名；isAppointmentOutsideHours 的 hour12:false 在部分 ICU 實作午夜可能誤判為 24:00，已改用 hourCycle:\"h23\""
+    ],
+    "residual": "1) findAffectedAppointments 每次送出都列出所有仍落在新設定外的未來預約，非僅本次差異，若既有受影響預約長期未處理會在後續每次儲存重複出現，屬刻意設計（警告文案本就描述最終狀態）；2) business_hours 無樂觀鎖，architect 判定為單一設計師網域下的合理取捨，未來若擴充多人協作需重新評估；3) 螢幕截圖沿用既有 Browser pane 限制，改以 accessibility tree/get_page_text/javascript_tool 讀取取得驗證證據。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "沒問題，繼續做 TASK-019（指名要求，視為核准開始實作）"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "核准。submitting 狀態未涵蓋整個送出流程的必要修復已處理，其餘次要建議（Dialog 失敗行為、touched 驗證時機、缺列保底、寫入結果驗證）皆已處理。upsert-all-7 無樂觀鎖等簡化設計判定合理。"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "核准。business_hours 寫入 RLS 邊界正確、PII 最小化。已加上查詢上界與時區格式修正兩項低嚴重度建議。"
+    }
+  ]
+}

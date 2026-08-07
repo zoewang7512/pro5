@@ -1,0 +1,60 @@
+{
+  "id": "TASK-022",
+  "title": "營業時間與可預約時段管理 架構基礎（closed_dates 表、services.buffer_minutes 欄位）",
+  "content": "新增 closed_dates 資料表（date 主鍵，公休日標記）與對應 RLS policy（比照 business_hours 模式），services 新增 buffer_minutes 欄位（0~120，預設 0），並提供 lib/admin/closed-dates.ts 的讀寫函式，供後續任務卡串接使用。純資料層，不含 RPC 或 UI。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "claude",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定公休日／特殊假期、設定服務間的緩衝時間",
+  "track": "backend",
+  "dependsOn": ["TASK-021"],
+  "order": 22,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-022.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0003_closures_and_buffer.sql",
+    "supabase/migrations/0003_closures_and_buffer_down.sql",
+    "lib/admin/closed-dates.ts",
+    "lib/admin/business-hours.ts"
+  ],
+  "evidence": {
+    "commands": ["npx tsc --noEmit", "npm run lint", "npm test", "npm run build"],
+    "findings": [
+      "architect + security-reviewer 皆發現 addClosedDate 的 ignoreDuplicates:true 與寫入列數驗證矛盾，已修正為 ignoreDuplicates:false 並重驗證通過。",
+      "architect + security-reviewer 皆發現 removeClosedDate 對 RLS 阻擋的 DELETE 是 fail-open，已補上 isDateClosed 複查邏輯。",
+      "architect 建議 down migration 補破壞性/回滾順序警告註解，已補上。",
+      "security-reviewer 指出 findAffectedAppointmentsForClosedDate 對格式異常日期字串會拋未攔截 RangeError，已補 try/catch 並補上與範本一致的 200 筆上限。"
+    ],
+    "residual": "migration 未經實際 Supabase 專案套用驗證（本機無 CLI/ledger）；ai/context/project-map.md 尚未列出本卡新增檔案（不在允許變更清單內，留待後續文件更新）；詳見任務卡完成證據段落。"
+  },
+  "comments": [
+    { "author": "user", "text": "沒問題", "date": "2026-08-07" }
+  ]
+}

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>預約管理後台 Variant B · 展開事件卡＋Modal 操作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 600px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.disabled { color: var(--grey-500); }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 20px 24px; overflow: hidden; display: flex; flex-direction: column; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .week-nav { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--grey-700); }
+  .week-nav .arrow { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-1); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .view-toggle { display: flex; gap: 4px; background: var(--grey-200); border-radius: var(--radius-sm); padding: 2px; }
+  .view-toggle span { font-size: 11px; padding: 4px 10px; border-radius: 6px; color: var(--grey-700); }
+  .view-toggle span.active { background: var(--surface); color: var(--grey-900); font-weight: 600; box-shadow: var(--shadow-1); }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; flex: 1; overflow-y: auto; }
+  .cal-day { background: var(--surface); border-radius: var(--radius-sm); padding: 10px; box-shadow: var(--shadow-1); min-height: 260px; }
+  .cal-day.today { outline: 2px solid var(--primary-500); }
+  .cal-day .d { font-size: 11px; font-weight: 700; color: var(--grey-700); margin-bottom: 8px; }
+  .cal-day.closed { background: var(--grey-200); opacity: .6; }
+
+  .event-card { border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 8px; box-shadow: var(--shadow-1); background: var(--surface); border: 1px solid var(--grey-200); cursor: pointer; }
+  .event-card .time { font-size: 10px; color: var(--grey-700); font-weight: 600; }
+  .event-card .name { font-size: 12px; font-weight: 700; color: var(--grey-900); margin: 2px 0; }
+  .event-card .service { font-size: 10px; color: var(--grey-700); }
+  .event-card .badge { display: inline-block; margin-top: 6px; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--warning-light); color: var(--warning); }
+  .event-card.completed .badge { background: var(--success-light); color: var(--success); }
+  .event-card.cancelled { opacity: .55; }
+  .event-card.cancelled .badge { background: var(--danger-light); color: var(--danger); }
+  .event-card.cancelled .name { text-decoration: line-through; }
+
+  .modal-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .modal-card { width: 340px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .modal-card h3 { font-size: 16px; margin: 0 0 4px; color: var(--grey-900); }
+  .modal-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; }
+  .modal-row { display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid var(--grey-200); }
+  .modal-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .btn { display: block; width: 100%; height: 40px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 600; border: none; text-align: center; line-height: 40px; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); line-height: 38px; }
+  .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); line-height: 38px; }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--grey-700); margin-bottom: 5px; }
+  .field select, .field input { width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 10px; font-size: 12px; color: var(--grey-900); font-family: inherit; }
+  .field .error { font-size: 11px; color: var(--danger); margin-top: 4px; }
+
+  table.list { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.list th { text-align: left; font-size: 11px; color: var(--grey-700); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--grey-300); }
+  table.list td { padding: 10px 8px; border-bottom: 1px solid var(--grey-200); color: var(--grey-900); }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">預約管理後台 · Variant B：展開事件卡＋Modal 操作 — 每個事件是資訊完整的卡片（顧客／服務／狀態徽章），點選以置中 Modal 完成標記完成／取消／改期，聚焦單一操作</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 週曆預設（本週）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-day today"><div class="d">一 8/10</div><div class="event-card"><div class="time">10:00–10:45</div><div class="name">王小美</div><div class="service">剪髮造型</div><span class="badge">待處理</span></div></div>
+            <div class="cal-day"><div class="d">二 8/11</div></div>
+            <div class="cal-day"><div class="d">三 8/12</div>
+              <div class="event-card"><div class="time">11:00–13:00</div><div class="name">李大明</div><div class="service">染髮設計</div><span class="badge">待處理</span></div>
+              <div class="event-card completed"><div class="time">14:00–15:00</div><div class="name">陳小華</div><div class="service">頭皮護理</div><span class="badge">已完成</span></div>
+            </div>
+            <div class="cal-day"><div class="d">四 8/13</div><div class="event-card"><div class="time">09:30–10:15</div><div class="name">張美玲</div><div class="service">剪髮造型</div><span class="badge">待處理</span></div></div>
+            <div class="cal-day"><div class="d">五 8/14</div></div>
+            <div class="cal-day"><div class="d">六 8/15</div><div class="event-card cancelled"><div class="time">13:00–13:45</div><div class="name">周先生</div><div class="service">剪髮造型</div><span class="badge">已取消</span></div></div>
+            <div class="cal-day closed"><div class="d">日 8/16 · 公休</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 點選事件卡開啟 Modal</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-day today"><div class="d">一 8/10</div><div class="event-card"><div class="time">10:00–10:45</div><div class="name">王小美</div><div class="service">剪髮造型</div><span class="badge">待處理</span></div></div>
+            <div class="cal-day"><div class="d">二 8/11</div></div>
+            <div class="cal-day"><div class="d">三 8/12</div></div>
+            <div class="cal-day"><div class="d">四 8/13</div></div>
+            <div class="cal-day"><div class="d">五 8/14</div></div>
+            <div class="cal-day"><div class="d">六 8/15</div></div>
+            <div class="cal-day closed"><div class="d">日 8/16 · 公休</div></div>
+          </div>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">王小美</h3>
+            <p class="sub">週一 8/10 · 10:00–10:45 · 剪髮造型</p>
+            <div class="modal-row"><span>電話</span><span>0912345678</span></div>
+            <div class="modal-row"><span>狀態</span><span>待處理</span></div>
+            <div class="modal-actions">
+              <div class="btn">標記完成</div>
+              <div class="btn outline">改期</div>
+              <div class="btn danger">取消預約</div>
+              <div class="btn text">關閉</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 改期表單（Modal 內切換）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span class="active">週曆</span><span>列表</span></span>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-day today"><div class="d">一 8/10</div></div>
+            <div class="cal-day"><div class="d">二 8/11</div></div>
+            <div class="cal-day"><div class="d">三 8/12</div></div>
+            <div class="cal-day"><div class="d">四 8/13</div></div>
+            <div class="cal-day"><div class="d">五 8/14</div></div>
+            <div class="cal-day"><div class="d">六 8/15</div></div>
+            <div class="cal-day closed"><div class="d">日 8/16</div></div>
+          </div>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">改期：王小美</h3>
+            <p class="sub">目前時段：週一 8/10 10:00–10:45</p>
+            <div class="field"><label>新日期</label><input value="2026-08-12" /></div>
+            <div class="field"><label>新時段</label><select><option>這個時段已被占用（不可選）</option><option selected>11:00</option><option>11:30</option></select><div class="error">此時段已被其他預約占用，請選其他時段</div></div>
+            <div class="modal-actions">
+              <div class="btn">確認改期</div>
+              <div class="btn text">取消</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 列表檢視</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item disabled">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div class="week-nav"><span class="arrow">‹</span><h2>8/10 – 8/16</h2><span class="arrow">›</span></div>
+            <span class="view-toggle"><span>週曆</span><span class="active">列表</span></span>
+          </div>
+          <table class="list">
+            <thead><tr><th>日期</th><th>時段</th><th>顧客</th><th>服務</th><th>狀態</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>週一 8/10</td><td>10:00</td><td>王小美</td><td>剪髮造型</td><td>待處理</td><td>標記完成 · 改期 · 取消</td></tr>
+              <tr><td>週三 8/12</td><td>11:00</td><td>李大明</td><td>染髮設計</td><td>待處理</td><td>標記完成 · 改期 · 取消</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

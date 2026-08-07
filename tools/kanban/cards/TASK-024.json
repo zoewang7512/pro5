@@ -1,0 +1,72 @@
+{
+  "id": "TASK-024",
+  "title": "營業時間與可預約時段管理 get_available_slots RPC 與改期表單加入公休日／緩衝時間邏輯",
+  "content": "修改 get_available_slots RPC：加入 closed_dates 檢查（優先於 business_hours）、加入緩衝時間感知的時段過濾（候選時段與既有預約各自扣掉服務 buffer_minutes 後仍不可重疊）。同步修改 lib/admin/reschedule-slots.ts 與 AppointmentDetailDialog.tsx 套用同一套規則，確保顧客端與後台改期一致。全站最關鍵的 RPC，風險最高。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "claude",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定公休日／特殊假期、設定服務間的緩衝時間",
+  "track": "backend",
+  "dependsOn": ["TASK-022"],
+  "order": 24,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-024.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0004_slots_closures_buffer.sql",
+    "supabase/migrations/0004_slots_closures_buffer_down.sql",
+    "lib/admin/reschedule-slots.ts",
+    "lib/admin/appointments.ts",
+    "app/admin/_components/AppointmentDetailDialog.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm test",
+      "npm run build",
+      "npm run test:booking",
+      "npm run test:admin-booking",
+      "npm run test:business-hours"
+    ],
+    "findings": [
+      "architect 發現：改期表單選到公休日時 buildSlotGrid 不知道 closed_dates，會渲染整排無說明的 disabled 按鈕；已改成直接落回既有空狀態 Alert。",
+      "architect+security-reviewer 各自獨立發現：RPC 與後台 TS computeAvailableSlots 在緩衝時間跨日的查詢範圍不一致；已將 getOccupiedRangesForDate 查詢下界往前擴大一天。",
+      "security-reviewer 發現（中等嚴重度）：緩衝比對子查詢 join services 後不再匹配既有索引運算式且無 start_at 範圍限定，anon 可呼叫 RPC 從索引掃描退化成全表掃描；已補上 ±1 天範圍限定讓 planner 改用 appointments_start_at_idx。",
+      "architect+security-reviewer 各自獨立發現：migration 套用順序沒有保護，0004 早於 0003 套用會讓函式建立成功但執行期才出錯；已加部署期前置檢查。",
+      "architect+test-engineer 發現測試缺口（邊界恰好相等、緩衝不對稱、多筆不同 buffer 的既有預約）；已各補一個測試案例，reschedule-slots.test.ts 從 8 個增至 11 個案例。",
+      "test-engineer 指出一次性人工核對 RPC 腳本跑完即刪除、不可重複；已在任務卡完整記錄執行結果與驗證方法，腳本保留於 session scratchpad（非本卡允許新增整合測試檔案範圍）。",
+      "security-reviewer 發現超出本卡範圍的殘留風險：create_appointment 完全不檢查 closed_dates，只在 get_available_slots 顯示層擋公休日；已與人工核准者確認並開立 TASK-028 處理。"
+    ],
+    "residual": "create_appointment 尚未檢查 closed_dates（TASK-028 追蹤處理，見 tools/kanban/cards/TASK-028.json）；一次性人工核對 RPC 腳本未提交進 repo，正式可重複的整合測試覆蓋留給 TASK-027。詳見任務卡完成證據段落。"
+  },
+  "comments": [
+    { "author": "user", "text": "TASK-024沒問題", "date": "2026-08-07" }
+  ]
+}

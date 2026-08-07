@@ -27,6 +27,7 @@ import { Nav } from "@/components/ui/Nav";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FormSection } from "@/components/ui/FormSection";
 import { useToast } from "@/components/ui/ToastProvider";
+import { MonthPicker } from "@/components/ui/MonthPicker";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -43,6 +44,9 @@ export default function DesignSystemShowcase() {
   const { showToast } = useToast();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectValue, setSelectValue] = React.useState("cut");
+  const [monthPickerYear, setMonthPickerYear] = React.useState(2026);
+  const [monthPickerMonth, setMonthPickerMonth] = React.useState(8);
+  const [markedDates, setMarkedDates] = React.useState(new Set(["2026-08-19", "2026-08-25"]));
 
   return (
     <Box>
@@ -176,6 +180,32 @@ export default function DesignSystemShowcase() {
             onConfirm={() => setDialogOpen(false)}
             onClose={() => setDialogOpen(false)}
           />
+        </Section>
+
+        <Section title="MonthPicker">
+          <Box sx={{ maxWidth: 340 }}>
+            <MonthPicker
+              year={monthPickerYear}
+              month={monthPickerMonth}
+              todayDate="2026-08-07"
+              markedDates={markedDates}
+              onDayClick={(date) => {
+                setMarkedDates((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(date)) {
+                    next.delete(date);
+                  } else {
+                    next.add(date);
+                  }
+                  return next;
+                });
+              }}
+              onMonthChange={(year, month) => {
+                setMonthPickerYear(year);
+                setMonthPickerMonth(month);
+              }}
+            />
+          </Box>
         </Section>
 
         <Section title="Toast / Alert">

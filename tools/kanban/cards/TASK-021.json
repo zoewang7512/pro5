@@ -1,0 +1,86 @@
+{
+  "id": "TASK-021",
+  "title": "營業時間與可預約時段管理 前後端串接驗證與端到端測試",
+  "content": "建立並執行 npm run test:business-hours，涵蓋 admin 讀寫權限邊界、受影響預約判定邏輯、anon 直接寫入被拒；重跑 test:rls/test:booking/test:admin-booking 確認無回歸；Browser 工具桌面尺寸 E2E 走查完整流程與受影響預約警告路徑，確認後台週曆同步反映公休日。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-018", "TASK-019", "TASK-020"],
+  "order": 21,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": false,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-021.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/business-hours.integration.test.ts",
+    "vitest.business-hours.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npm run test:business-hours（審查修正前 6/6 通過；套用 test-engineer／security-reviewer 建議後重跑 7/7 通過，對真實 Supabase 專案跑，測試前記錄 business_hours 原始 7 列快照並輸出到 log、測試後由 afterAll 還原）",
+      "npm run test:rls（6/6 通過，無回歸，審查修正前後皆重跑確認）",
+      "npm run test:booking（19/19 通過，無回歸，審查修正前後皆重跑確認）",
+      "npm run test:admin-booking（13/13 通過，無回歸，審查修正前後皆重跑確認）",
+      "npx vitest run（預設單元/煙霧測試，11 files / 75 tests 通過，數量與 TASK-020 完成時相同）",
+      "npm run build（成功，審查修正前後皆重跑確認）",
+      "瀏覽器（Browser 工具）對真實 Supabase 專案桌面尺寸走查：登入→開啟營業時間設定→切換週三為公休→送出偵測到 1 筆受影響預約並顯示警告 Modal（列出顧客姓名/日期/時段）→「再想想」確認未寫入且欄位不重置→再次送出、「仍要儲存」確認確實寫入公休→切到 /admin 週曆確認週三正確顯示公休且既有預約卡片仍照常顯示→改回原值送出，因無受影響預約故直接儲存、未顯示警告 Modal→確認資料已還原；走查用測試預約與腳本走查後即刪除"
+    ],
+    "findings": [
+      "test-engineer 審查：approve with suggestions。確認快照還原機制對「單一 it 中途斷言失敗」安全（afterAll 仍會執行），但指出 business_hours 沒有 TEST_MARKER 式的程序中斷後復原路徑——已補上快照 console.log 供人工復原。指出 findAffectedAppointments 三個子案例原本只傳單一列 newRows，與正式呼叫（BusinessHoursForm.tsx 一律傳全部 7 列）形狀不符，未驗證「其餘未變動星期幾不受誤判影響」的安全性質——已改用完整 7 列並新增對照組預約驗證。確認星期幾/日期 offset 無實際碰撞風險，建議集中記錄——已補進 project-map.md",
+      "security-reviewer 審查：approve with suggestions。確認無硬編碼密鑰、無 injection 風險、PII 隔離與清除邏輯正確、anon 拒絕斷言非恆真。核心發現（中度）：只測 anon 無法涵蓋「已登入但非管理員」這個 business_hours 唯一真正的授權邊界（該表對 authenticated 角色沒有整體 revoke，唯一防線是 policy 的 is_admin() predicate）——已新增對應測試（自建拋棄式非管理員帳號，測完即刪）。其餘低嚴重度建議（錯誤訊息斷言、避免探測值恆真、PII key-set 檢查涵蓋所有筆數、signOut 與清除步驟收集模式不一致、JSON.stringify(Error) 遺失訊息內容）皆已採納修正"
+    ],
+    "residual": "1) getBusinessHoursForWeekday（改期表單用）未新增專屬整合測試，僅沿用既有單元測試與架構上『直接查表、未變動』的推理確認；2) AppointmentListView.tsx 沒有公休標示——核對後確認其本來就是純預約清單、沒有『每天一格』的版面結構，feature-spec 該條驗收標準的『列表』字樣對其實際結構不適用，非遺漏未實作，與 TASK-020 architect 審查記錄的殘留事項一致；3) business_hours 只有 7 列固定資料，整合測試以『記錄原始快照、測試後還原』模式操作真實表格，不應對正式環境高頻率重複執行；4) 螢幕截圖沿用既有 Browser pane 限制，改以 accessibility tree/get_page_text/javascript_tool 讀取取得驗證證據；5) TASK-020 既有殘留事項本卡未重新處理，維持原判定；6) security-reviewer 建議的『拒絕在正式環境執行』opt-in 防呆機制未採納——判定為應與三個既有 sibling 整合測試檔案（test:rls/test:booking/test:admin-booking）一致處理，不引入本檔案獨有機制，留給未來視需要跨檔案評估。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "審核 TASK-020 沒問題，繼續做 TASK-021（指名要求，視為核准開始實作；TASK-018/019/020 皆已 Done，滿足 dependsOn）"
+    },
+    {
+      "name": "test-engineer",
+      "time": "2026-08-06",
+      "text": "approve with suggestions。快照還原機制安全，但缺乏程序中斷後的復原紀錄——已補 log。findAffectedAppointments 測試原本用單列 newRows 與正式呼叫形狀不符——已改用完整 7 列並補對照組。"
+    },
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "approve with suggestions。核心發現：只測 anon 無法涵蓋『已登入非管理員』這個唯一真正的授權邊界——已新增對應測試。其餘低嚴重度建議（錯誤訊息斷言、探測值恆真風險、PII key-set 涵蓋範圍、signOut 順序、錯誤訊息遺失）皆已採納修正。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "審核沒問題，轉 Done（人工驗收通過）"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "TASK-028",
+  "title": "create_appointment RPC 加入 closed_dates 檢查（公休日硬規則不能只靠畫面層擋）",
+  "content": "create_appointment 目前完全不檢查 closed_dates，唯一防線是 get_available_slots 在畫面上不顯示公休日時段，顧客繞過前端直接呼叫 API 仍能在公休日訂到位。新增 0005 migration，在服務驗證之後、寫入前新增 closed_dates 檢查，命中即回傳既有 SLOT_CONFLICT 錯誤碼（不新增錯誤碼、不改前端），比照 TASK-024 的 closed_dates 檢查與部署順序防呆既有寫法。TASK-024 安全性審查發現的殘留風險。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-07",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定公休日／特殊假期",
+  "track": "backend",
+  "dependsOn": ["TASK-024"],
+  "order": 28,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-028.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0005_create_appointment_closed_dates.sql",
+    "supabase/migrations/0005_create_appointment_closed_dates_down.sql",
+    "supabase/migrations/0002_booking_flow.sql",
+    "supabase/migrations/0004_slots_closures_buffer.sql"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "author": "security-reviewer (subagent, TASK-024 審查)",
+      "text": "create_appointment 目前完全不檢查 closed_dates，只靠 get_available_slots 在畫面上不顯示公休日時段；顧客繞過前端直接呼叫 API 理論上仍能在公休日訂到位。buffer_minutes 不做資料庫層約束是已核准的取捨，但『整天公休』是硬規則，應該跟 appointments_no_overlap 一樣在寫入路徑本身擋下。",
+      "date": "2026-08-07"
+    },
+    {
+      "author": "user",
+      "text": "（緩衝時間不做資料庫層約束是可接受的取捨，但「整天公休」是硬規則）幫我開一張後續任務卡處理這個",
+      "date": "2026-08-07"
+    }
+  ]
+}

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>商店設定 Variant A · 單一表單，統一儲存</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 760px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .toolbar .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+
+  .card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 24px; }
+  .card h3 { font-size: 14px; font-weight: 600; color: var(--grey-900); margin: 0 0 16px; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input, .field textarea { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 10px 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field textarea { resize: none; height: 72px; }
+  .field input.error, .field textarea.error { border-color: var(--danger); background: var(--danger-light); }
+  .field .err-text { font-size: 11px; color: var(--danger); }
+
+  .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+  .upload-box { display: flex; flex-direction: column; gap: 8px; }
+  .upload-box label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .dropzone { height: 140px; border-radius: var(--radius-sm); border: 1.5px dashed var(--grey-300); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--grey-500); font-size: 12px; background: var(--grey-100); }
+  .dropzone .icon { width: 28px; height: 28px; border-radius: 999px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; color: var(--grey-700); font-size: 14px; }
+  .preview { height: 140px; border-radius: var(--radius-sm); position: relative; overflow: hidden; display: flex; align-items: flex-end; }
+  .preview .fill { position: absolute; inset: 0; background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); opacity: .55; }
+  .preview .fill.logo { background: linear-gradient(135deg, var(--info), var(--grey-700)); }
+  .preview-actions { position: relative; z-index: 1; width: 100%; display: flex; justify-content: flex-end; gap: 6px; padding: 8px; }
+  .chip-btn { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.92); color: var(--grey-900); border: none; cursor: pointer; }
+  .chip-btn.danger { color: var(--danger); }
+
+  .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 22px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+  .btn.disabled { background: var(--grey-300); color: var(--grey-500); }
+  .btn.loading { background: var(--primary-300); }
+  .spinner { width: 14px; height: 14px; border-radius: 999px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; margin-right: 8px; }
+
+  .hint-banner { display: flex; align-items: center; gap: 10px; background: var(--info-light); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--grey-900); }
+  .hint-banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--info); flex-shrink: 0; }
+
+  .upload-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #fff; font-size: 11px; border-radius: var(--radius-sm); }
+  .upload-overlay .ring { width: 22px; height: 22px; border-radius: 999px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">商店設定 · Variant A：文字與圖片同一張卡片，底部單一「儲存」按鈕統一送出</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設（已有完整設定）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item active">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>商店設定</h2><div class="hint">設定店家基本資訊與品牌圖片，顧客前台會同步顯示</div></div></div>
+          <div class="card">
+            <h3>基本資訊</h3>
+            <div class="field-grid">
+              <div class="field"><label>店名</label><input value="王牌理髮廳" /></div>
+              <div class="field"><label>電話</label><input value="02-1234-5678" /></div>
+              <div class="field full"><label>地址</label><input value="台北市大安區忠孝東路四段 1 號" /></div>
+              <div class="field full"><label>簡介</label><textarea>成立於 2015 年，專注男士理容與經典油頭造型，每一次剪髮都從細節開始。</textarea></div>
+            </div>
+            <div class="upload-row">
+              <div class="upload-box">
+                <label>Logo</label>
+                <div class="preview"><div class="fill logo"></div><div class="preview-actions"><span class="chip-btn">更換</span><span class="chip-btn danger">移除</span></div></div>
+              </div>
+              <div class="upload-box">
+                <label>封面圖</label>
+                <div class="preview"><div class="fill"></div><div class="preview-actions"><span class="chip-btn">更換</span><span class="chip-btn danger">移除</span></div></div>
+              </div>
+            </div>
+            <div class="actions"><span class="btn disabled">儲存</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 空狀態（首次使用）＋店名驗證錯誤</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item active">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>商店設定</h2><div class="hint">設定店家基本資訊與品牌圖片，顧客前台會同步顯示</div></div></div>
+          <div class="hint-banner"><span class="dot"></span>尚未設定商店資訊，填寫下方欄位開始設定</div>
+          <div class="card">
+            <h3>基本資訊</h3>
+            <div class="field-grid">
+              <div class="field"><label>店名</label><input class="error" value="" placeholder="請輸入店名" /><span class="err-text">店名為必填</span></div>
+              <div class="field"><label>電話</label><input placeholder="選填" /></div>
+              <div class="field full"><label>地址</label><input placeholder="選填" /></div>
+              <div class="field full"><label>簡介</label><textarea placeholder="選填，簡短介紹店家特色"></textarea></div>
+            </div>
+            <div class="upload-row">
+              <div class="upload-box">
+                <label>Logo</label>
+                <div class="dropzone"><span class="icon">＋</span>點擊或拖曳圖片上傳<br/>JPG／PNG／WebP，5MB 內</div>
+              </div>
+              <div class="upload-box">
+                <label>封面圖</label>
+                <div class="dropzone"><span class="icon">＋</span>點擊或拖曳圖片上傳<br/>JPG／PNG／WebP，5MB 內</div>
+              </div>
+            </div>
+            <div class="actions"><span class="btn">儲存</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · Logo 上傳中／封面圖上傳錯誤／儲存中</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item active">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>商店設定</h2><div class="hint">設定店家基本資訊與品牌圖片，顧客前台會同步顯示</div></div></div>
+          <div class="card">
+            <h3>基本資訊</h3>
+            <div class="field-grid">
+              <div class="field"><label>店名</label><input value="王牌理髮廳" /></div>
+              <div class="field"><label>電話</label><input value="02-1234-5678" /></div>
+              <div class="field full"><label>地址</label><input value="台北市大安區忠孝東路四段 1 號" /></div>
+              <div class="field full"><label>簡介</label><textarea>成立於 2015 年，專注男士理容與經典油頭造型。</textarea></div>
+            </div>
+            <div class="upload-row">
+              <div class="upload-box">
+                <label>Logo</label>
+                <div class="preview"><div class="fill logo"></div><div class="upload-overlay"><div class="ring"></div>上傳中…</div></div>
+              </div>
+              <div class="upload-box">
+                <label>封面圖</label>
+                <div class="dropzone" style="border-color: var(--danger); background: var(--danger-light); color: var(--danger);"><span class="icon" style="background: var(--danger-light); color: var(--danger);">！</span>檔案大小需小於 5MB</div>
+              </div>
+            </div>
+            <div class="actions"><span class="btn loading"><span class="spinner"></span>儲存中…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

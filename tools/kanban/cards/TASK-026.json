@@ -1,0 +1,68 @@
+{
+  "id": "TASK-026",
+  "title": "營業時間與可預約時段管理 後台週曆同步反映 closed_dates",
+  "content": "比照 TASK-020 已建立的模式，讓 WeekCalendar.tsx 的公休日判斷除了既有的 closedWeekdays（每週固定）之外，也查詢 closed_dates（特定日期），兩者任一命中即顯示公休。closedDates 查詢需隨週次切換重新查詢（不同於 closedWeekdays 只在掛載時查一次）。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定公休日／特殊假期",
+  "track": "frontend",
+  "dependsOn": ["TASK-022"],
+  "order": 26,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-026.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/WeekCalendar.tsx",
+    "app/admin/_components/AdminDashboard.tsx",
+    "lib/admin/closed-dates.ts",
+    "tests/components/week-calendar.test.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm test（102 tests passed，含新增的 tests/components/week-calendar.test.tsx 5 案例）",
+      "npm run build"
+    ],
+    "findings": [
+      "architect 審查結論：Approve，無須修改。確認新 effect 正確沿用 appointments 查詢 effect 的模式（依 weekRange 重新查詢＋cancelled guard），而非誤用 closedWeekdays 的一次性模式；確認 cancelled guard 已足夠防止過期回應覆寫（不需要額外的 key 比對，因為 React 保證舊 effect 的 cleanup 會在新 effect 執行前跑完，且 closedDates 是絕對日期字串集合，殘留舊週資料對新一週不會誤判為公休，只會是良性的偽陰性）；確認 isClosed 合併邏輯與 closed_dates／business_hours 的後端資料契約（0004 RPC 對 closed_dates 的優先權）語意一致；確認 closedDates 設計成必填 prop（不給預設值）是正確選擇，與 TASK-020 引入 closedWeekdays 的方式一致。建議記錄兩點已知限制（見下方 residual）。",
+      "security-reviewer 審查結論：Approve，無安全或隱私疑慮。確認純讀取、無新增寫入或權限判斷、無 PII（closed_dates 只有 date 欄位，且該表本來就對 anon 開放讀取）、失敗時不外洩原始錯誤且失敗方向是安全的偽陰性（不會誤判成關閉）。附帶兩點非阻斷建議（見下方 residual）。",
+      "test-engineer 發現：WeekCalendar.tsx／AdminDashboard.tsx 原本零測試覆蓋，儘管任務卡標示風險等級「中」且修改的是已上線共用元件；已比照 tests/components/closed-dates-section.test.tsx 的既有模式新增 tests/components/week-calendar.test.tsx（5 案例：只命中 closedWeekdays、只命中 closedDates、同時命中兩者不重複顯示、皆未命中、既有事件卡渲染不受影響），皆為同步渲染測試（WeekCalendar 本身不呼叫 Supabase，不需要 mock）。test-engineer 也明確要求把螢幕截圖缺口向人工核准者正式提出（這是 TASK-023／TASK-025／TASK-026 連續第三次遇到同一個 Browser 工具 screenshot 逾時的限制），不要再悄悄折進殘留風險文字裡帶過。",
+      "瀏覽器互動走查：透過 TASK-025 的設定頁新增特殊公休日 2026-08-21（週五），切到 /admin 對應週次（8/17–8/23），確認該天正確顯示「· 公休」、同週的週日 8/23（既有 closedWeekdays 命中）也正確顯示，兩種來源並存不衝突；移除 2026-08-21 後確認週曆恢復正常；全程未觸碰既有的 2026-08-13（非本次新增、來源不明的既有測試資料，刻意保留未動）。另外確認列表檢視（AppointmentListView，本卡刻意不修改）不受影響、正常渲染。"
+    ],
+    "residual": "1)（已解決，見下方留言）螢幕截圖原本連續三次（TASK-023／TASK-025／TASK-026）逾時失敗，經人工重新打開 Browser 面板後已成功補拍到 8/18 標記公休前／後的週曆對照畫面，行為與預期一致。2) architect 與 security-reviewer 皆指出的視覺瑕疵（非阻斷）：切換週次的瞬間，closedDates 查詢回來之前，該週真正的特殊公休日會短暫不顯示公休樣式（良性偽陰性，此為刻意的 fail-open 設計，任務卡已預期次要視覺資訊不阻擋主要內容）；查詢失敗時的畫面與「真的沒有特殊公休日」無法區分（同一個既有 closedWeekdays 失敗處理原則，不跳錯誤 Toast）。3) 已知的跨分頁不同步限制沿用 TASK-020 記錄，本卡不重新處理。"
+  },
+  "comments": [
+    { "author": "user", "text": "繼續處理TASK-026（指名要求，視為核准開始實作）", "date": "2026-08-07" },
+    { "author": "agent", "text": "實作與自我驗證完成（tsc/lint/test/build 皆通過，含瀏覽器互動走查），並經 architect／security-reviewer／test-engineer 三個子代理審查（皆 Approve，無阻斷性發現）。依 test-engineer 建議補上 WeekCalendar 的元件測試。stage 設為 verify，待人工核准後才轉 done；螢幕截圖缺口需要人工明確回應（見 residual）。", "date": "2026-08-07" },
+    { "author": "agent", "text": "使用者重新打開 Browser 面板後 screenshot 工具恢復正常，已補拍 8/18 標記特殊公休日前／後的 /admin 週曆對照畫面（以及 TASK-025 的三種必要畫面），視覺與預期一致，殘留風險 #1 解除。仍待人工核准 stage 轉 done。", "date": "2026-08-07" },
+    { "author": "user", "text": "沒問題", "date": "2026-08-07" }
+  ]
+}

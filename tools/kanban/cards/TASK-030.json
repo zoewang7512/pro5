@@ -1,0 +1,76 @@
+{
+  "id": "TASK-030",
+  "title": "商店基本資料設定 基本資訊編輯、驗證與儲存",
+  "content": "接上 TASK-029 頁面骨架的「基本資訊」卡片編輯能力：店名/地址/電話/簡介可編輯、前端驗證、送出儲存，成功後顯示 Toast。店名必填，其餘選填。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-07",
+  "epic": "商店基本資料設定",
+  "userStory": "設定店名、地址、電話、簡介",
+  "track": "frontend",
+  "dependsOn": ["TASK-029"],
+  "order": 30,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/商店基本資料設定/feature-spec.md",
+    "screenSpec": "ai/artifacts/商店基本資料設定/screen-spec-商店設定.md",
+    "mockupDecision": "ai/artifacts/商店基本資料設定/mockup-decision-商店設定.md",
+    "taskCard": "ai/artifacts/商店基本資料設定/task-cards/TASK-030.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/StoreSettingsForm.tsx",
+    "lib/store-settings.ts",
+    "tests/store-settings.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npm run build（成功）",
+      "npx vitest run（16 files / 112 tests passed，含新增 tests/store-settings.test.ts 10 tests，既有測試無回歸）",
+      "npm run test:store-settings（11 tests passed，對真實 Supabase 專案，快照/還原機制確認正常）",
+      "npm run test:rls（6 tests passed，無回歸）",
+      "npm run test:business-hours（18 tests passed，無回歸）",
+      "Browser 工具對真實 Supabase 專案手動走查：填寫四欄位並儲存、重新整理確認資料持久化、清空店名觸發行內驗證錯誤「店名為必填」且阻擋送出、修正後重新儲存成功、儲存按鈕在無變更時正確停用"
+    ],
+    "findings": [
+      "本卡風險等級低（沿用 TASK-029 已審查通過的 store_settings RLS 邊界，未新增任何安全性表面：無新資料表、無新 Storage 用途、無新權限模型，寫入僅呼叫既有 is_admin() policy 保護的 update），依 ai/process/definition-of-ready.md 高風險項目定義不屬於高風險類別，未派遣 architect／security-reviewer 子代理正式審查；改以既有安全性檢查清單自我核對：所有輸入皆做 trim／長度／格式驗證、寫入用 .select() 檢查受影響列數避免 RLS 靜默失敗誤報成功、無 dangerouslySetInnerHTML、無新增網路呼叫或外部 URL、錯誤訊息不外洩原始 Postgres 內容。",
+      "驗證函式（validateStoreName／validateStorePhone／validateStoreDescription）與 store_settings 的 description/phone 長度資料庫層 constraint（TASK-029 migration 已加）數值一致（500／20 字），前後端驗證規則不會互相矛盾。",
+      "BasicInfoCard 用 lazy initializer 從 props 播種一次編輯狀態，之後完全由使用者輸入主導，不會被外層 re-render 覆蓋（比照 BusinessHoursForm.tsx 既有的 state 管理模式）；「品牌圖片」卡片本卡未變更，維持 TASK-029 的唯讀佔位顯示，留給 TASK-031。"
+    ],
+    "residual": "1) 本卡未經過 architect／security-reviewer 正式子代理審查（風險等級低，理由見上）；若人工認為即使低風險仍想要走一輪審查，可另外要求；2) 電話格式驗證僅做寬鬆檢查（數字/+/-/空格），不驗證真實可撥打性，符合任務卡原始假設，非遺漏；3) 儲存採單一 update（id=1），未提供樂觀鎖或並發編輯衝突偵測，比照本專案「單一設計師、低並發」既有網域假設（見 ai/context/decisions.md 與 business_hours 無樂觀鎖的既有決策），判定為可接受風險。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-07",
+      "text": "接著做 TASK-030（指名要求，視為核准開始實作）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-07",
+      "text": "Done，接著做 TASK-031（人工驗收通過，轉 Done）"
+    }
+  ]
+}

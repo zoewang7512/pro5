@@ -38,6 +38,32 @@ export const theme = createTheme({
       palette: {
         mode: "dark",
         primary: { light: "#E4C177", main: "#D4A84B", dark: "#A9812F", contrastText: "#201C18" },
+        // 暖灰階：50/100 貼近暗色 background（深）、900 貼近暗色 text.primary（近白），
+        // 與亮色模式「50 貼近淺底、900 貼近深字」的結構相對應，只是明暗方向相反。
+        // 100=background.default、300=divider、500=text.disabled、700=text.secondary，
+        // 確保既有元件（WeekCalendar 公休格 grey.200、MonthPicker 邊框 grey.300）在暗色
+        // 模式下有對應風格的值，不再 fallback 回 MUI 預設冷灰階。
+        grey: {
+          50: "#17140F",
+          100: "#201C18",
+          200: "#241F1B",
+          300: "#423A31",
+          400: "#5C5245",
+          500: "#8A8074",
+          600: "#A79C8C",
+          700: "#C9BFB1",
+          800: "#E4DDD1",
+          900: "#F3EEE6",
+        },
+        // success/warning/error/info：light 為深色調的低明度色調底（供徽章/badge 底色），
+        // main 提亮到足以在深底上清楚閱讀（WCAG AA ≥ 4.5:1，含 light↔main 與 main↔contrastText
+        // 兩組配對，例如 MonthPicker 已標記日期徽章即為 bgcolor:warning.light + color:warning.main）；
+        // dark 沿用亮色模式的 main 色相作為更深的變體，contrastText 統一用暗色模式的 ink 色
+        // （與 primary.contrastText 一致）。色相延續亮色模式 token（tokens.ts colorPrimitive）。
+        success: { light: "#232A1E", main: "#9DB393", dark: "#6F8567", contrastText: "#201C18" },
+        warning: { light: "#3A2A1C", main: "#E0A868", dark: "#B37C42", contrastText: "#201C18" },
+        error: { light: "#35201A", main: "#E37A5C", dark: "#A85138", contrastText: "#201C18" },
+        info: { light: "#202A32", main: "#7FA3BE", dark: "#5B7C99", contrastText: "#201C18" },
         background: { default: "#201C18", paper: "#2A241F" },
         text: { primary: "#F3EEE6", secondary: "#C9BFB1", disabled: "#8A8074" },
         divider: "#423A31",

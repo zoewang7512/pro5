@@ -1,0 +1,61 @@
+{
+  "id": "TASK-023",
+  "title": "營業時間與可預約時段管理 月曆選取器元件（MonthPicker，S4 新元件）",
+  "content": "依 mockup-decision-特殊公休日.md 選定的變體 B，新做月曆選取器元件（月檢視、可點選標記、跨月導覽、今天標示、過去日期停用），純前端 props 驅動，不串接 closed_dates 資料，登記回 design-system.md S4 元件庫 inventory。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "claude",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定公休日／特殊假期",
+  "track": "frontend",
+  "dependsOn": ["TASK-021"],
+  "order": 23,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "ai/artifacts/營業時間與可預約時段管理/mockup-decision-特殊公休日.md",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-023.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/營業時間與可預約時段管理/mockups/business-hours-closures-variant-b.html",
+    "lib/admin/month-range.ts",
+    "components/ui/MonthPicker.tsx",
+    "app/design-system/page.tsx"
+  ],
+  "evidence": {
+    "commands": ["npx tsc --noEmit", "npm run lint", "npm test", "npm run build"],
+    "findings": [
+      "自我審查依 design-review-checklist.md 發現 cal-grid gap 誤用 0.5(2px)，已修正為 1(4px)，與 mockup 一致。",
+      "主動補上日期格鍵盤可及性（role=button/tabIndex/onKeyDown/focus-visible），mockup 與任務卡皆未明列但屬互動五態基本要求。",
+      "瀏覽器 getComputedStyle/CSSOM 驗證今天/已標記/過去日期/一般日期四種視覺色值皆與 design token 及 mockup 完全相符；月份導覽與跨月天數（10月31天）正確。",
+      "人工驗收回饋「月曆數字顏色太淺」：根因是一般/過去日期用 grey.100/grey.500，暗色模式沒覆寫這兩個 slot 導致跟近白 text.primary 配色不搭；已改用 background.paper/text.disabled（light/dark 皆有定義），dark/light 兩種 colorScheme 重新量測皆確認對比正常。"
+    ],
+    "residual": "screenshot 工具在本次環境逾時不可用，改用 getComputedStyle/CSSOM 逐項比對佐證，未取得實際截圖；已標記狀態（warning.light/main）在暗色模式的對比仍偏低（約1.12:1，MUI fallback 色階問題，比照 mockup 配色語意刻意未動），與 lib/theme/index.ts 暗色 grey/warning 未覆寫的既有限制同源，需另立任務卡處理。詳見任務卡完成證據段落。"
+  },
+  "comments": [
+    { "author": "user", "text": "月曆裡面的數字顏色太淺不太清楚，請幫我調整一下", "date": "2026-08-07" },
+    { "author": "user", "text": "好，沒問題了", "date": "2026-08-07" }
+  ]
+}

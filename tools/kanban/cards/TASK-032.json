@@ -1,0 +1,53 @@
+{
+  "id": "TASK-032",
+  "title": "商店基本資料設定 顧客前台首頁品牌顯示區塊",
+  "content": "顧客前台首頁新增品牌顯示區塊（mockup 變體 B：精簡頁首列＋矮版封面圖），讀取 store_settings 顯示店名/簡介/Logo/封面圖/地址/電話；未設定或讀取失敗時回退既有「預約」純文字標題，不影響既有預約流程互動與版面深度。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-07",
+  "epic": "商店基本資料設定",
+  "userStory": "設定店名、地址、電話、簡介",
+  "track": "frontend",
+  "dependsOn": ["TASK-029"],
+  "order": 32,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/商店基本資料設定/feature-spec.md",
+    "screenSpec": "ai/artifacts/商店基本資料設定/screen-spec-前台品牌顯示.md",
+    "mockupDecision": "ai/artifacts/商店基本資料設定/mockup-decision-前台品牌顯示.md",
+    "taskCard": "ai/artifacts/商店基本資料設定/task-cards/TASK-032.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/page.tsx",
+    "app/_components/booking/BookingFlow.tsx",
+    "app/_components/booking/BrandHeaderSection.tsx",
+    "lib/store-settings.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": []
+}

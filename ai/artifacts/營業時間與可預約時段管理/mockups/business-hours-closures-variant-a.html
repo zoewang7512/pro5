@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>特殊公休日 Variant A · 清單＋新增列</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 680px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.disabled { color: var(--grey-500); }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .toolbar .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+
+  table.hours { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-1); }
+  table.hours th { text-align: left; font-size: 11px; color: var(--grey-700); font-weight: 600; padding: 12px 14px; border-bottom: 1px solid var(--grey-300); background: var(--grey-200); }
+  table.hours td { padding: 12px 14px; border-bottom: 1px solid var(--grey-200); color: var(--grey-900); vertical-align: middle; }
+  table.hours tr:last-child td { border-bottom: none; }
+  .weekday-cell { font-weight: 600; }
+  .switch { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--grey-300); display: inline-block; vertical-align: middle; }
+  .switch.on { background: var(--primary-500); }
+  .switch .knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-1); }
+  .switch.on .knob { left: 18px; }
+  .time-input { width: 90px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 8px; font-size: 12px; color: var(--grey-900); font-family: inherit; }
+
+  /* 特殊公休日區塊 */
+  .section-card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 20px 24px; }
+  .section-head h3 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .section-head .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+  .add-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--grey-200); }
+  .date-input { width: 180px; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .date-input.error { border-color: var(--danger); }
+  .btn { display: inline-block; height: 40px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 600; border: none; text-align: center; line-height: 40px; cursor: pointer; }
+  .btn.outline { background: transparent; color: var(--primary-700); border: 1px solid var(--primary-300); line-height: 38px; }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; }
+  .btn.disabled { background: var(--grey-300); color: var(--grey-500); cursor: default; }
+  .add-error { font-size: 11px; color: var(--danger); margin-left: 4px; }
+
+  .closure-list { display: flex; flex-direction: column; margin-top: 12px; }
+  .closure-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid var(--grey-200); }
+  .closure-row:last-child { border-bottom: none; }
+  .closure-date { font-size: 13px; color: var(--grey-900); font-weight: 500; }
+  .closure-date .weekday { color: var(--grey-700); font-weight: 400; margin-left: 6px; }
+  .remove-btn { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--grey-300); background: var(--surface); color: var(--grey-700); font-size: 13px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .remove-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
+
+  .empty-box { display: flex; align-items: center; gap: 10px; background: var(--info-light); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 12px; font-size: 12px; color: var(--grey-900); }
+  .empty-box .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--info); flex-shrink: 0; }
+
+  .modal-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .modal-card { width: 420px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .modal-card h3 { font-size: 16px; margin: 0 0 4px; color: var(--grey-900); }
+  .modal-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; }
+  .warn-list { max-height: 180px; overflow-y: auto; border: 1px solid var(--grey-200); border-radius: var(--radius-sm); }
+  .warn-row { display: flex; justify-content: space-between; font-size: 12px; padding: 10px 12px; border-bottom: 1px solid var(--grey-200); background: var(--warning-light); }
+  .warn-row:last-child { border-bottom: none; }
+  .warn-row .name { font-weight: 600; color: var(--grey-900); }
+  .warn-row .when { color: var(--grey-700); }
+  .modal-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">特殊公休日 · Variant A：清單＋新增列（日期輸入＋按鈕新增，下方清單逐筆移除）</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設（已有 2 筆特殊公休日）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item active">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>營業時間設定</h2><div class="hint">設定每週固定的開店/打烊時間與公休日</div></div></div>
+          <table class="hours">
+            <thead><tr><th>星期</th><th>公休</th><th>開店時間</th><th>打烊時間</th></tr></thead>
+            <tbody>
+              <tr><td class="weekday-cell">週一</td><td><span class="switch"><span class="knob"></span></span></td><td><input class="time-input" value="10:00" /></td><td><input class="time-input" value="19:00" /></td></tr>
+              <tr><td class="weekday-cell">週二</td><td><span class="switch"><span class="knob"></span></span></td><td><input class="time-input" value="10:00" /></td><td><input class="time-input" value="19:00" /></td></tr>
+              <tr class="closed-row"><td class="weekday-cell">週日</td><td><span class="switch on"><span class="knob"></span></span></td><td><input class="time-input" placeholder="—" disabled /></td><td><input class="time-input" placeholder="—" disabled /></td></tr>
+            </tbody>
+          </table>
+
+          <div class="section-card">
+            <div class="section-head">
+              <h3 class="serif">特殊公休日</h3>
+              <div class="hint">標記特定日期整天公休（例如國定假日），優先於上方每週固定的營業時間設定</div>
+            </div>
+            <div class="add-row">
+              <input class="date-input" type="date" />
+              <span class="btn outline">新增公休日</span>
+            </div>
+            <div class="closure-list">
+              <div class="closure-row">
+                <span class="closure-date">2026/08/19<span class="weekday">週三</span></span>
+                <span class="remove-btn">✕</span>
+              </div>
+              <div class="closure-row">
+                <span class="closure-date">2026/10/10<span class="weekday">週六</span></span>
+                <span class="remove-btn">✕</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 空狀態（尚無設定）＋新增日期驗證錯誤</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item active">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>營業時間設定</h2><div class="hint">設定每週固定的開店/打烊時間與公休日</div></div></div>
+          <table class="hours">
+            <thead><tr><th>星期</th><th>公休</th><th>開店時間</th><th>打烊時間</th></tr></thead>
+            <tbody>
+              <tr><td class="weekday-cell">週一</td><td><span class="switch"><span class="knob"></span></span></td><td><input class="time-input" value="10:00" /></td><td><input class="time-input" value="19:00" /></td></tr>
+              <tr class="closed-row"><td class="weekday-cell">週日</td><td><span class="switch on"><span class="knob"></span></span></td><td><input class="time-input" placeholder="—" disabled /></td><td><input class="time-input" placeholder="—" disabled /></td></tr>
+            </tbody>
+          </table>
+
+          <div class="section-card">
+            <div class="section-head">
+              <h3 class="serif">特殊公休日</h3>
+              <div class="hint">標記特定日期整天公休（例如國定假日），優先於上方每週固定的營業時間設定</div>
+            </div>
+            <div class="add-row">
+              <input class="date-input error" type="date" value="2026-07-01" />
+              <span class="btn disabled">新增公休日</span>
+              <span class="add-error">日期須為今天或未來</span>
+            </div>
+            <div class="empty-box"><span class="dot"></span>尚無設定的特殊公休日</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 新增→受影響預約警告（二次確認）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item disabled">服務設定</div>
+          <div class="nav-item active">營業時間</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>營業時間設定</h2><div class="hint">設定每週固定的開店/打烊時間與公休日</div></div></div>
+          <table class="hours">
+            <thead><tr><th>星期</th><th>公休</th><th>開店時間</th><th>打烊時間</th></tr></thead>
+            <tbody>
+              <tr><td class="weekday-cell">週一</td><td><span class="switch"><span class="knob"></span></span></td><td><input class="time-input" value="10:00" /></td><td><input class="time-input" value="19:00" /></td></tr>
+              <tr class="closed-row"><td class="weekday-cell">週日</td><td><span class="switch on"><span class="knob"></span></span></td><td><input class="time-input" placeholder="—" disabled /></td><td><input class="time-input" placeholder="—" disabled /></td></tr>
+            </tbody>
+          </table>
+
+          <div class="section-card">
+            <div class="section-head">
+              <h3 class="serif">特殊公休日</h3>
+              <div class="hint">標記特定日期整天公休（例如國定假日），優先於上方每週固定的營業時間設定</div>
+            </div>
+            <div class="add-row">
+              <input class="date-input" type="date" value="2026-08-19" />
+              <span class="btn">新增公休日</span>
+            </div>
+            <div class="closure-list">
+              <div class="closure-row"><span class="closure-date">2026/10/10<span class="weekday">週六</span></span><span class="remove-btn">✕</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">部分預約將落在新的公休日</h3>
+            <p class="sub">2026/08/19（週三）目前有 2 筆未來預約會受影響：</p>
+            <div class="warn-list">
+              <div class="warn-row"><span class="name">王小美</span><span class="when">2026/08/19 · 10:00</span></div>
+              <div class="warn-row"><span class="name">李大明</span><span class="when">2026/08/19 · 14:30</span></div>
+            </div>
+            <div class="modal-actions">
+              <div class="btn">仍要新增</div>
+              <div class="btn text">再想想</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

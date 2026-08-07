@@ -1,0 +1,80 @@
+{
+  "id": "TASK-014",
+  "title": "預約管理後台 架構基礎（Sidebar 導覽、WeekCalendar／列表唯讀顯示）",
+  "content": "把 app/admin/page.tsx 從佔位頁面改成 S5 變體 B 版型骨架：新增 Sidebar 導覽元件與 WeekCalendar／列表元件，唯讀顯示本週預約（週次切換、檢視切換），登記兩個新元件回 S4 inventory。不含點選事件的詳情 Modal 與任何寫入操作。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-05",
+  "epic": "預約管理後台",
+  "userStory": "查看預約列表／日曆",
+  "track": "frontend",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
+  "order": 14,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約管理後台/feature-spec.md",
+    "screenSpec": "ai/artifacts/預約管理後台/screen-spec-預約週曆列表.md",
+    "mockupDecision": "ai/artifacts/預約管理後台/mockup-decision-預約週曆列表.md",
+    "taskCard": "ai/artifacts/預約管理後台/task-cards/TASK-014.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/預約管理後台/mockups/booking-admin-variant-b.html",
+    "app/admin/page.tsx",
+    "components/ui/Sidebar.tsx",
+    "app/admin/_components/",
+    "lib/admin/"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npx vitest run（8 files / 40 tests passed，含新增 tests/admin/week-range.test.ts 6 tests）",
+      "npm run build（成功，/admin 產出為 dynamic route）",
+      "瀏覽器（Browser 工具）對真實 Supabase 專案手動走查：登入 designer001 帳號後驗證週曆預設、列表切換、上一週空狀態、登出導回登入頁、未登入直接訪問 /admin 導回登入頁"
+    ],
+    "findings": [
+      "security-reviewer 審查：核准。發現 6 項低嚴重度問題，已當場修復其中 2 項——customer_phone 欄位查詢了但無消費者，已移除（資料最小化）；WeekCalendar 用 ISO 字串切片取 UTC 日期分組，與全專案 Asia/Taipei 慣例不一致，會讓台北時間 08:00 前的預約靜默消失，已改用共用的 toTaipeiDate() 函式修正。其餘（缺邊界測試、查詢函式未驗證輸入、錯誤未記錄細節、查詢無 limit）已記錄為殘留風險/後續任務",
+      "architect 審查：要求修改（非阻擋，無安全性缺口、無資料破壞、回滾乾淨）。已修復 4 項必要項目：(1) 同上 UTC/Taipei 時區分組 bug；(2) 公休日判斷從 weekday===0 的匿名 literal 改成具名函式 isClosedWeekday()，並註記未來應改查 business_hours；(3) 事件卡片在未接上 onEventClick 前會顯示假的可點擊回饋（CardActionArea ripple），已改成 handler 存在時才用 CardActionArea 包裹，同步修正列表檢視的 TableRow hover 邏輯；(4) 狀態 Chip 用了不在 type scale 上的 fontSize:10/height:18，已改回 fontSize:11(xs)/height:20（比照既有先例）。其餘（WEEKDAY_LABELS 三處重複、service fallback 靜默、getAppointmentsForWeek 參數冗餘、Sidebar shell 未來應上移至 layout.tsx、缺 mapAppointmentRow 單元測試）已記錄為殘留風險/後續任務"
+    ],
+    "residual": "1) loading skeleton 狀態未能在本機環境截圖驗證（查詢過快，未能捕捉過渡狀態）；2) 週次切換查詢失敗的 Toast 錯誤路徑未實測觸發；3) 公休日目前仍是寫死週日（isClosedWeekday()，已具名集中），待「營業時間設定」頁上線後應改查 business_hours.is_closed；4) getAppointmentsForWeek 對 weekStart/weekEnd 參數無格式驗證，目前僅內部呼叫無風險，若 TASK-017 加上 URL 深連結參數需補上；5) flattenService 攤平邏輯未匯出、無單元測試；6) app/admin/logout-button.tsx 渲染原生 <button>，未套 MUI 主題，本卡未修改（不得觸碰範圍），建議另開小卡處理；7) Sidebar 導覽項目與 SIDEBAR_ITEMS 目前寫在頁面層，第二個後台頁面出現時應上移到 app/admin/layout.tsx 並用 usePathname() 推導 active 狀態，避免複製貼上。",
+    "screenshots_note": "本次工作階段瀏覽器 Browser pane 未顯示（screenshot 工具回報 pane not displayed，非程式問題），改以 accessibility tree（read_page）與 get_page_text 對真實資料驗證所有畫面狀態，證據已附在 task-cards/TASK-014.md"
+  },
+  "comments": [
+    {
+      "name": "security-reviewer",
+      "time": "2026-08-06",
+      "text": "核准。auth/is_admin() 邊界未被動到，RLS 依賴健全，日期字串內插無注入風險，無密鑰外洩。建議修復的 2 項低成本項目已當場處理（customer_phone 移除、UTC/Taipei 時區分組修正）。"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "要求修改：4 項必要（時區分組、公休日 magic literal、假可點擊回饋、離 token scale 的字級）。無阻擋等級問題（無 migration、無寫入路徑、回滾成本＝revert 一個 commit）。4 項已修復，其餘列為殘留風險。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "沒問題"
+    }
+  ]
+}

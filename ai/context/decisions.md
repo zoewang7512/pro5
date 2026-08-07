@@ -102,3 +102,37 @@
       檢視這個 constraint 與查詢邏輯。
 ```
 
+## TASK-022～027（營業時間與可預約時段管理，第二批次）：緩衝時間不做資料庫層級約束，只在 `get_available_slots`／改期表單做候選時段過濾
+
+```text
+日期：2026-08-06
+決策：`services.buffer_minutes` 純粹是 `get_available_slots` RPC 與後台改期表單
+      （`lib/admin/reschedule-slots.ts` 的 `computeAvailableSlots`）在「計算可預約時段」
+      時的過濾條件，不改變 `appointments.end_at` 的實際紀錄語意，也不改變
+      `appointments_no_overlap` exclusion constraint 的定義。緩衝時間本身不做資料庫層級
+      的衝突防護，只靠 `services.buffer_minutes` 的 `0～120` check constraint 當最終防線。
+情境：`appointments_no_overlap` 只比較 `tstzrange(start_at, end_at)` 是否重疊，緩衝時間
+      是「預約之間該留多少間隔」的排程偏好，不是「這兩筆預約有沒有真的撞期」——把緩衝也
+      做成資料庫層級約束，需要讓 exclusion constraint 感知每筆預約所屬服務當下的
+      `buffer_minutes`（該值可能事後被改動），複雜度與現有「單一設計師、低並發」的網域
+      規模不成比例。
+考慮過的替代方案：
+  - 把緩衝時間內建進 exclusion constraint 的鍵（例如索引運算式改用
+    `end_at + buffer_minutes`）：可行但需要應用層 trigger 或 generated column 同步緩衝
+    設定變動，且緩衝設定變動時歷史資料的鍵值語意會跟著改變，複雜度高、與本 Epic「緩衝
+    設定本批次連 UI 都還沒有、只能靠維運人員直接改資料庫」的成熟度不成比例。
+為何選這個：比照本專案既有的「單一設計師、低並發」網域假設（見上面 `business_hours`
+      無樂觀鎖、TASK-010 的 exclusion constraint 決策）。存在理論上的競態風險：兩筆並發
+      預約請求都各自通過「緩衝感知的可預約時段」檢查後才送出，資料庫的 exclusion
+      constraint 只檢查實際起訖時間有沒有重疊、不知道緩衝的存在，理論上可能讓兩筆預約
+      之間的間隔小於設定的緩衝時間（但不會真正重疊，仍受 exclusion constraint 保護不會
+      撞期）。判定為可接受風險。
+影響：`get_available_slots` RPC（`supabase/migrations/0004_slots_closures_buffer.sql`）
+      與 `computeAvailableSlots`（`lib/admin/reschedule-slots.ts`）各自獨立實作同一套
+      「候選時段效力區間 = [start, end + 所屬服務 buffer_minutes)」比較邏輯，未來修改其中
+      一邊的緩衝判斷時要同步檢視另一邊，並用整合測試交叉驗證兩者對同一組輸入產生一致結果
+      （見 `tests/business-hours.integration.test.ts` TASK-027 新增的「後台改期表單與
+      get_available_slots RPC 對同一組輸入產生一致的可預約時段判斷」案例）。若未來出現真實
+      的並發競態問題（目前判定為低機率），才需要重新評估資料庫層級約束。
+```
+

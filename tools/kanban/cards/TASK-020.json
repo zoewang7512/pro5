@@ -1,0 +1,77 @@
+{
+  "id": "TASK-020",
+  "title": "營業時間與可預約時段管理 技術債修正：後台週曆串接 business_hours",
+  "content": "把 WeekCalendar.tsx 的公休日判斷從寫死的 isClosedWeekday()（固定 weekday===0）改成查詢 business_hours.is_closed，AdminDashboard.tsx 掛載時讀取一次並往下傳，lib/admin/week-range.ts 移除 isClosedWeekday()，結清 TASK-014 記錄的既知技術債。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定每週固定營業時間",
+  "track": "frontend",
+  "dependsOn": ["TASK-018"],
+  "order": 20,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": true
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-020.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/week-range.ts",
+    "app/admin/_components/WeekCalendar.tsx",
+    "app/admin/_components/AdminDashboard.tsx",
+    "lib/admin/business-hours.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npx vitest run（11 files / 75 tests passed，數量與 TASK-019 完成時相同，未新增/刪除案例）",
+      "npm run build（成功）",
+      "瀏覽器（Browser 工具）對真實 Supabase 專案手動走查：於設定頁把週一切成公休並儲存、重新整理確認持久化、切到 /admin 週曆確認週一正確顯示公休（不再固定只有週日）、改回週一 10:00–19:00（比照 seed script 原始值）並儲存、重新整理兩頁分別確認已還原"
+    ],
+    "findings": [
+      "architect 審查：approve with minor suggestions（非阻擋）。確認新增的 useEffect 依賴陣列正確（僅 [supabase]，不會隨 weekStart／refetchToken 重跑，無 stale closure／無限迴圈風險）、closedWeekdays 初始值安全（lazy initializer 回傳空 Set，fetch 完成前不會 undefined）、isClosedWeekday 已無殘留引用、WeekCalendar 既有的事件卡渲染／今天標示／onEventClick 完全未受影響、Set<number> 作為 prop 合理。4 項非阻擋建議：(1) 建議把 closedWeekdays 推導邏輯抽成 lib/admin/business-hours.ts 的具名純函式並補單元測試——因該檔案不在本卡允許變更清單內（任務卡明確要求不新增查詢函式）且邏輯僅 2 行，判定不影響驗收標準，未採納；(2) 建議推導對齊 isAppointmentOutsideHours／RPC 對 null 時間的保守判斷——因 constraint 與 seed script 保證資料完整，屬理論風險，接受現狀；(3) 查詢失敗 fail-open（不顯示公休提示、不跳錯誤）——確認為任務卡明確要求的簡化行為，接受；(4) 已修正 AdminDashboard.tsx 內註解，避免誇大「須整頁重新整理」的已知限制（元件重新掛載即會自動重新查詢，只有同分頁不卸載時才會看到過期資料）"
+    ],
+    "residual": "1) closedWeekdays 僅在 AdminDashboard 掛載時查詢一次，另一分頁改設定後本分頁需重新整理或重新掛載才會反映最新結果，任務卡預先記錄的已知限制；2) closedWeekdays 推導只看 is_closed，未比照既有兩處對 null 開店/打烊時間的保守判斷，architect 判定為理論風險、現有 constraint 與 seed script 下不會發生；3) business_hours 查詢失敗時 fail-open（誤判全部開放），為任務卡明確要求的簡化行為；4) AppointmentListView（列表檢視）沒有公休判斷，Epic 使用者旅程只有週曆檢視反映公休設定，屬既有狀態且不在本卡允許變更檔案範圍內；5) architect 建議把公休推導抽成 business-hours.ts 具名函式並補測試以恢復可測試性，因超出本卡允許變更檔案範圍未採納，留待後續任務評估；6) 螢幕截圖沿用既有 Browser pane 限制，改以 accessibility tree/get_page_text/javascript_tool 讀取取得驗證證據。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "task-019沒問題,繼續做 TASK-020（指名要求，視為核准開始實作）"
+    },
+    {
+      "name": "architect",
+      "time": "2026-08-06",
+      "text": "approve with minor suggestions。useEffect 依賴陣列、closedWeekdays 初始化、isClosedWeekday 移除完整性、WeekCalendar 其餘邏輯不受影響皆已確認無誤。4 項非阻擋建議中僅採納註解修正，其餘 3 項因超出本卡允許變更檔案範圍或屬既有理論風險，判定不影響驗收標準，留待後續任務評估。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-06",
+      "text": "審核沒問題，繼續做 TASK-021（人工驗收通過，轉 Done）"
+    }
+  ]
+}

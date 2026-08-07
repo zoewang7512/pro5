@@ -1,0 +1,70 @@
+{
+  "id": "TASK-027",
+  "title": "營業時間與可預約時段管理 第二批次前後端串接驗證與端到端測試",
+  "content": "擴充 tests/business-hours.integration.test.ts 涵蓋 closed_dates 讀寫權限邊界、受影響預約判定、buffer_minutes 對可預約時段的影響；重跑 test:rls/test:booking/test:admin-booking 確認無回歸；Browser 工具桌面尺寸 E2E 走查完整流程；更新 project-map.md 與 decisions.md。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-06",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-024", "TASK-025", "TASK-026"],
+  "order": 27,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": false,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/營業時間與可預約時段管理/screen-spec-營業時間設定.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-027.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/business-hours.integration.test.ts",
+    "ai/context/project-map.md",
+    "ai/context/decisions.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm test（102 tests，既有單元/元件測試無回歸）",
+      "npm run test:business-hours（18 tests passed，對真實 Supabase 專案，8 個既有＋10 個本卡新增）",
+      "npm run test:rls（6 tests passed，無回歸）",
+      "npm run test:booking（19 tests passed，無回歸）",
+      "npm run test:admin-booking（13 tests passed，無回歸）",
+      "npm run build"
+    ],
+    "findings": [
+      "新增 10 個整合測試案例（對真實 Supabase 專案）：closed_dates 寫入邊界（designer 讀寫成功、anon 拒絕、非管理員 authenticated 對 INSERT 路徑拒絕、對 DELETE／UPDATE-upsert-衝突路徑拒絕，共 5 個）、findAffectedAppointmentsForClosedDate 正確性與欄位最小化、get_available_slots RPC 對 closed_dates 的回應、get_available_slots RPC 對 buffer_minutes=30／buffer_minutes=0 的回應（2 個）、非管理員無法更改 services.buffer_minutes、後台改期表單 computeAvailableSlots 與 RPC 對同一組非零緩衝輸入產生一致結果。",
+      "security-reviewer 首輪審查發現 5 項問題，皆已修正：F1（Medium，已修正）closedDatesToCleanup 沒有前置存在性檢查，理論上可能撞到設計師已手動設定的正式公休日並永久刪除（審查時實測 AFFECTED_CLOSED_WEEKDAY 的 offset 當天剛好落在 2026-10-10 國慶日，證明碰撞機率不是理論值）——已在 beforeAll 加入前置查詢，撞到既有 closed_dates 資料就直接 throw 中止整個測試檔案，不悄悄覆寫。F2（Medium，已修正）closed_dates 的 RLS policy 只驗證了 WITH CHECK（INSERT／upsert）路徑，掌管 DELETE 的 USING 子句從未被驗證——已新增 anon 呼叫 removeClosedDate 被拒絕（既有列不受影響）、非管理員對已存在日期呼叫 addClosedDate（upsert 衝突路徑）被拒絕兩個案例。F3（Low，已修正，屬 TASK-021 既有程式碼但審查涵蓋整檔一併處理）非管理員測試帳號密碼從 TEST_MARKER 衍生，而 TEST_MARKER 也出現在 anon 可讀的 active 服務名稱裡，等於在正式 Supabase 專案留下可從公開資料推導的有效登入憑證——已改用 crypto.randomUUID() 產生密碼。F4（Low，已修正）afterAll 刪除測試服務底下的預約時沒有核對筆數/歸屬，兩個拋棄式服務都是 is_active:true，理論上顧客可能在測試執行期間真的訂進來，會被靜默刪除——已改成先 select 核對每筆 customer_name 都以 TEST_MARKER 開頭才真的執行刪除，否則記錄錯誤中止讓人工介入。F5（Low，已修正）services.buffer_minutes 沒有對應的非管理員寫入拒絕測試（與 business_hours／closed_dates 同構的風險，唯一防線同樣是 is_admin() predicate）——已補上。",
+      "test-engineer 首輪審查發現「後台改期表單與 RPC 一致性」測試只驗證了 buffer=0 的平凡情況（兩邊都不套緩衝時當然一致），沒有真正驗證兩條獨立實作對非零緩衝輸入是否一致，因為原本沿用 testServiceId（buffer=0）——已改用 bufferServiceId（buffer=30）與對應的 bufferMinutes:30，並加一個前置斷言確認緩衝確實造成了時段排除（避免緩衝邏輯整個失效但兩邊剛好算出同一個錯誤結果卻矇混過關）。",
+      "test-engineer 也指出螢幕截圖仍是必要證據、不能被整合測試取代（整合測試證明後端/RPC 正確，不能證明 Modal 實際渲染是否符合 screen-spec）——已於本次工作階段補拍到 /admin/business-hours 預設畫面的真實截圖；受影響預約警告 Modal、後台週曆前後對照兩張截圖沿用 TASK-026 驗證階段拍攝的真實截圖（同一套未被本卡修改過的 UI 程式碼）。本卡稍後在同一工作階段再次嘗試補拍警告 Modal 的新截圖時，Browser 工具的點擊互動整個失去反應（不限單一分頁，換了三個分頁、重新整理、重新登入皆無效，網路請求記錄顯示點擊完全沒有觸發任何 Supabase 呼叫），判斷為環境暫時性問題，不是程式碼缺陷——核心 E2E 互動流程（建立測試預約→標記公休→受影響預約警告出現→確認→/admin 週曆同步顯示公休→移除→復原）已在點擊失去反應之前，於本工作階段用 accessibility tree／get_page_text 完整驗證成功一輪（測試預約 2026-08-20，測試完畢已取消）；因為點擊工具當下故障、原本要清掉的第二筆測試預約（2026-08-19，測試用戶TASK027截圖）改用 service role 直接更新 status=cancelled 清除，並確認 closed_dates 表最終只剩測試前就存在的 2026-08-17（沒有殘留任何本卡新增的日期）。"
+    ],
+    "residual": "1) 受影響預約警告 Modal、後台週曆前後對照兩張截圖沿用 TASK-026 拍攝的既有截圖（該部分 UI 程式碼本卡未變更），不是本卡工作階段新拍的——若要嚴格要求每卡都要有自己當次拍攝的截圖，這兩張需要之後 Browser 工具恢復正常時補拍。2) Browser 工具的點擊互動在本卡後段完全失去反應（截圖功能本身仍正常，只有點擊/表單操作失效），與先前 TASK-023/025/026 記錄的 screenshot 逾時是不同的失效模式，建議一併記錄、留意是否為同一根因的不同症狀。3) feature-spec.md 的驗證計畫提到的『視覺：新增的「特殊公休日」區塊畫面狀態表涵蓋預設/新增中/警告確認態/錯誤/空狀態』已在 TASK-025 完成，本卡不重新處理。"
+  },
+  "comments": [
+    { "author": "user", "text": "沒問題，請繼續做TASK-027（指名要求，視為核准開始實作）", "date": "2026-08-07" },
+    { "author": "agent", "text": "實作與自我驗證完成（tsc/lint/test/build 皆通過，18 個新舊整合測試對真實 Supabase 專案全數通過，重跑其餘三組整合測試無回歸），並經 security-reviewer／test-engineer 兩個子代理審查。security-reviewer 首輪發現 5 項問題（1 項 Medium 是真實的資料損毀風險：測試日期可能撞到正式公休日並永久刪除）、test-engineer 首輪發現交叉驗證測試只驗證了平凡情況——皆已修正並重新驗證通過。stage 設為 verify，待人工核准後才轉 done；螢幕截圖有 2 張沿用 TASK-026 既有截圖，見 residual。", "date": "2026-08-07" },
+    { "author": "user", "text": "沒問題", "date": "2026-08-07" }
+  ]
+}
