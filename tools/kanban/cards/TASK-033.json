@@ -2,16 +2,21 @@
   "id": "TASK-033",
   "title": "商店基本資料設定 前後端串接驗證與端到端測試",
   "content": "新增 npm run test:store-settings 涵蓋 store_settings/Storage bucket 的 RLS 邊界與後台編輯/上傳對真實資料的行為、前台讀取降級行為；重跑 test:rls/test:booking/test:admin-booking/test:business-hours 確認無回歸；Browser 工具桌面尺寸 E2E 走查後台商店設定頁與前台品牌顯示完整流程；更新 project-map.md。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-07",
   "epic": "商店基本資料設定",
   "userStory": "全部（整合驗證）",
   "track": "integration",
-  "dependsOn": ["TASK-029", "TASK-030", "TASK-031", "TASK-032"],
+  "dependsOn": [
+    "TASK-029",
+    "TASK-030",
+    "TASK-031",
+    "TASK-032"
+  ],
   "order": 33,
   "readiness": {
     "problem_clear": true,
@@ -20,14 +25,14 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
     "architecture": false,
-    "security": false,
-    "test": false,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -44,9 +49,30 @@
     "ai/context/project-map.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npm run test:store-settings（11 passed，對真實 Supabase 專案）",
+      "npm run test:rls（6 passed）",
+      "npm run test:business-hours（18 passed）",
+      "npm run test:booking（19 passed）",
+      "npm run test:admin-booking（13 passed）",
+      "npm test（137 passed，含 TASK-032 新增的 resolveStoreDisplay 單元測試）",
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build"
+    ],
+    "findings": [
+      "test:store-settings（TASK-029 已建立）本身已完整涵蓋 store_settings／store-assets 的 RLS 與 Storage 邊界（anon／非管理員寫入被拒、designer 可寫、上傳 mime／路徑前綴限制、公開讀取），TASK-033 執行並確認全數通過，未發現需要補的邊界案例",
+      "重跑既有四組整合測試（rls/booking/admin-booking/business-hours）確認無回歸",
+      "Browser E2E 實際走查（非僅 accessibility tree）：登入後台 → 編輯電話並儲存 → 前台同步顯示 → 移除 Logo／封面圖 → 前台正確回退為「部分未設定」版面（同時補上 TASK-032 遺留的部分未設定即時截圖）→ 透過合成 File＋DataTransfer 觸發真實上傳流程（Logo／封面圖）→ 前台正確顯示新圖片 → 以 service role 還原成測試前的原始快照並清除測試上傳物件 → 前台與後台皆確認已還原",
+      "發現：「全部未設定」狀態在正常後台操作下不可能被觸發——store_settings 為 migration seed 保證恆有 1 列的單例表（無零列情境），且後台儲存表單的店名欄位有 validateStoreName 前端驗證擋下空白／純空白店名，所以此路徑只會在讀取失敗（fetch reject 或 Supabase 回傳 error）時出現；BookingFlow.tsx 的 fallback JSX 與 TASK-032 之前既有程式碼逐字相同（diff 只是加上條件判斷包住它，內容未變），故不需要另外用真實資料製造此狀態才能驗證，已由 resolveStoreDisplay 的 29 個單元測試涵蓋空字串／純空白店名兩種情境"
+    ],
+    "residual": "「全部未設定／載入失敗」畫面狀態沒有即時瀏覽器截圖（原因見上方 findings：此狀態在正常後台操作下不可觸發，只有讀取失敗會出現，且渲染的是與 TASK-032 之前完全相同、未變動過的既有 fallback JSX），改由單元測試與程式碼比對佐證，視為可接受的已知限制，不視為阻擋驗收的缺陷。"
   },
-  "comments": []
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-10",
+      "text": "核准（對話中明確核准，轉 done）"
+    }
+  ]
 }

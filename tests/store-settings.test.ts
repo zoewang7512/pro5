@@ -2,12 +2,102 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   removeStoreImage,
+  resolveStoreDisplay,
   uploadStoreImage,
   validateStoreDescription,
   validateStoreImageFile,
   validateStoreName,
   validateStorePhone,
 } from "../lib/store-settings";
+import type { StoreSettings } from "../lib/store-settings";
+
+function settings(overrides: Partial<StoreSettings> = {}): StoreSettings {
+  return {
+    name: "",
+    address: null,
+    phone: null,
+    description: null,
+    logo_url: null,
+    cover_image_url: null,
+    ...overrides,
+  };
+}
+
+// resolveStoreDisplay 只信任 NEXT_PUBLIC_SUPABASE_URL 底下的 store-assets public bucket
+// 網址（見 lib/store-settings.ts trustedAssetUrl 的說明），測試用固定假網址驗證。
+const ASSET_PREFIX = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/store-assets/`;
+
+describe("resolveStoreDisplay", () => {
+  it("完整設定時，hasBrand 為 true 且原樣帶出各欄位", () => {
+    const result = resolveStoreDisplay(
+      settings({
+        name: "王牌理髮廳",
+        description: "成立於 2015 年",
+        address: "忠孝東路四段 1 號",
+        phone: "02-1234-5678",
+        logo_url: `${ASSET_PREFIX}logo/abc.png`,
+        cover_image_url: `${ASSET_PREFIX}cover/abc.png`,
+      }),
+    );
+
+    expect(result).toEqual({
+      hasBrand: true,
+      name: "王牌理髮廳",
+      description: "成立於 2015 年",
+      address: "忠孝東路四段 1 號",
+      phone: "02-1234-5678",
+      logoUrl: `${ASSET_PREFIX}logo/abc.png`,
+      coverImageUrl: `${ASSET_PREFIX}cover/abc.png`,
+    });
+  });
+
+  it("logo_url／cover_image_url 不是 store-assets bucket 網址時，視為未設定（防止匿名頁面把任意網址丟給 <img src>）", () => {
+    const result = resolveStoreDisplay(
+      settings({
+        name: "王牌理髮廳",
+        logo_url: "https://evil.invalid/tracker.png",
+        cover_image_url: "javascript:alert(1)",
+      }),
+    );
+
+    expect(result.logoUrl).toBeNull();
+    expect(result.coverImageUrl).toBeNull();
+  });
+
+  it("店名為空字串時，hasBrand 為 false（前台回退既有純文字標題）", () => {
+    expect(resolveStoreDisplay(settings({ name: "" })).hasBrand).toBe(false);
+  });
+
+  it("店名只有空白字元時，視為未設定", () => {
+    expect(resolveStoreDisplay(settings({ name: "   " })).hasBrand).toBe(false);
+  });
+
+  it("店名有值但簡介／地址／電話個別為 null 時，對應欄位回傳 null（各自省略該列，不影響 hasBrand）", () => {
+    const result = resolveStoreDisplay(settings({ name: "王牌理髮廳" }));
+
+    expect(result.hasBrand).toBe(true);
+    expect(result.description).toBeNull();
+    expect(result.address).toBeNull();
+    expect(result.phone).toBeNull();
+  });
+
+  it("簡介／地址／電話為只有空白字元的字串時，視為未設定並回傳 null", () => {
+    const result = resolveStoreDisplay(
+      settings({ name: "王牌理髮廳", description: "  ", address: "  ", phone: "  " }),
+    );
+
+    expect(result.description).toBeNull();
+    expect(result.address).toBeNull();
+    expect(result.phone).toBeNull();
+  });
+
+  it("店名／簡介前後空白會被 trim", () => {
+    const result = resolveStoreDisplay(settings({ name: "  王牌理髮廳  ", description: "  簡介文字  " }));
+
+    expect(result.name).toBe("王牌理髮廳");
+    expect(result.description).toBe("簡介文字");
+  });
+});
 
 describe("validateStoreName", () => {
   it("非空白店名通過驗證", () => {

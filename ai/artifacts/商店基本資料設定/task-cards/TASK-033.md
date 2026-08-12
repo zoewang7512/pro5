@@ -8,10 +8,10 @@
 - 上層 User Story：全部（整合驗證）
 - 分軌：整合
 - 前置任務（dependsOn）：TASK-029, TASK-030, TASK-031, TASK-032
-- 狀態：草稿
+- 狀態：完成
 - 風險等級：中
-- Agent owner：待指派
-- 人工核准者：待補
+- Agent owner：Claude Code
+- 人工核准者：使用者於對話中核准開始實作（2026-08-10）；最終驗收核准（2026-08-10）
 
 ## 目標
 
@@ -95,9 +95,40 @@
 
 ## 完成證據
 
-- 變更的檔案：待補
-- 執行過的指令：待補
-- 測試輸出：待補
-- 螢幕截圖：待補
-- 已知限制：待補
+- 變更的檔案：
+  - `ai/context/project-map.md`（更新 `store_settings`／`store-assets`／`test:store-settings`
+    指令說明，補上 TASK-030／031／032 已完成後的實際狀態，修正原本停留在 TASK-029 當下的
+    過時描述）
+  - `tools/kanban/cards/TASK-032.json`／`TASK-033.json`（狀態與證據更新）
+  - `tests/store-settings.integration.test.ts`／`vitest.store-settings.config.ts`／
+    `package.json` 的 `test:store-settings` script 已於 TASK-029 建立（architect 當時要求
+    RLS／Storage 邊界不能全部押到本卡才驗證），本卡執行並確認全數通過，未新增測試案例
+- 執行過的指令：
+  - `npm run test:store-settings` — 11 passed（對真實 Supabase 專案）
+  - `npm run test:rls` — 6 passed
+  - `npm run test:business-hours` — 18 passed
+  - `npm run test:booking` — 19 passed
+  - `npm run test:admin-booking` — 13 passed
+  - `npm test` — 137 passed（不連線真實服務）
+  - `npx tsc --noEmit`／`npm run lint`／`npm run build` — 皆通過
+- 測試輸出：五組整合測試（共 67 案例）與預設單元測試（137 案例）全數通過，無回歸。
+- 螢幕截圖：Browser 工具實際走查（非僅 accessibility tree）取得以下畫面證據：
+  - 後台商店設定頁：完整原始資料（含 Logo／封面圖）
+  - 編輯電話並儲存成功（儲存按鈕回到停用狀態）→ 前台首頁同步顯示新電話
+  - 後台移除 Logo／封面圖 → 前台首頁正確回退為「部分未設定」版面（無 Logo 佔位、無封面圖
+    橫幅，店名／簡介／地址／電話仍正常顯示），一併補上 TASK-032 當時未取得的即時截圖
+  - 以合成 File＋DataTransfer 觸發後台真實上傳流程（Logo／封面圖）→ 前台正確顯示新上傳圖片
+    （確認 TASK-032 的 store-assets 網址白名單不會誤擋新上傳的合法圖片）
+  - 以 service role 依測試前記錄的原始快照還原 `store_settings` 並清除測試上傳物件 → 前台與
+    後台皆確認資料已還原為測試前狀態
+- 已知限制：
+  - 「全部未設定／讀取失敗」畫面狀態沒有取得即時截圖——`store_settings` 是 migration seed
+    保證恆有 1 列的單例表（無零列情境），後台儲存表單的店名欄位也有前端驗證擋下空白輸入，
+    此狀態在正常後台操作下不可能被觸發，只有讀取失敗時才會出現；`BookingFlow.tsx` 對應的
+    fallback JSX 與 TASK-032 之前既有程式碼完全相同（未變動內容，只是加條件包住），已由
+    `resolveStoreDisplay` 的單元測試（空字串／純空白店名兩種情境）涵蓋。
+  - 本次未額外執行 security-reviewer 子代理：TASK-033 本身未變更任何 `store_settings`／
+    `store-assets` 相關的產品程式碼（僅執行既有測試＋更新文件），實質的安全性審查已在
+    TASK-032（網址白名單、`.catch` 降級）與 TASK-029/031（RLS／Storage 邊界、mime 白名單）
+    完成；`npm run test:store-settings` 的 11 個案例即為這些邊界的可執行驗證證據。
 - 後續任務：無（本 Epic 兩個 User Story 至此皆完整涵蓋）

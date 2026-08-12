@@ -9,7 +9,9 @@ import { buildDateRange, getTaipeiToday } from "@/lib/booking/date-range";
 import { getBookingErrorMessage } from "@/lib/booking/error-messages";
 import { buildSlotGrid, type SlotCell } from "@/lib/booking/slot-grid";
 import type { AppointmentConfirmation, AvailableSlot, BusinessHours, Service } from "@/lib/booking/types";
+import { EMPTY_STORE_SETTINGS, getStoreSettings, resolveStoreDisplay, type StoreSettings } from "@/lib/store-settings";
 import { useToast } from "@/components/ui/ToastProvider";
+import { BrandHeaderSection, BrandHeaderSectionSkeleton } from "./BrandHeaderSection";
 import { ServiceListSection } from "./ServiceListSection";
 import { SlotPickerSection } from "./SlotPickerSection";
 import { ContactFormSection, type ContactFormValues } from "./ContactFormSection";
@@ -42,6 +44,7 @@ export function BookingFlow() {
   // setState 把狀態撥回 loading（react-hooks/set-state-in-effect 規則要求）。
   const [servicesResult, setServicesResult] = React.useState<ServicesResult | null>(null);
   const [slotsResult, setSlotsResult] = React.useState<SlotsResult | null>(null);
+  const [brandSettings, setBrandSettings] = React.useState<StoreSettings | null>(null);
 
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
   const [editingService, setEditingService] = React.useState(false);
@@ -61,6 +64,26 @@ export function BookingFlow() {
         result.ok ? { status: "loaded", services: result.data } : { status: "error", services: [] },
       );
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  // 品牌顯示區塊的讀取獨立於服務列表，各自的 effect／state，互不阻塞——
+  // 品牌資訊載入慢或失敗不應延遲顧客看到服務列表。.catch 確保 promise reject
+  // （非 getStoreSettings 內部已處理的 {ok:false} 分支，而是呼叫本身拋出）時
+  // 仍會降級為空值，不會讓骨架屏卡住不放（security-reviewer TASK-032 審查發現）。
+  React.useEffect(() => {
+    let cancelled = false;
+    getStoreSettings(supabase)
+      .then((result) => {
+        if (cancelled) return;
+        setBrandSettings(result.ok ? result.data : EMPTY_STORE_SETTINGS);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBrandSettings(EMPTY_STORE_SETTINGS);
+      });
     return () => {
       cancelled = true;
     };
@@ -95,6 +118,8 @@ export function BookingFlow() {
 
   const servicesStatus: FetchStatus = servicesResult?.status ?? "loading";
   const services = servicesResult?.services ?? [];
+
+  const brandDisplay = brandSettings ? resolveStoreDisplay(brandSettings) : null;
 
   const slotsMatchesRequest = slotsRequestKey !== null && slotsResult?.key === slotsRequestKey;
   const slotsStatus: FetchStatus = slotsMatchesRequest ? slotsResult!.status : "loading";
@@ -162,9 +187,15 @@ export function BookingFlow() {
 
   return (
     <Container maxWidth="sm" sx={{ py: { xs: 3, sm: 5 }, px: { xs: 2.5, sm: 3 } }}>
-      <Typography variant="h5" component="h1" sx={{ mb: 3 }}>
-        預約{selectedService ? ` · ${selectedService.name}` : ""}
-      </Typography>
+      {brandDisplay === null ? (
+        <BrandHeaderSectionSkeleton />
+      ) : brandDisplay.hasBrand ? (
+        <BrandHeaderSection display={brandDisplay} />
+      ) : (
+        <Typography variant="h5" component="h1" sx={{ mb: 3 }}>
+          預約{selectedService ? ` · ${selectedService.name}` : ""}
+        </Typography>
+      )}
 
       {confirmation ? (
         <SuccessSection confirmation={confirmation} />

@@ -29,6 +29,17 @@ export type StoreSettings = {
   cover_image_url: string | null;
 };
 
+// 「查無資料列」與「消費端讀取失敗降級」共用的空值形狀，單一事實來源見此常數
+// （原本 lib 與 BookingFlow 各自定義一份，architect TASK-032 審查發現重複）。
+export const EMPTY_STORE_SETTINGS: StoreSettings = {
+  name: "",
+  address: null,
+  phone: null,
+  description: null,
+  logo_url: null,
+  cover_image_url: null,
+};
+
 export async function getStoreSettings(supabase: SupabaseClient): Promise<Result<StoreSettings>> {
   const { data, error } = await supabase
     .from("store_settings")
@@ -40,10 +51,48 @@ export async function getStoreSettings(supabase: SupabaseClient): Promise<Result
     return { ok: false, error: INTERNAL_ERROR };
   }
   if (!data) {
-    return { ok: true, data: { name: "", address: null, phone: null, description: null, logo_url: null, cover_image_url: null } };
+    return { ok: true, data: EMPTY_STORE_SETTINGS };
   }
 
   return { ok: true, data: data as StoreSettings };
+}
+
+// 顧客前台品牌顯示區塊（TASK-032）的「store_settings 讀取結果 → 前台顯示用資料」轉換：
+// 店名 trim 後為空視為未設定，一併回退為既有純文字標題（其餘欄位皆不顯示）；簡介／地址／
+// 電話個別 trim 後為空字串視為未設定，各自省略對應顯示列，不顯示空欄位或錯誤。
+export type StoreDisplayInfo = {
+  hasBrand: boolean;
+  name: string;
+  description: string | null;
+  address: string | null;
+  phone: string | null;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+};
+
+// logo_url／cover_image_url 雖然只有 is_admin() 能寫（RLS），但 PostgREST 允許直接 PATCH
+// 成任意字串，不受限於 uploadStoreImage 產生的 store-assets 路徑；顧客前台是匿名頁面，
+// 直接把任意網址丟給 <img src> 會讓每個訪客的瀏覽器對外請求該網址（IP／UA／Referer 外洩、
+// 顯示任意遠端圖片），因此只信任 store-assets public bucket 底下的網址，其餘一律視為未設定
+// （security-reviewer TASK-032 審查發現）。
+function trustedAssetUrl(url: string | null): string | null {
+  const trimmed = url?.trim();
+  const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/store-assets/`;
+  return trimmed && trimmed.startsWith(prefix) ? trimmed : null;
+}
+
+export function resolveStoreDisplay(settings: StoreSettings): StoreDisplayInfo {
+  const name = settings.name.trim();
+
+  return {
+    hasBrand: name.length > 0,
+    name,
+    description: settings.description?.trim() || null,
+    address: settings.address?.trim() || null,
+    phone: settings.phone?.trim() || null,
+    logoUrl: trustedAssetUrl(settings.logo_url),
+    coverImageUrl: trustedAssetUrl(settings.cover_image_url),
+  };
 }
 
 // 「基本資訊」四欄位的前端驗證。店名必填、其餘選填。長度上限與

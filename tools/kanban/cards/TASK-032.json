@@ -2,16 +2,18 @@
   "id": "TASK-032",
   "title": "商店基本資料設定 顧客前台首頁品牌顯示區塊",
   "content": "顧客前台首頁新增品牌顯示區塊（mockup 變體 B：精簡頁首列＋矮版封面圖），讀取 store_settings 顯示店名/簡介/Logo/封面圖/地址/電話；未設定或讀取失敗時回退既有「預約」純文字標題，不影響既有預約流程互動與版面深度。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-07",
   "epic": "商店基本資料設定",
   "userStory": "設定店名、地址、電話、簡介",
   "track": "frontend",
-  "dependsOn": ["TASK-029"],
+  "dependsOn": [
+    "TASK-029"
+  ],
   "order": 32,
   "readiness": {
     "problem_clear": true,
@@ -20,14 +22,14 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -45,9 +47,27 @@
     "lib/store-settings.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npx vitest run --config vitest.config.ts tests/store-settings.test.ts (29 passed)",
+      "npm run build"
+    ],
+    "findings": [
+      "architect：EMPTY_STORE_SETTINGS 在 lib 與 UI 層重複定義 → 已改為 lib/store-settings.ts 匯出單一常數",
+      "architect：BrandResult 單欄位包裝型別與 ServicesResult/SlotsResult 同族但語意不一致 → 已拿掉包裝，state 直接存 StoreSettings | null",
+      "architect：封面圖沒有載入失敗降級（會顯示瀏覽器破圖），違反「不得讓顧客覺得頁面壞掉」的驗收標準 → 已加 onError 隱藏該區塊",
+      "architect：品牌 Logo 佔位色用了狀態語意色 info.* → 已改為 primary.*",
+      "security-reviewer：logo_url／cover_image_url 僅受 RLS 限制寫入者身分、未限制網址內容，匿名頁面直接當 img src 有被寫入任意外部網址造成訪客資訊外洩（IP/UA/Referer）風險 → 已加 store-assets 網址白名單過濾 + referrerPolicy=no-referrer",
+      "security-reviewer：品牌資料 fetch 缺少 .catch，promise reject 時骨架屏會卡住、違反靜默降級要求 → 已補上 .catch 降級為空值"
+    ],
+    "residual": "部分未設定／全部未設定／載入失敗三種畫面狀態的即時瀏覽器截圖尚未完成——已完整設定狀態（含 Logo／封面圖／地址／電話）在本機 dev server 截圖驗證通過，其餘狀態改由 resolveStoreDisplay 的 29 個單元測試涵蓋所有欄位組合的邊界判斷（含全空、部分為 null、只有空白字元皆視為未設定），加上與 ServiceListSection 既有 loading/error 分支相同模式的程式碼審查；嘗試透過 /admin/store-settings 暫時清空欄位以截圖時，該頁「儲存」按鈕在本次瀏覽器自動化過程中未穩定觸發（與本卡改動的檔案無關的既有問題），過程中沒有任何欄位被實際寫入 DB。建議 TASK-033 的 E2E 走查涵蓋這三種畫面狀態的實際截圖，或請人工在 /admin/store-settings 手動清空欄位快速走查一次。另外 app/page.tsx 若改為 server component 直接讀取 store_settings 可消除骨架屏與 CLS，但不在本卡允許變更清單內，建議列為後續任務候選。"
   },
-  "comments": []
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-07",
+      "text": "核准（對話中明確核准，轉 done）"
+    }
+  ]
 }

@@ -8,11 +8,11 @@
 - 上層 User Story：設定店名、地址、電話、簡介（前台顯示）／上傳／更換 Logo 或封面圖（前台顯示）
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-029
-- 狀態：草稿
+- 狀態：完成
 - 風險等級：中（既有頁面 `app/page.tsx`／`BookingFlow.tsx` 的版面異動，需確認不影響既有預約
   流程互動與轉換率相關的版面深度）
-- Agent owner：待指派
-- 人工核准者：待補
+- Agent owner：Claude Code
+- 人工核准者：使用者於對話中核准開始實作（2026-08-07）；最終驗收核准（2026-08-07）
 
 ## 目標
 
@@ -100,9 +100,34 @@
 
 ## 完成證據
 
-- 變更的檔案：待補
-- 執行過的指令：待補
-- 測試輸出：待補
-- 螢幕截圖：待補
-- 已知限制：待補
-- 後續任務：TASK-033（整合驗證）
+- 變更的檔案：
+  - 新增 `app/_components/booking/BrandHeaderSection.tsx`（`BrandHeaderSection`／
+    `BrandHeaderSectionSkeleton`）
+  - `app/_components/booking/BookingFlow.tsx`（獨立的品牌資料 fetch effect＋三態渲染：
+    載入中骨架屏／有品牌時顯示新區塊／無品牌時保留原本純文字「預約」標題）
+  - `lib/store-settings.ts`（新增 `resolveStoreDisplay` 純函式＋匯出的
+    `EMPTY_STORE_SETTINGS` 常數，並加上 `logo_url`／`cover_image_url` 的
+    store-assets 網址白名單過濾）
+  - `tests/store-settings.test.ts`（`resolveStoreDisplay` 單元測試 7 組、29 個 case）
+- 執行過的指令：
+  - `npx tsc --noEmit` — 通過
+  - `npm run lint` — 通過
+  - `npx vitest run --config vitest.config.ts tests/store-settings.test.ts` — 29 passed
+  - `npm run build` — 通過
+- 測試輸出：`tests/store-settings.test.ts` 新增 `resolveStoreDisplay` 測試涵蓋完整設定、
+  店名空字串／純空白、簡介地址電話個別為 null／純空白、trim、以及非 store-assets 網址一律
+  視為未設定（安全性審查發現）等情境，全數通過。
+- 螢幕截圖：完整已設定狀態（真實 dev DB 資料：Logo、封面圖、店名、簡介、地址、電話）已在
+  桌面與手機（375×812）寬度下用 Browser 工具走查確認，版面與 mockup 變體 B 一致、下方
+  「選擇服務」流程未受影響。部分未設定／全部未設定／載入失敗三種狀態未取得即時瀏覽器截圖，
+  詳見「已知限制」。
+- 已知限制：
+  - 部分未設定／全部未設定／載入失敗三種畫面狀態改由 `resolveStoreDisplay` 的單元測試（涵蓋
+    所有欄位組合的「哪些視為未設定」邊界判斷）與程式碼審查涵蓋，未取得即時瀏覽器截圖——嘗試
+    透過 `/admin/store-settings` 暫時清空欄位以截圖時，該頁「儲存」按鈕在瀏覽器自動化過程中
+    未穩定觸發（與本卡改動的檔案無關的既有問題），過程中沒有任何欄位被實際寫入 DB。
+  - 讀取失敗完全靜默降級（無 log／telemetry），符合規格但運維上零可觀測性。
+  - `app/page.tsx` 若改為 server component 直接讀取 `store_settings`，可完全消除骨架屏與
+    CLS，但不在本卡允許變更清單內。
+- 後續任務：TASK-033（整合驗證，建議一併補上部分未設定／全部未設定／載入失敗三種狀態的
+  E2E 截圖）；`app/page.tsx` server-side 讀取改善可另立候選任務。
