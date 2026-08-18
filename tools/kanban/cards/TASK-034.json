@@ -1,0 +1,53 @@
+{
+  "id": "TASK-034",
+  "title": "服務項目管理 架構基礎（頁面骨架、Sidebar 啟用、服務項目列表唯讀顯示）",
+  "content": "在 /admin/services 建立受保護頁面骨架，唯讀顯示所有服務項目（含上架與下架中，比照已核准 mockup 變體 A 的表格版型），Sidebar「服務設定」連結從停用改為可點擊。不含新增/編輯/下架/上架邏輯，留給 TASK-035/TASK-036。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "服務項目管理",
+  "userStory": "新增/編輯服務項目",
+  "track": "frontend",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-014"],
+  "order": 34,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/服務項目管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/服務項目管理/screen-spec-服務項目管理.md",
+    "mockupDecision": "ai/artifacts/服務項目管理/mockup-decision-服務項目管理.md",
+    "taskCard": "ai/artifacts/服務項目管理/task-cards/TASK-034.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/AdminShell.tsx",
+    "app/admin/services/page.tsx",
+    "app/admin/_components/ServicesTable.tsx",
+    "lib/admin/services.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": []
+}

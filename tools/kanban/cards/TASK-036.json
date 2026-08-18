@@ -1,0 +1,53 @@
+{
+  "id": "TASK-036",
+  "title": "服務項目管理 下架/重新上架服務項目",
+  "content": "在服務項目管理頁的操作欄接上「下架」「重新上架」按鈕行為：下架前二次確認，通過後切換該服務項目的 is_active，列表即時反映新狀態，顧客前台服務清單同步更新。不修改任何 RPC，只驗證既有 is_active 過濾邏輯。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "服務項目管理",
+  "userStory": "刪除或下架服務項目",
+  "track": "frontend",
+  "dependsOn": ["TASK-034"],
+  "order": 36,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/服務項目管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/服務項目管理/screen-spec-服務項目管理.md",
+    "mockupDecision": "ai/artifacts/服務項目管理/mockup-decision-服務項目管理.md",
+    "taskCard": "ai/artifacts/服務項目管理/task-cards/TASK-036.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/ServicesTable.tsx",
+    "lib/admin/services.ts",
+    "components/ui/ConfirmDialog.tsx",
+    "tests/admin/services.test.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": []
+}

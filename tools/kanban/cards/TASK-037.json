@@ -1,0 +1,52 @@
+{
+  "id": "TASK-037",
+  "title": "服務項目管理 前後端串接驗證與端到端測試",
+  "content": "新增 npm run test:services 涵蓋 services 的 RLS 邊界與下架後對 get_available_slots/create_appointment 的實際影響；重跑既有五組整合測試（rls/booking/admin-booking/business-hours/store-settings）確認無回歸；Browser 工具桌面尺寸 E2E 走查後台服務項目管理頁完整流程並確認顧客前台服務清單無回歸；更新 project-map.md。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "服務項目管理",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-034", "TASK-035", "TASK-036"],
+  "order": 37,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/服務項目管理/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/服務項目管理/task-cards/TASK-037.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/services.integration.test.ts",
+    "vitest.services.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": []
+}

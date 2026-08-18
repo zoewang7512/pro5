@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>服務項目管理 Variant A · 表格列表＋Modal 新增/編輯</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 620px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .nav-item.logout { margin-top: 40px; color: var(--grey-500); }
+
+  .main { flex: 1; padding: 24px 28px; overflow: hidden; display: flex; flex-direction: column; }
+  .toolbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .toolbar .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; }
+  .btn.danger-text { background: transparent; color: var(--danger); font-weight: 500; }
+  .btn.disabled { background: var(--grey-300); color: var(--grey-500); }
+  .btn.loading { background: var(--primary-300); }
+  .btn.sm { height: 32px; padding: 0 14px; font-size: 12px; }
+  .spinner { width: 14px; height: 14px; border-radius: 999px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; margin-right: 8px; }
+
+  table.services { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-1); }
+  table.services th { text-align: left; font-size: 11px; color: var(--grey-700); font-weight: 600; padding: 12px 14px; border-bottom: 1px solid var(--grey-300); background: var(--grey-200); }
+  table.services td { padding: 12px 14px; border-bottom: 1px solid var(--grey-200); color: var(--grey-900); vertical-align: middle; }
+  table.services tr:last-child td { border-bottom: none; }
+  table.services tr.inactive td { color: var(--grey-500); }
+  .svc-name { font-weight: 600; }
+  .svc-desc { font-size: 11px; color: var(--grey-700); margin-top: 2px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr.inactive .svc-desc { color: var(--grey-500); }
+  .chip { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .chip.on { background: var(--success-light); color: var(--success); }
+  .chip.off { background: var(--grey-200); color: var(--grey-700); }
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  .modal-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .modal-card { width: 420px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .modal-card h3 { font-size: 16px; margin: 0 0 4px; color: var(--grey-900); }
+  .modal-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input, .field textarea { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 10px 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field textarea { resize: none; height: 64px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field input.error, .field textarea.error { border-color: var(--danger); background: var(--danger-light); }
+  .field .err-text { font-size: 11px; color: var(--danger); }
+  .modal-actions { margin-top: 6px; display: flex; justify-content: flex-end; gap: 8px; }
+
+  .warn-list { border: 1px solid var(--grey-200); border-radius: var(--radius-sm); margin-bottom: 16px; }
+  .warn-row { font-size: 12px; padding: 10px 12px; background: var(--warning-light); border-radius: var(--radius-sm); color: var(--grey-900); }
+  .modal-actions.stack { flex-direction: column; }
+
+  .toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--grey-900); color: #fff; font-size: 12px; padding: 10px 18px; border-radius: var(--radius-sm); box-shadow: var(--shadow-2); display: flex; align-items: center; gap: 8px; }
+  .toast .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--success); }
+
+  .skeleton-row { height: 44px; background: var(--grey-200); border-radius: var(--radius-sm); margin-bottom: 8px; opacity: .7; }
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); color: var(--grey-700); font-size: 13px; }
+  .empty-state .icon { width: 40px; height: 40px; border-radius: 999px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--grey-500); }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">服務項目管理 · Variant A：表格列表，新增／編輯用置中 Modal，操作欄直接下架／上架</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設列表（上架／下架混合）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item active">服務項目</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div><h2>服務項目管理</h2><div class="hint">管理店內提供的服務項目，下架後顧客端不再顯示</div></div>
+            <span class="btn">＋ 新增服務項目</span>
+          </div>
+          <table class="services">
+            <thead><tr><th>名稱</th><th>價格</th><th>時長</th><th>狀態</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="svc-name">經典剪髮</div><div class="svc-desc">洗剪吹造型，含基礎頭皮按摩</div></td>
+                <td>NT$ 600</td><td>45 分鐘</td>
+                <td><span class="chip on">上架中</span></td>
+                <td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td>
+              </tr>
+              <tr>
+                <td><div class="svc-name">精緻染髮</div><div class="svc-desc">含護色護理，依髮長略有加價</div></td>
+                <td>NT$ 1,800</td><td>120 分鐘</td>
+                <td><span class="chip on">上架中</span></td>
+                <td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td>
+              </tr>
+              <tr class="inactive">
+                <td><div class="svc-name">傳統剪髮吹整</div><div class="svc-desc">已停售，保留歷史預約紀錄</div></td>
+                <td>NT$ 350</td><td>30 分鐘</td>
+                <td><span class="chip off">已下架</span></td>
+                <td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">重新上架</span></div></td>
+              </tr>
+              <tr>
+                <td><div class="svc-name">鬍鬚造型</div><div class="svc-desc">修剪、刮鬍與熱毛巾護理</div></td>
+                <td>NT$ 400</td><td>30 分鐘</td>
+                <td><span class="chip on">上架中</span></td>
+                <td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 新增服務項目 Modal（含驗證錯誤）</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item active">服務項目</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div><h2>服務項目管理</h2><div class="hint">管理店內提供的服務項目，下架後顧客端不再顯示</div></div>
+            <span class="btn">＋ 新增服務項目</span>
+          </div>
+          <table class="services">
+            <thead><tr><th>名稱</th><th>價格</th><th>時長</th><th>狀態</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><div class="svc-name">經典剪髮</div><div class="svc-desc">洗剪吹造型，含基礎頭皮按摩</div></td><td>NT$ 600</td><td>45 分鐘</td><td><span class="chip on">上架中</span></td><td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td></tr>
+              <tr><td><div class="svc-name">精緻染髮</div><div class="svc-desc">含護色護理，依髮長略有加價</div></td><td>NT$ 1,800</td><td>120 分鐘</td><td><span class="chip on">上架中</span></td><td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">新增服務項目</h3>
+            <p class="sub">填寫名稱、價格、時長，描述選填</p>
+            <div class="field"><label>名稱</label><input class="error" placeholder="請輸入服務名稱" /><span class="err-text">名稱為必填</span></div>
+            <div class="field-row">
+              <div class="field"><label>價格（NT$）</label><input class="error" value="-100" /><span class="err-text">價格需大於等於 0</span></div>
+              <div class="field"><label>時長（分鐘）</label><input value="45" /></div>
+            </div>
+            <div class="field"><label>描述</label><textarea placeholder="選填"></textarea></div>
+            <div class="modal-actions"><span class="btn text">取消</span><span class="btn">新增</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 編輯服務項目（儲存中）／下架二次確認</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item active">服務項目</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar">
+            <div><h2>服務項目管理</h2><div class="hint">管理店內提供的服務項目，下架後顧客端不再顯示</div></div>
+            <span class="btn">＋ 新增服務項目</span>
+          </div>
+          <table class="services">
+            <thead><tr><th>名稱</th><th>價格</th><th>時長</th><th>狀態</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><div class="svc-name">經典剪髮</div></td><td>NT$ 600</td><td>45 分鐘</td><td><span class="chip on">上架中</span></td><td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td></tr>
+              <tr><td><div class="svc-name">精緻染髮</div></td><td>NT$ 1,800</td><td>120 分鐘</td><td><span class="chip on">上架中</span></td><td><div class="row-actions"><span class="btn outline sm">編輯</span><span class="btn text sm">下架</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">確定要下架「精緻染髮」？</h3>
+            <p class="sub">下架後顧客前台將不再顯示此服務，也無法用來建立新預約。已存在的預約不受影響，之後仍可重新上架。</p>
+            <div class="modal-actions stack">
+              <span class="btn loading"><span class="spinner"></span>下架中…</span>
+              <span class="btn text">再想想</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 載入中／空狀態／下架成功 Toast</div>
+      <div class="screen">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item active">服務項目</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item logout">登出</div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><div><h2>服務項目管理</h2><div class="hint">管理店內提供的服務項目，下架後顧客端不再顯示</div></div></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+        </div>
+        <div class="toast"><span class="dot"></span>「傳統剪髮吹整」已下架</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

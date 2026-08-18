@@ -1,0 +1,53 @@
+{
+  "id": "TASK-035",
+  "title": "服務項目管理 新增/編輯服務項目（Modal 表單、驗證、寫入）",
+  "content": "在服務項目管理頁接上「新增服務項目」「編輯服務項目」Modal 表單（比照已核准 mockup 變體 A）：名稱/價格/時長/描述可填寫並驗證，送出後寫入 services，成功後顯示 Toast 並更新列表。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "服務項目管理",
+  "userStory": "新增/編輯服務項目",
+  "track": "frontend",
+  "dependsOn": ["TASK-034"],
+  "order": 35,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/服務項目管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/服務項目管理/screen-spec-服務項目管理.md",
+    "mockupDecision": "ai/artifacts/服務項目管理/mockup-decision-服務項目管理.md",
+    "taskCard": "ai/artifacts/服務項目管理/task-cards/TASK-035.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/ServicesTable.tsx",
+    "app/admin/_components/ServiceFormDialog.tsx",
+    "lib/admin/services.ts",
+    "tests/admin/services.test.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": []
+}
