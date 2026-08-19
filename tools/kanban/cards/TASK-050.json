@@ -1,0 +1,58 @@
+{
+  "id": "TASK-050",
+  "title": "預約規則與政策設定 前後端串接驗證與端到端測試",
+  "content": "新增 npm run test:booking-policy 涵蓋 booking_policy 的 RLS 邊界與調整最短提前預約時間後 get_available_slots/create_appointment 的實際行為（含與既有公休日/緩衝時間規則同時生效的組合案例）；重跑既有整合測試確認無回歸；Browser E2E 走查完整流程；更新 project-map.md。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "預約規則與政策設定",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-046", "TASK-047", "TASK-048", "TASK-049"],
+  "order": 50,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約規則與政策設定/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/預約規則與政策設定/task-cards/TASK-050.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/booking-policy.integration.test.ts",
+    "vitest.booking-policy.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-046~050 這批任務卡；本卡前置任務尚未完成，暫留 backlog）"
+    }
+  ]
+}

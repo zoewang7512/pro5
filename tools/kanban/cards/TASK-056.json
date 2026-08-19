@@ -1,0 +1,70 @@
+{
+  "id": "TASK-056",
+  "title": "設計師登入與帳號安全 登入頁錯誤訊息 a11y 修正（穩定 aria-live 播報）",
+  "content": "TASK-039 security-reviewer 審查發現：app/login/login-form.tsx 的密碼欄位錯誤訊息用 helperText={error ?? \" \"} 恆常渲染、僅動態切換 role=\"alert\"，部分螢幕閱讀器對「已存在元素才被賦予 role=alert」的情境播報不穩定。本卡改為固定帶穩定的 aria-live（或等效 role=\"alert\" 恆常存在的容器），只切換內容，讓登入失敗時的錯誤文案能可靠被播報。純 a11y 屬性調整，不變更 signInWithPassword 等既有驗證邏輯與現有視覺樣式。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "設計師登入／登出",
+  "track": "frontend",
+  "dependsOn": ["TASK-039"],
+  "order": 56,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-056.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/login/login-form.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "Browser 工具走查 /login：清除 session cookie 後於預設狀態與登入失敗狀態各執行一次 javascript_tool 讀取 helperText 容器的 role／aria-live／id 屬性"
+    ],
+    "findings": [
+      "app/login/login-form.tsx 密碼欄位 TextField 的 slotProps.formHelperText 由條件式 role（僅錯誤時給 \"alert\"）改為固定 { role: \"alert\", \"aria-live\": \"polite\" }，容器在預設狀態（無錯誤）與登入失敗狀態下是同一個 DOM 節點（id 相同，例如 _R_alaklritmllb_-helper-text），只有 textContent 從空白變成「帳號或密碼錯誤，請再試一次。」——確認修正生效，不再是「元素從無到有才被賦予 role=alert」的不穩定 pattern",
+      "signInWithPassword／router.replace／router.refresh 等既有邏輯未變動，本卡 diff 僅限 slotProps 該行",
+      "視覺輸出（顏色、位置、文案）與 TASK-039 完全一致，截圖比對無回歸"
+    ],
+    "residual": "未使用實際螢幕閱讀器（如 NVDA/VoiceOver）人工聽覺驗證播報效果，僅透過 DOM 屬性檢查（role/aria-live 恆常存在且節點不變）佐證修正方向正確；若需要更嚴謹的驗證，可在後續任務用真實螢幕閱讀器走查。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（源自 TASK-039 security-reviewer 審查建議 (2)，對話中核准另開任務卡處理，轉 ready）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（與 TASK-057 一起核准實作與驗證證據，轉 done）"
+    }
+  ]
+}

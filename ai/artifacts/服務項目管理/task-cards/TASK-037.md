@@ -8,7 +8,7 @@
 - 上層 User Story：全部（整合驗證）
 - 分軌：整合
 - 前置任務（dependsOn）：TASK-034, TASK-035, TASK-036
-- 狀態：草稿（待核准後轉就緒）
+- 狀態：完成（人工已於 2026-08-18 驗收通過）
 - 風險等級：中（涉及 RLS 權限邊界的整合驗證，比照 TASK-033 的風險等級判定）
 
 ## 目標
@@ -104,10 +104,21 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
+詳見 `tools/kanban/cards/TASK-037.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`tests/services.integration.test.ts`（新增，13 個整合測試）、
+  `vitest.services.config.ts`（新增）、`package.json`（新增 `test:services` script）、
+  `ai/context/project-map.md`（更新常用指令表與 offset 表）。
+- 執行過的指令：`npx tsc --noEmit`／`npm run lint`／`npm run build` 皆通過；
+  `npm run test:services`（新增，13/13）；`test:rls`（6/6）／`test:booking`（19/19）／
+  `test:admin-booking`（13/13）／`test:business-hours`（18/18）／`test:store-settings`
+  （11/11）重跑皆無回歸；`npx vitest run`（18 files／155 tests）無回歸。
+- 測試輸出：`services` RLS 邊界（新增/編輯/切換上下架權限、anon 讀不到已下架項目）與
+  下架對 `get_available_slots`（空陣列）／`create_appointment`（`SERVICE_INACTIVE`）的
+  影響、重新上架後恢復正常，13 案例全數通過。
+- 螢幕截圖：Browser 工具對真實 Supabase 專案完整 E2E 走查（新增→前台顯示→編輯→
+  下架→前台不再顯示→清除測試資料→確認清單還原），取得多張畫面文字/截圖證據。
+- 已知限制：無新增；沿用 TASK-034/035/036 既有記錄的已知限制。
 - 後續任務：無（本 Epic 兩個新增 User Story 至此皆完整涵蓋；第三個 User Story「顧客端瀏覽
   服務項目列表」已由既有實作涵蓋，本卡驗證無回歸）。

@@ -1,0 +1,87 @@
+{
+  "id": "TASK-059",
+  "title": "設計師登入與帳號安全 伺服器端關鍵入口點強制已啟用 MFA 帳號需達 aal2（修正 TASK-044 C1）",
+  "content": "在三個伺服器端關鍵入口點（app/login/page.tsx 登入後重導向、lib/supabase/middleware.ts 的 /admin/:path* 路由守門、app/admin/layout.tsx 頁面層檢查）一致比對 getAuthenticatorAssuranceLevel()，讓已啟用 MFA 的帳號在完成 TOTP 驗證（aal2）前無法進入 /admin。修正 TASK-044 security-reviewer 發現的 C1：使用者在登入頁 MFA 驗證碼畫面單純重新整理頁面，就會被 app/login/page.tsx 的 is_admin() 判斷直接導向 /admin，完全繞過尚未完成的 TOTP 驗證。不修改個別 RLS policy／SECURITY DEFINER RPC（已與人工確認範圍決策，見 feature-spec.md「安全性與隱私」2026-08-19 修正段落）。只有已啟用 MFA 的帳號受影響，未啟用的帳號沿用純密碼登入不受影響。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-19",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "設計師登入／登出",
+  "track": "backend",
+  "dependsOn": ["TASK-044"],
+  "order": 59,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-059.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/auth/aal.ts",
+    "lib/supabase/middleware.ts",
+    "app/admin/layout.tsx",
+    "app/login/page.tsx",
+    "tests/lib/aal.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npx vitest run tests/lib/aal.test.ts tests/components/login-form.test.tsx（23/23 通過）",
+      "Browser 工具對真實 Supabase 專案完整走查：未啟用 MFA 無回歸；已啟用 MFA 重現 TASK-044 C1 步驟（驗證碼畫面重新整理）確認不再繞過、middleware 直接打 /admin 也擋下、完整正確驗證碼登入成功",
+      "PoC 攻擊驗證：竄改瀏覽器 cookie 拿掉 user.factors 嘗試繞過，修正後的實作正確擋下（第一輪 security-reviewer 發現原始實作可被此手法繞過，已修正並驗證）"
+    ],
+    "findings": [
+      "architect 第一輪發現 isAalSatisfied 無 try/catch（例外會讓 middleware 變 500）、middleware 重導向遺失刷新後 cookie、layout.tsx 檢查順序可優化，皆已修正",
+      "security-reviewer 第一輪發現 Critical：原始實作用 getAuthenticatorAssuranceLevel() 的 nextLevel（本地未驗證 cookie 快取）判斷，可被竄改 cookie 繞過，C1 實際未修好；已改用呼叫端 getUser() 的伺服器權威資料重新設計",
+      "test-engineer 發現螢幕截圖未存成獨立檔案（與 TASK-043/044 相同的既有工具限制，非本卡新增缺口）",
+      "security-reviewer 第二輪複審確認修正後邏輯正確解決 C1，結論通過；另指出高優先殘留風險：RLS/is_admin() 層級仍無 aal2 檢查（已核准的範圍邊界，已登記後續任務）"
+    ],
+    "residual": "High（已核准的範圍邊界，非本卡缺陷）：aal 檢查只在應用層三個入口點生效，直接呼叫 Supabase REST/RPC 不受保護，與 TASK-043 H1 同一問題，已登記高優先後續任務卡。前端仍無 MFA 驗證碼連續失敗次數上限（延續既有限制）。螢幕截圖未存成獨立檔案（既有工具限制）。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "源自 TASK-043 security-reviewer 審查發現（H1：MFA 目前無 RLS／資料庫層強制力）；使用者於對話中要求開新任務卡評估，轉 backlog。本卡尚未進入 spec-interrogation／implementation-plan 流程，需求邊界、非目標、檔案範圍與驗證契約皆待補齊，實作前應依 AGENTS.md 流程走完整套關卡（含與 TASK-044 上線順序的產品面決策）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "TASK-044 security-reviewer 發現 C1（登入頁 MFA 驗證碼畫面重新整理即可繞過），沿用本卡處理，走完 spec-interrogation 澄清範圍決策：只在關鍵伺服器端入口點強制、不動 RLS policy、只有已啟用 MFA 的帳號受影響、可晚於 TASK-044 上線。核准任務卡與範圍決策，轉 ready，可開始實作。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "實作期間 security-reviewer 第一輪審查發現原始實作有真實繞過漏洞（信任本地未驗證 cookie），使用者要求修正後再跑一輪安全性審查確認才進 verify（而非只靠開發者自己的 PoC 驗證）。第二輪複審通過，轉 verify，等待人工核准轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "核准 TASK-059 實作與驗證證據，轉 done。RLS/is_admin() 層級的 aal2 強制檢查（High 殘留風險，已知已核准的範圍邊界）留給已登記的高優先後續任務卡處理。"
+    }
+  ]
+}

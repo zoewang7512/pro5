@@ -28,6 +28,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FormSection } from "@/components/ui/FormSection";
 import { useToast } from "@/components/ui/ToastProvider";
 import { MonthPicker } from "@/components/ui/MonthPicker";
+import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
+import { OtpInput } from "@/components/ui/OtpInput";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -47,6 +49,8 @@ export default function DesignSystemShowcase() {
   const [monthPickerYear, setMonthPickerYear] = React.useState(2026);
   const [monthPickerMonth, setMonthPickerMonth] = React.useState(8);
   const [markedDates, setMarkedDates] = React.useState(new Set(["2026-08-19", "2026-08-25"]));
+  const [strengthDemoPassword, setStrengthDemoPassword] = React.useState("abc12345");
+  const [otpDemoValue, setOtpDemoValue] = React.useState("");
 
   return (
     <Box>
@@ -206,6 +210,28 @@ export default function DesignSystemShowcase() {
               }}
             />
           </Box>
+        </Section>
+
+        <Section title="PasswordStrengthMeter">
+          <Box sx={{ maxWidth: 320 }}>
+            <TextField
+              label="輸入密碼試試"
+              size="small"
+              fullWidth
+              value={strengthDemoPassword}
+              onChange={(event) => setStrengthDemoPassword(event.target.value)}
+              sx={{ mb: 1 }}
+            />
+            <PasswordStrengthMeter password={strengthDemoPassword} />
+          </Box>
+        </Section>
+
+        <Section title="OtpInput">
+          <Stack spacing={2} sx={{ maxWidth: 320 }}>
+            <OtpInput value={otpDemoValue} onChange={setOtpDemoValue} />
+            <OtpInput value="481" onChange={() => {}} error />
+            <OtpInput value="481212" onChange={() => {}} disabled />
+          </Stack>
         </Section>
 
         <Section title="Toast / Alert">

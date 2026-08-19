@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>登入與驗證流程 Variant A · 置中卡片，同卡片內切換步驟</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 420px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 420px; min-height: 560px; background: var(--grey-100); border-radius: 16px; box-shadow: var(--shadow-1); display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+
+  .card { width: 100%; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 32px 28px; }
+  .brand { text-align: center; margin-bottom: 24px; }
+  .brand .title { font-size: 20px; font-weight: 700; color: var(--grey-900); }
+  .brand .sub { font-size: 12px; color: var(--grey-700); margin-top: 4px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input { width: 100%; height: 42px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field input.error { border-color: var(--danger); background: var(--danger-light); }
+  .field .err-text { font-size: 11px; color: var(--danger); }
+  .field .hint { font-size: 11px; color: var(--grey-700); }
+
+  .btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; }
+  .btn.loading { background: var(--primary-300); }
+  .spinner { width: 14px; height: 14px; border-radius: 999px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; margin-right: 8px; }
+
+  .link-row { text-align: center; margin-top: 16px; }
+  .link { font-size: 12px; color: var(--primary-700); font-weight: 600; cursor: pointer; }
+  .back-link { font-size: 12px; color: var(--grey-700); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 16px; }
+
+  .banner { display: flex; gap: 10px; align-items: flex-start; background: var(--success-light); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--grey-900); margin-bottom: 4px; }
+  .banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--success); margin-top: 4px; flex-shrink: 0; }
+  .banner.danger { background: var(--danger-light); }
+  .banner.danger .dot { background: var(--danger); }
+
+  .otp-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+  .otp-box { width: 42px; height: 48px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--grey-900); background: var(--surface); }
+  .otp-box.filled { border-color: var(--primary-500); }
+  .otp-box.error { border-color: var(--danger); background: var(--danger-light); }
+
+  .strength-bar { display: flex; gap: 4px; margin-top: 6px; }
+  .strength-bar span { flex: 1; height: 4px; border-radius: 999px; background: var(--grey-300); }
+  .strength-bar.weak span:nth-child(1) { background: var(--danger); }
+  .strength-bar.medium span:nth-child(1), .strength-bar.medium span:nth-child(2) { background: var(--warning); }
+  .strength-bar.strong span { background: var(--success); }
+  .strength-label { font-size: 11px; margin-top: 4px; }
+  .strength-label.weak { color: var(--danger); }
+  .strength-label.medium { color: var(--warning); }
+  .strength-label.strong { color: var(--success); }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">登入與驗證流程 · Variant A：置中卡片，忘記密碼／MFA 皆在同一張卡片內切換內容</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 登入預設</div>
+      <div class="screen">
+        <div class="card">
+          <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+          <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+          <div class="btn">登入</div>
+          <div class="link-row"><span class="link">忘記密碼？</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 登入失敗／忘記密碼送出成功</div>
+      <div class="screen">
+        <div class="card">
+          <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+          <div class="field"><label>Email</label><input value="designer@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" class="error" value="••••••" /><span class="err-text">帳號或密碼錯誤，請再試一次。</span></div>
+          <div class="btn">登入</div>
+          <div class="link-row"><span class="link">忘記密碼？</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 忘記密碼表單（送出後同卡片顯示成功訊息）</div>
+      <div class="screen">
+        <div class="card">
+          <span class="back-link">← 返回登入</span>
+          <div class="brand" style="text-align:left; margin-bottom:20px;"><div class="title serif" style="font-size:16px;">重設密碼</div><div class="sub">輸入登入信箱，我們會寄送重設密碼連結</div></div>
+          <div class="banner"><span class="dot"></span>若此 email 對應既有帳號，重設密碼信已寄出，請至信箱查收。</div>
+          <div class="field" style="margin-top:16px;"><label>Email</label><input value="designer@example.com" /></div>
+          <div class="btn">寄送重設信</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · MFA 驗證步驟（帳密正確後，含驗證碼錯誤）</div>
+      <div class="screen">
+        <div class="card">
+          <div class="brand"><div class="title serif">輸入驗證碼</div><div class="sub">開啟 Authenticator App，輸入 6 位數驗證碼</div></div>
+          <div class="otp-row">
+            <div class="otp-box error">2</div><div class="otp-box error">4</div><div class="otp-box error">1</div>
+            <div class="otp-box">·</div><div class="otp-box">·</div><div class="otp-box">·</div>
+          </div>
+          <p class="err-text" style="text-align:center; margin: -8px 0 16px;">驗證碼錯誤，請重新輸入。</p>
+          <div class="btn">驗證並登入</div>
+          <div class="link-row"><span class="link">改用其他方式登入</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">5 · 重設密碼頁（含強度計量條）／連結已逾時</div>
+      <div class="screen">
+        <div class="card">
+          <div class="brand"><div class="title serif">設定新密碼</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+          <div class="field">
+            <label>新密碼</label>
+            <input type="password" value="Ab12cd34" />
+            <div class="strength-bar medium"><span></span><span></span><span></span></div>
+            <div class="strength-label medium">密碼強度：中</div>
+          </div>
+          <div class="field"><label>確認新密碼</label><input type="password" class="error" value="Ab12cd" /><span class="err-text">兩次輸入的密碼不一致</span></div>
+          <div class="btn">設定新密碼</div>
+          <div class="banner danger" style="margin-top:16px;"><span class="dot"></span>連結已逾時或已使用，請重新申請忘記密碼。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

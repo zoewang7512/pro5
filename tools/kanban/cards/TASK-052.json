@@ -1,0 +1,58 @@
+{
+  "id": "TASK-052",
+  "title": "Email 通知與提醒 預約成立確認信",
+  "content": "新增 /api/webhooks/appointment-events 處理 appointments INSERT 事件，組確認信內容並呼叫 Resend 寄送；定案並實作 Supabase Database Webhook 建立方式（migration SQL trigger 或 Dashboard 設定，密鑰不得進版控明文）。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "Email 通知與提醒",
+  "userStory": "預約成立寄送確認信",
+  "track": "backend",
+  "dependsOn": ["TASK-051"],
+  "order": 52,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-052.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/api/webhooks/appointment-events/route.ts",
+    "lib/email/templates/confirmation.ts",
+    "supabase/migrations/0011_appointments_insert_webhook.sql"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務 TASK-051 尚未完成，暫留 backlog）"
+    }
+  ]
+}

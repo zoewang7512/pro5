@@ -1,0 +1,83 @@
+{
+  "id": "TASK-043",
+  "title": "設計師登入與帳號安全 帳號設定：MFA 註冊與停用（含 OTP 輸入元件）",
+  "content": "帳號設定頁「雙重驗證」卡片接上行為：未啟用時可啟動 TOTP 註冊（QR Code＋驗證碼確認），已啟用時可停用（需再次身分驗證）。新做 OtpInput 元件供本卡與 TASK-044 共用。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "設定雙重驗證（MFA）",
+  "track": "frontend",
+  "dependsOn": ["TASK-038"],
+  "order": 43,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-帳號設定頁.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-帳號設定頁.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-043.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/AccountSettingsView.tsx",
+    "lib/admin/account.ts",
+    "components/ui/OtpInput.tsx",
+    "components/ui/ConfirmDialog.tsx",
+    "app/design-system/page.tsx",
+    "tests/admin/account.test.ts",
+    "tests/components/account-settings-view.test.tsx",
+    "tests/components/otp-input.test.tsx",
+    "ai/context/design-system.md",
+    "ai/context/project-map.md",
+    "ai/artifacts/設計師登入與帳號安全/mockup-decision-帳號設定頁.md",
+    "ai/artifacts/設計師登入與帳號安全/screen-spec-帳號設定頁.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npx vitest run --pool=forks --poolOptions.forks.singleFork（25 files／304 tests passed，新增 tests/admin/account.test.ts MFA 五支函式測試、tests/components/account-settings-view.test.tsx「雙重驗證（MFA）」11 case、tests/components/otp-input.test.tsx 14 case，既有測試無回歸）",
+      "Browser 工具對真實 Supabase 專案完整走查，兩輪（初版＋三方審查修正後複驗）：未啟用→啟動註冊（真實 QR Code／密鑰）→輸入錯誤驗證碼（伺服器真實拒絕）→取消（factor 真實移除）→重新註冊，用密鑰以標準 TOTP 演算法算出真實驗證碼完成啟用→停用（輸入真實密碼＋真實驗證碼完成停用，重新整理頁面向伺服器再次確認狀態）；複驗額外驗證 OtpInput 清空中間格不再位移、enrollMfa 清理殘留 unverified factor、cancelMfaEnrollment 狀態檢查"
+    ],
+    "findings": [
+      "實作期發現並修正關鍵功能性錯誤：原設計「停用 MFA 僅需密碼」在真實 Supabase 環境下因 aal2 要求 100% 會失敗（422 insufficient_aal），已改為「密碼＋驗證碼」雙重驗證（unenrollMfaWithPasswordAndCode）並實測成功",
+      "architect 審查發現 OtpInput 清空中間格會使後方碼位移、MFA 狀態讀取失敗時 UI 誤顯示「未啟用」，皆已修正",
+      "security-reviewer 審查發現 1 項 Critical（H1：MFA 目前在伺服器端/RLS 層級完全無強制力，需 TASK-044＋新的 aal2 RLS 檢查任務卡才能真正生效，已記錄為已知限制，非本卡範圍）與多項 Medium/Low（cancelMfaEnrollment 未檢查 factor 狀態、停用僅驗證碼不夠、unverified factor 會累積、限流錯誤訊息、驗證失敗未清空輸入等），Medium/Low 已全數修正",
+      "test-engineer 審查發現 listMfaFactors 讀取失敗情境缺測試，已補上"
+    ],
+    "residual": "Critical：MFA 未整合登入頁與 RLS 層級的 aal2 檢查（見任務卡完成證據 H1），啟用 MFA 目前不代表登入時真的會被要求驗證碼，須與 TASK-044 及新的 RLS aal2 任務卡一併視為最小可行集合；無 MFA 備援碼／救援程序；啟用/停用無通知或稽核紀錄；unenrollMfaWithPasswordAndCode／cancelMfaEnrollment／enrollMfa 未加上前端重試次數限制；整合測試尚未併入腳本，依規劃併入 TASK-045"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務 TASK-038 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "核准（對話中核准 TASK-043 實作與驗證證據，轉 done；H1 Critical 發現的 MFA 尚未於登入頁／RLS 層強制生效，已知限制留給 TASK-044 與後續 RLS aal2 任務卡處理，非本卡範圍）"
+    }
+  ]
+}

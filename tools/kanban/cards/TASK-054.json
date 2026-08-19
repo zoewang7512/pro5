@@ -1,0 +1,59 @@
+{
+  "id": "TASK-054",
+  "title": "Email 通知與提醒 預約前 24 小時提醒信（Vercel Cron）",
+  "content": "新增 vercel.json crons 設定與 /api/cron/appointment-reminders：定時查詢 start_at 落在 24 小時時間窗、狀態為 pending/confirmed、reminder_sent_at 為 null 的預約，逐筆寄送提醒信並更新 reminder_sent_at 防重複。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "Email 通知與提醒",
+  "userStory": "預約前寄送提醒信",
+  "track": "backend",
+  "dependsOn": ["TASK-051"],
+  "order": 54,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-054.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "vercel.json",
+    "app/api/cron/appointment-reminders/route.ts",
+    "lib/email/templates/reminder.ts",
+    "lib/admin/appointment-reminders.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務 TASK-051 尚未完成，暫留 backlog）"
+    }
+  ]
+}

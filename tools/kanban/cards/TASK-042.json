@@ -1,0 +1,92 @@
+{
+  "id": "TASK-042",
+  "title": "設計師登入與帳號安全 帳號設定：密碼與登入 Email 修改",
+  "content": "帳號設定頁「密碼」「登入 Email」卡片接上編輯能力：密碼修改需驗證目前密碼並顯示強度計量（重用 TASK-040 元件），Email 修改顯示待確認狀態，變更在完成確認前不生效。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "修改密碼／個人資料",
+  "track": "frontend",
+  "dependsOn": ["TASK-038", "TASK-040"],
+  "order": 42,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-帳號設定頁.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-帳號設定頁.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-042.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/AccountSettingsView.tsx",
+    "app/admin/_components/AdminProfileContext.tsx",
+    "app/admin/layout.tsx",
+    "lib/admin/account.ts",
+    "lib/auth/password-strength.ts",
+    "tests/admin/account.test.ts",
+    "tests/components/account-settings-view.test.tsx",
+    "ai/artifacts/設計師登入與帳號安全/screen-spec-帳號設定頁.md",
+    "ai/artifacts/設計師登入與帳號安全/mockup-decision-帳號設定頁.md",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npx vitest run（24 files／252 tests passed，含 tests/admin/account.test.ts 新增 27 case、tests/components/account-settings-view.test.tsx 新增 17 case，既有測試無回歸）",
+      "Browser 工具對真實 Supabase 專案手動走查（designer001@gmail.com 登入 /admin/account），兩輪（初版與三方審查修正後）",
+      "透過 curl 直接呼叫 Supabase Auth API（grant_type=password／PUT /auth/v1/user）交叉驗證程式碼行為與真實後端回應",
+      "已完成 architect／security-reviewer／test-engineer 三方子代理審查（各兩輪，第一輪 security-reviewer 發現的問題已修正並觸發第二輪三方複審；過程中兩次遇到 API 端 529 overload 導致代理中斷，重跑後正常完成，與程式碼無關）"
+    ],
+    "findings": [
+      "【security-reviewer 第一輪發現並已修正】F1：密碼修改的『目前密碼』驗證原本用字串比對錯誤訊息判斷是否為密碼錯誤，脆弱耦合；改用 Supabase AuthError 的 error.code（invalid_credentials）明確判別，其餘錯誤（如限流）一律走 internal_error，避免使用者被限流時誤以為密碼被入侵者改掉、反而更頻繁重試加重限流。",
+      "【security-reviewer 第一輪發現並已修正，屬本卡最重要的修正】F2：登入 Email 是忘記密碼流程的救援管道，原設計『密碼修改需要驗證目前密碼、Email 修改卻不用』防護等級與威脅嚴重度相反；已在 Email 卡片新增『目前密碼』欄位，變更前一樣要求重新驗證（mockup 偏離已記錄於 mockup-decision-帳號設定頁.md 的實作期偏離紀錄，architect 第二輪確認此判斷正確、不需退回 mockup 核准關卡）。",
+      "【security-reviewer 第一輪發現並已修正】F3：待確認 email 狀態原本是純前端樂觀 boolean，重新整理頁面就消失；已改為 AdminProfileContext 的 pendingEmail state，來源是伺服器實際狀態（Supabase user.new_email），透過 refresh() 同步，重新整理頁面仍會顯示，且顯示的是實際待確認的信箱位址。",
+      "【security-reviewer 第一輪發現並已修正】F4／F5：updateAdminPassword 不再接受呼叫端傳入的 email 參數（避免變成任意 email+密碼驗證 oracle 介面），改內部呼叫 getUser() 現查；新增 weak_password／same_password 錯誤碼分類顯示可行動訊息；新增 MAX_PASSWORD_LENGTH=72（GoTrue/bcrypt 上限）。",
+      "【architect 第二輪發現並已修正的真實 bug】AdminProfileContext.refresh() 原本呼叫 supabase.auth.getUser() 時完全沒檢查 error，任何暫時性網路錯誤都會把 pendingEmail 誤判為 null、悄悄清掉待確認 banner，且此路徑會被 TASK-041 的顯示名稱／大頭貼存檔一併觸發；已加上錯誤守衛（比照 getAdminProfile 分支的既有寫法），失敗時保留舊值。",
+      "【architect 第二輪發現並已修正】email 已改成 context state（原本只是固定的 SSR 初始值，refresh() 只更新 pendingEmail 沒有更新 email 本身，會出現『pendingEmail 已因變更完成而消失，但 email 欄位仍顯示舊值』的矛盾畫面）；AccountSettingsView.tsx 的 emailInput 也新增同步 effect（僅在使用者未主動編輯草稿時才跟著新值同步，不會打斷正在輸入的內容）。",
+      "【architect 第二輪發現並已修正】updateAdminEmail 原本把 email_exists／email_address_invalid／over_email_send_rate_limit 全塌成同一句通用失敗，與剛修好的密碼路徑不一致；已拆分成可行動的個別錯誤訊息（尤其 rate_limited：本專案的 Supabase 預設共用寄信配額與 TASK-040 忘記密碼流程共用，很容易踩到，需要明確提示使用者稍後再試而非讓其持續重試）。",
+      "【architect／test-engineer 第二輪建議並已修正的次要項目】必填欄位為空時原本只有 focus 沒有可見錯誤文案（無障礙缺口）；MAX_PASSWORD_LENGTH 比對原本用 UTF-16 字元數而非 GoTrue 實際限制的 bytes 數，改用 TextEncoder 量測；refresh() 的兩個獨立 async 呼叫改用 Promise.all 平行送出。",
+      "【test-engineer 第二輪發現並已修正】待確認 email banner 的元件測試原本是套套邏輯（updateAdminEmail 回傳的 pendingEmail 與 getUserMock 回傳的 new_email 用同一個值，換掉 context 讀取邏輯測試也會通過）；已改成兩個不同值，明確驗證畫面顯示的是 refresh() 讀到的伺服器狀態而非呼叫結果本身；並補上密碼／Email 兩個表單的雙重送出防護測試（比照 tests/components/login-form.test.tsx 既有模式）。",
+      "初版密碼卡片版面（Stack direction row 並排『目前密碼』與『新密碼』）在頁面實際渲染寬度下過度壓縮，Browser 走查發現後已修正為固定垂直排列。",
+      "密碼修改為真實往返驗證：把 designer001@gmail.com 的密碼透過 UI 從原密碼改成 Abc12345，透過 curl 呼叫 POST /auth/v1/token?grant_type=password 驗證新密碼可登入；再透過 UI 改回原密碼 pw_designer_7512，curl 驗證原密碼恢復可登入（HTTP 200）——確認 Supabase 後端狀態確實生效且已還原，不只信任 UI 成功提示。",
+      "Email 修改：格式錯誤正確阻擋送出；目前密碼錯誤正確顯示行內錯誤（已於修正後的版面重新截圖確認）；輸入合法新 email 送出後，實際對 designer001@gmail.com 這個帳號的請求會撞到 TASK-040 已記錄的 Supabase 專案環境限制（email_address_invalid／寄信配額），已透過 curl 交叉驗證根因、確認非本卡程式碼缺陷，程式碼正確地將此類失敗降級為對應的可行動錯誤訊息，不洩漏細節、不誤入待確認狀態。",
+      "AGENTS.md 要求的畫面規格與 mockup 決策紀錄已同步更新（screen-spec-帳號設定頁.md 補上『目前密碼』欄位與對應狀態、mockup-decision-帳號設定頁.md 新增實作期偏離紀錄）；ai/context/project-map.md 已補上 TASK-038～042 遺漏的 admins 個人資料欄位／admin-assets bucket／lib/admin/account.ts／lib/auth/／/admin/account／/reset-password 等項目，並記錄『Supabase email 變更確認機制（單重／雙重）尚未在 Dashboard 人工查證』為已知未查證事項。"
+    ],
+    "residual": "Email 變更流程因 TASK-040 已記錄的 Supabase 專案環境限制（designer001@gmail.com 本身的寄信/驗證問題）無法在此環境完整走查『成功進入待確認狀態』的真實路徑，改以 curl 交叉驗證根因＋元件測試（已修正為非套套邏輯）覆蓋該分支邏輯；真實 email 收發的完整驗證依任務卡既定安排併入 TASK-045。Supabase 專案的 Email 變更確認機制（單重／雙重確認）尚未在 Dashboard 人工查證，已記錄於 project-map.md，不影響本卡程式碼正確性（UI 文案刻意寫得通用以相容兩種設定）。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務 TASK-038/040 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "核准（對話中核准實作、兩輪三方審查修正結果與驗證證據，轉 done）"
+    }
+  ]
+}

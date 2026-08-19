@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>登入與驗證流程 Variant B · 左右分割，品牌面板＋步驟指示器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 760px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 760px; height: 520px; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-1); display: flex; overflow: hidden; }
+
+  .brand-panel { width: 300px; background: linear-gradient(160deg, var(--primary-700), var(--grey-900)); color: #fff; padding: 40px 32px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+  .brand-panel .title { font-size: 24px; font-weight: 700; }
+  .brand-panel .sub { font-size: 13px; opacity: .8; margin-top: 8px; line-height: 1.6; }
+  .brand-panel .steps { display: flex; gap: 8px; }
+  .step-dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.35); }
+  .step-dot.active { background: #fff; width: 20px; }
+
+  .form-panel { flex: 1; padding: 44px 40px; display: flex; flex-direction: column; justify-content: center; }
+  .form-panel h2 { font-size: 18px; font-weight: 700; color: var(--grey-900); margin: 0 0 4px; }
+  .form-panel .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 20px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input { width: 100%; height: 42px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field input.error { border-color: var(--danger); background: var(--danger-light); }
+  .field .err-text { font-size: 11px; color: var(--danger); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 28px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; align-self: flex-start; }
+
+  .link-row { margin-top: 14px; }
+  .link { font-size: 12px; color: var(--primary-700); font-weight: 600; cursor: pointer; }
+  .back-link { font-size: 12px; color: var(--grey-700); font-weight: 500; cursor: pointer; margin-bottom: 16px; display: inline-block; }
+
+  .banner { display: flex; gap: 10px; align-items: flex-start; background: var(--success-light); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--grey-900); margin-bottom: 16px; }
+  .banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--success); margin-top: 4px; flex-shrink: 0; }
+  .banner.danger { background: var(--danger-light); }
+  .banner.danger .dot { background: var(--danger); }
+
+  .otp-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .otp-box { width: 44px; height: 50px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--grey-900); background: var(--surface); }
+  .otp-box.error { border-color: var(--danger); background: var(--danger-light); }
+
+  .strength-bar { display: flex; gap: 4px; margin-top: 6px; }
+  .strength-bar span { flex: 1; height: 4px; border-radius: 999px; background: var(--grey-300); }
+  .strength-bar.strong span { background: var(--success); }
+  .strength-label { font-size: 11px; margin-top: 4px; color: var(--success); }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">登入與驗證流程 · Variant B：左右分割版面，右側表單區切換內容，左側品牌面板顯示步驟指示器</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 登入預設</div>
+      <div class="screen">
+        <div class="brand-panel">
+          <div><div class="title serif">王牌理髮廳</div><div class="sub">設計師後台管理系統，管理預約、服務與店家資訊。</div></div>
+        </div>
+        <div class="form-panel">
+          <h2>登入</h2>
+          <div class="sub">輸入帳號密碼進入後台</div>
+          <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+          <div class="btn">登入</div>
+          <div class="link-row"><span class="link">忘記密碼？</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 登入失敗</div>
+      <div class="screen">
+        <div class="brand-panel">
+          <div><div class="title serif">王牌理髮廳</div><div class="sub">設計師後台管理系統，管理預約、服務與店家資訊。</div></div>
+        </div>
+        <div class="form-panel">
+          <h2>登入</h2>
+          <div class="sub">輸入帳號密碼進入後台</div>
+          <div class="field"><label>Email</label><input value="designer@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" class="error" value="••••••" /><span class="err-text">帳號或密碼錯誤，請再試一次。</span></div>
+          <div class="btn">登入</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 忘記密碼／送出成功</div>
+      <div class="screen">
+        <div class="brand-panel">
+          <div><div class="title serif">王牌理髮廳</div><div class="sub">別擔心，輸入登入信箱即可重新取得存取權限。</div></div>
+        </div>
+        <div class="form-panel">
+          <span class="back-link">← 返回登入</span>
+          <h2>重設密碼</h2>
+          <div class="sub">我們會寄送重設密碼連結到您的信箱</div>
+          <div class="banner"><span class="dot"></span>若此 email 對應既有帳號，重設密碼信已寄出。</div>
+          <div class="field"><label>Email</label><input value="designer@example.com" /></div>
+          <div class="btn">寄送重設信</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · MFA 驗證步驟（步驟 2/2，含錯誤）</div>
+      <div class="screen">
+        <div class="brand-panel">
+          <div><div class="title serif">王牌理髮廳</div><div class="sub">帳密驗證通過，最後一步：輸入 Authenticator App 驗證碼。</div></div>
+          <div class="steps"><span class="step-dot"></span><span class="step-dot active"></span></div>
+        </div>
+        <div class="form-panel">
+          <h2>雙重驗證</h2>
+          <div class="sub">開啟 Authenticator App，輸入 6 位數驗證碼</div>
+          <div class="otp-row">
+            <div class="otp-box error">2</div><div class="otp-box error">4</div><div class="otp-box error">1</div>
+            <div class="otp-box">·</div><div class="otp-box">·</div><div class="otp-box">·</div>
+          </div>
+          <p class="err-text" style="margin: -10px 0 16px;">驗證碼錯誤，請重新輸入。</p>
+          <div class="btn">驗證並登入</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">5 · 重設密碼頁（強度：強）／連結已逾時</div>
+      <div class="screen">
+        <div class="brand-panel">
+          <div><div class="title serif">王牌理髮廳</div><div class="sub">設定一組新密碼即可重新登入後台。</div></div>
+        </div>
+        <div class="form-panel">
+          <h2>設定新密碼</h2>
+          <div class="sub">建議混合大小寫、數字與符號</div>
+          <div class="field">
+            <label>新密碼</label>
+            <input type="password" value="Ab12!cd34#ef" />
+            <div class="strength-bar strong"><span></span><span></span><span></span></div>
+            <div class="strength-label">密碼強度：強</div>
+          </div>
+          <div class="field"><label>確認新密碼</label><input type="password" value="Ab12!cd34#ef" /></div>
+          <div class="btn">設定新密碼</div>
+          <div class="banner danger" style="margin-top:16px;"><span class="dot"></span>此連結已逾時或已使用，請重新申請忘記密碼。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

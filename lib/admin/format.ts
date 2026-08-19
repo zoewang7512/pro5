@@ -56,3 +56,9 @@ export function formatAppointmentDateLabel(iso: string): string {
 export function formatDateSlash(date: string): string {
   return date.replaceAll("-", "/");
 }
+
+// 服務項目管理頁用；顧客前台有自己的 formatPrice（app/_components/booking/SectionChrome.tsx），
+// 刻意不共用，維持既有「顧客前台不 import lib/admin/*」的分層方向，這裡是反向也不 import 對方。
+export function formatPrice(price: number): string {
+  return `NT$${price.toLocaleString("zh-Hant-TW")}`;
+}

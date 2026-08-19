@@ -1,0 +1,58 @@
+{
+  "id": "TASK-053",
+  "title": "Email 通知與提醒 取消／改期時寄送通知信",
+  "content": "在 /api/webhooks/appointment-events 新增處理 UPDATE 事件的分支：比對 old_record 與 record 判斷取消或改期，寄送對應通知信。標記完成不觸發任何通知信。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "Email 通知與提醒",
+  "userStory": "取消／改期時寄送通知信",
+  "track": "backend",
+  "dependsOn": ["TASK-051"],
+  "order": 53,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-053.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/api/webhooks/appointment-events/route.ts",
+    "lib/email/templates/cancellation.ts",
+    "lib/email/templates/reschedule.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務 TASK-051 尚未完成，暫留 backlog）"
+    }
+  ]
+}

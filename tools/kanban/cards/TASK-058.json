@@ -1,0 +1,59 @@
+{
+  "id": "TASK-058",
+  "title": "設計師登入與帳號安全 忘記密碼連結改用伺服器端 verifyOtp（解決 PKCE 跨裝置失效）",
+  "content": "TASK-040 的 architect 與 security-reviewer 審查都指出：@supabase/ssr 的 createBrowserClient 強制使用 PKCE flow，resetPasswordForEmail 產生的真實信件連結格式是 `?code=...&flow_id=...`，且 code_verifier 只存在『發起忘記密碼請求那一台瀏覽器』的儲存空間。若設計師在電腦上申請、在手機上開信（常見情境），連結會被誤判為『已逾時或已使用』，即使連結本身完全合法。本卡改用伺服器端 route handler（`app/auth/confirm/route.ts`）呼叫 `supabase.auth.verifyOtp({ type: 'recovery', token_hash })`，成功後導向 `/reset-password`，讓 session 建立發生在伺服器端而非依賴前端瀏覽器儲存的 PKCE code_verifier，解決跨裝置問題。注意：本卡完成後，仍需要人工到 Supabase Dashboard 把 Recovery Email Template 從預設格式改成 `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`，否則新流程不會生效（這部分是 Supabase 專案後台設定，不在本卡程式碼變更範圍內，需使用者自行操作或明確委託）。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "忘記密碼／重設密碼",
+  "track": "frontend",
+  "dependsOn": ["TASK-040"],
+  "order": 58,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": false,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-登入與驗證流程.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-登入與驗證流程.md",
+    "taskCard": "",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/auth/confirm/route.ts",
+    "app/reset-password/reset-password-form.tsx",
+    "app/login/login-form.tsx",
+    "lib/supabase/server.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "源自 TASK-040 architect／security-reviewer 審查發現（PKCE 跨裝置重設失效）；使用者於對話中選擇先接受此已知限制、另開任務卡處理，轉 backlog。本卡尚未進入 implementation-plan／spec-interrogation 流程，需求與檔案範圍為初步評估，實作前應依 AGENTS.md 流程補齊 context pack 與驗證契約，且需與使用者確認 Supabase Dashboard Email Template 修改的時程／分工。"
+    }
+  ]
+}

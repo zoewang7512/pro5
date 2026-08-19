@@ -2,7 +2,7 @@
   "id": "TASK-034",
   "title": "服務項目管理 架構基礎（頁面骨架、Sidebar 啟用、服務項目列表唯讀顯示）",
   "content": "在 /admin/services 建立受保護頁面骨架，唯讀顯示所有服務項目（含上架與下架中，比照已核准 mockup 變體 A 的表格版型），Sidebar「服務設定」連結從停用改為可點擊。不含新增/編輯/下架/上架邏輯，留給 TASK-035/TASK-036。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "",
@@ -20,14 +20,14 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
-    "ui": false,
+    "ui": true,
     "architecture": false,
     "security": false,
-    "test": false,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -45,9 +45,30 @@
     "lib/admin/services.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npm run build（成功，/admin/services 為 dynamic route）",
+      "npx vitest run（17 files / 137 tests passed，既有測試無回歸）",
+      "Browser 工具對真實 Supabase 專案手動走查：登入後台 → 點擊 Sidebar「服務設定」→ 確認頁面正確列出三筆既有服務（含名稱/價格/時長/狀態徽章）、新增/編輯/下架按鈕皆已渲染"
+    ],
+    "findings": [
+      "本卡為唯讀頁面骨架，沿用既有 admin full access to services RLS policy（TASK-003 已建立，本卡是首次由後台消費），未新增任何 RLS policy 或寫入路徑，未新增安全性表面；比照 TASK-030 的既有判斷慣例，未派遣 architect／security-reviewer 子代理正式審查，改以既有安全性檢查清單自我核對：頁面沿用 app/admin/layout.tsx 的 is_admin() 保護、listServices() 僅呼叫既有 SELECT 權限、未新增任何 mutation。",
+      "驗證過程一度因本機 Supabase 專案重啟／登入速率限制導致無法登入，使用者重啟 Supabase 後恢復正常，非本卡程式碼問題。",
+      "實際渲染畫面與已核准 mockup 變體 A 一致（表格版型、狀態徽章、操作欄位），深色主題正確套用既有 design token。"
+    ],
+    "residual": "空狀態（尚無任何服務項目）與載入中 Skeleton 狀態未在真實環境實際觸發截圖驗證（目前資料庫已有 3 筆既有服務，清空會影響其他既有測試/資料，未執行破壞性操作），程式碼邏輯與 mockup 皆已涵蓋這兩種狀態，視為可接受的已知限制，不視為阻擋驗收的缺陷。"
   },
-  "comments": []
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-034~037 這批任務卡，轉 ready；前置任務皆已完成）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "驗收通過，轉 Done（看板介面確認 Verify 階段內容後於對話中核准）"
+    }
+  ]
 }

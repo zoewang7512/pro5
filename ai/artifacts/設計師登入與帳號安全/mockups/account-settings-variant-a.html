@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>帳號設定頁 Variant A · 單頁捲動，五張獨立卡片各自儲存</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 980px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 980px; height: 760px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; color: var(--grey-900); padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; cursor: pointer; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .sidebar-profile { margin-top: auto; padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--grey-200); }
+  .avatar { width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sidebar-profile .name { font-size: 12px; font-weight: 600; color: var(--grey-900); }
+  .sidebar-profile .logout { font-size: 11px; color: var(--grey-500); cursor: pointer; }
+
+  .main { flex: 1; padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .toolbar h2 { font-size: 16px; font-weight: 600; color: var(--grey-900); margin: 0; }
+  .toolbar .hint { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+
+  .card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 20px 24px; }
+  .card h3 { font-size: 14px; font-weight: 600; color: var(--grey-900); margin: 0 0 4px; }
+  .card .card-sub { font-size: 11px; color: var(--grey-700); margin: 0 0 14px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input { width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 10px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field input.error { border-color: var(--danger); background: var(--danger-light); }
+  .field .err-text { font-size: 11px; color: var(--danger); }
+  .strength-bar { display: flex; gap: 4px; margin-top: 6px; }
+  .strength-bar span { flex: 1; height: 4px; border-radius: 999px; background: var(--grey-300); }
+  .strength-bar.medium span:nth-child(1), .strength-bar.medium span:nth-child(2) { background: var(--warning); }
+  .strength-label { font-size: 11px; margin-top: 4px; color: var(--warning); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 600; border: none; cursor: pointer; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); }
+  .btn.danger-outline { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  .row-2col { display: flex; gap: 20px; align-items: flex-start; }
+  .avatar-upload { width: 72px; height: 72px; border-radius: 999px; flex-shrink: 0; background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; font-weight: 700; }
+  .chip-btn { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: var(--grey-200); color: var(--grey-900); border: none; cursor: pointer; margin-right: 6px; }
+
+  .qr-box { width: 96px; height: 96px; border-radius: var(--radius-sm); background: repeating-linear-gradient(45deg, var(--grey-900), var(--grey-900) 4px, #fff 4px, #fff 8px); flex-shrink: 0; }
+  .otp-row { display: flex; gap: 6px; margin: 12px 0; }
+  .otp-box { width: 34px; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--grey-900); background: var(--surface); }
+
+  .status-badge { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .status-badge.on { background: var(--success-light); color: var(--success); }
+  .status-badge.off { background: var(--grey-200); color: var(--grey-700); }
+  .banner { display: flex; gap: 10px; align-items: flex-start; background: var(--info-light); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 11px; color: var(--grey-900); margin-top: 10px; }
+  .banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--info); margin-top: 3px; flex-shrink: 0; }
+
+  .modal-overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .modal-card { width: 380px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .modal-card h3 { font-size: 15px; margin: 0 0 6px; color: var(--grey-900); }
+  .modal-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">帳號設定頁 · Variant A：單頁捲動，五張卡片（密碼／Email／顯示名稱／大頭貼／MFA）各自獨立儲存</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設（MFA 未啟用，顯示名稱／大頭貼已設定）</div>
+      <div class="screen">
+        <div class="sidebar" style="display:flex; flex-direction:column;">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item active">帳號設定</div>
+          <div class="sidebar-profile"><div class="avatar">A</div><div><div class="name">Alex</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><h2>帳號設定</h2><div class="hint">管理登入密碼、email、個人資料與雙重驗證</div></div>
+
+          <div class="card"><h3>個人資料</h3><div class="row-2col">
+            <div class="avatar-upload">A</div>
+            <div style="flex:1;"><div class="field"><label>顯示名稱</label><input value="Alex" /></div></div>
+          </div><div class="actions"><span class="chip-btn">更換頭像</span><span class="chip-btn" style="color:var(--danger);">移除</span><span class="btn" style="margin-left:auto;">儲存</span></div></div>
+
+          <div class="card"><h3>密碼</h3><div class="field-row">
+            <div class="field"><label>目前密碼</label><input type="password" value="••••••••" /></div>
+            <div class="field"><label>新密碼</label><input type="password" placeholder="至少 8 碼" /></div>
+          </div><div class="field" style="max-width:calc(50% - 7px);"><label>確認新密碼</label><input type="password" placeholder="再輸入一次" /></div><div class="actions"><span class="btn">更新密碼</span></div></div>
+
+          <div class="card"><h3>登入 Email</h3><div class="field"><label>目前 Email</label><input value="designer@example.com" /></div><div class="actions"><span class="btn">更新 Email</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 密碼修改（強度計量條）／Email 修改待確認</div>
+      <div class="screen">
+        <div class="sidebar" style="display:flex; flex-direction:column;">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item active">帳號設定</div>
+          <div class="sidebar-profile"><div class="avatar">A</div><div><div class="name">Alex</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><h2>帳號設定</h2><div class="hint">管理登入密碼、email、個人資料與雙重驗證</div></div>
+
+          <div class="card"><h3>密碼</h3><div class="field-row">
+            <div class="field"><label>目前密碼</label><input type="password" value="••••••••" /></div>
+            <div class="field"><label>新密碼</label><input type="password" value="Ab12cd34" /><div class="strength-bar medium"><span></span><span></span><span></span></div><div class="strength-label">密碼強度：中</div></div>
+          </div><div class="field" style="max-width:calc(50% - 7px);"><label>確認新密碼</label><input type="password" class="error" value="Ab12cd" /><span class="err-text">兩次輸入的密碼不一致</span></div><div class="actions"><span class="btn">更新密碼</span></div></div>
+
+          <div class="card"><h3>登入 Email</h3><div class="field"><label>目前 Email</label><input value="designer@example.com" /></div>
+          <div class="banner"><span class="dot"></span>已寄出確認信至新 email，請點擊信中連結完成變更；完成前登入 email 維持原值。</div>
+          <div class="actions"><span class="btn">更新 Email</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 大頭貼上傳中／MFA 註冊中（QR Code）</div>
+      <div class="screen">
+        <div class="sidebar" style="display:flex; flex-direction:column;">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item active">帳號設定</div>
+          <div class="sidebar-profile"><div class="avatar">A</div><div><div class="name">Alex</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><h2>帳號設定</h2><div class="hint">管理登入密碼、email、個人資料與雙重驗證</div></div>
+
+          <div class="card"><h3>個人資料</h3><div class="row-2col">
+            <div class="avatar-upload" style="opacity:.5;">A</div>
+            <div style="flex:1;"><div class="field"><label>顯示名稱</label><input value="Alex" /></div><div style="font-size:11px; color:var(--grey-700); margin-top:6px;">頭像上傳中…</div></div>
+          </div></div>
+
+          <div class="card"><h3>雙重驗證（MFA）</h3><div class="card-sub">使用 Authenticator App 掃描下方 QR Code，輸入產生的驗證碼完成啟用</div>
+          <div class="row-2col"><div class="qr-box"></div>
+            <div style="flex:1;">
+              <div style="font-size:11px; color:var(--grey-700); margin-bottom:8px;">或手動輸入密鑰：<b>JBSW Y3DP EHPK 3PXP</b></div>
+              <div class="otp-row"><div class="otp-box">4</div><div class="otp-box">8</div><div class="otp-box">1</div><div class="otp-box">2</div><div class="otp-box">·</div><div class="otp-box">·</div></div>
+              <div class="actions" style="justify-content:flex-start;"><span class="btn outline">取消</span><span class="btn">確認啟用</span></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · MFA 已啟用／停用二次確認</div>
+      <div class="screen">
+        <div class="sidebar" style="display:flex; flex-direction:column;">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item">預約</div>
+          <div class="nav-item">服務設定</div>
+          <div class="nav-item">營業時間</div>
+          <div class="nav-item">商店設定</div>
+          <div class="nav-item active">帳號設定</div>
+          <div class="sidebar-profile"><div class="avatar">A</div><div><div class="name">Alex</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="main">
+          <div class="toolbar"><h2>帳號設定</h2><div class="hint">管理登入密碼、email、個人資料與雙重驗證</div></div>
+          <div class="card"><h3>雙重驗證（MFA）<span class="status-badge on" style="margin-left:8px;">已啟用</span></h3>
+          <div class="card-sub">登入時將額外要求輸入 Authenticator App 的驗證碼</div>
+          <div class="actions" style="justify-content:flex-start;"><span class="btn danger-outline">停用雙重驗證</span></div></div>
+        </div>
+        <div class="modal-overlay">
+          <div class="modal-card">
+            <h3 class="serif">確定要停用雙重驗證？</h3>
+            <p class="sub">停用後登入將只需要帳號密碼，帳號保護程度會降低。請輸入目前密碼或有效驗證碼確認身分：</p>
+            <div class="field"><label>目前密碼</label><input type="password" placeholder="輸入密碼確認" /></div>
+            <div class="actions"><span class="btn outline">取消</span><span class="btn danger-outline">確認停用</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

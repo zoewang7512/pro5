@@ -1,0 +1,86 @@
+{
+  "id": "TASK-040",
+  "title": "設計師登入與帳號安全 忘記密碼／重設密碼（含密碼強度計量條元件）",
+  "content": "登入頁接上「忘記密碼？」連結行為（resetPasswordForEmail），新增 /reset-password 頁供設定新密碼；新做 PasswordStrengthMeter 元件供本卡與 TASK-042 共用。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "忘記密碼／重設密碼",
+  "track": "frontend",
+  "dependsOn": ["TASK-039"],
+  "order": 40,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-登入與驗證流程.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-登入與驗證流程.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-040.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/login/login-form.tsx",
+    "app/reset-password/page.tsx",
+    "app/reset-password/reset-password-form.tsx",
+    "components/ui/PasswordStrengthMeter.tsx",
+    "lib/auth/password-strength.ts",
+    "tests/lib/password-strength.test.ts",
+    "tests/components/login-form.test.tsx",
+    "tests/components/reset-password-form.test.tsx",
+    "tests/components/password-strength-meter.test.tsx",
+    "ai/context/design-system.md",
+    "app/design-system/page.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build（/login 維持 dynamic、/reset-password 產出為 static）",
+      "npx vitest run（23 files／204 tests passed，含新增 tests/lib/password-strength.test.ts 14 case、tests/components/login-form.test.tsx 8 case、tests/components/reset-password-form.test.tsx 8 case、tests/components/password-strength-meter.test.tsx 4 case，既有測試無回歸）",
+      "Browser 工具走查：/login 點「忘記密碼？」→ 同卡片切換忘記密碼表單（比照 mockup 狀態 3）→ 輸入 email 送出 → 成功文案／服務層級錯誤文案兩種情境皆截圖確認 → 點「← 返回登入」返回登入表單；/login?mode=forgot-password 直接開啟忘記密碼表單（供 /reset-password 的「重新申請」連結使用）；/reset-password 無 token 直接造訪 → 4 秒逾時後顯示「連結已逾時或已使用」＋「重新申請」連結（href 正確指向 /login?mode=forgot-password）；/design-system 的 PasswordStrengthMeter 區塊互動測試弱／中／強三階顏色與長條數正確",
+      "透過 Supabase Admin API（curl）測試 resetPasswordForEmail／generate_link／verify 端點",
+      "已針對本卡（高風險：身分驗證相關）啟動 architect／security-reviewer／test-engineer 三方子代理審查；三方皆回報後，依審查結果修正程式碼並補齊測試（見下方 findings 與修正記錄）"
+    ],
+    "findings": [
+      "【已修正之嚴重漏洞】architect 與 security-reviewer 各自獨立發現同一個認證繞過漏洞：/reset-password 原本把 supabase.auth.getSession() 回傳『任何既有 session』就當成『重設連結有效』，導致已登入的管理者、或任何偷到 session cookie 的人，直接造訪 /reset-password 就能拿到可用的設定新密碼表單，完全不需要提供舊密碼、不需要收信驗證。已修正為只信任 PASSWORD_RECOVERY 事件本身，移除 getSession() 的存在性判斷（app/reset-password/reset-password-form.tsx），並新增迴歸測試（tests/components/reset-password-form.test.tsx）證明『有 session 但沒有 PASSWORD_RECOVERY 事件』時仍會落到 invalid 狀態、不會顯示改密碼表單",
+      "【已修正】signOut() 呼叫加上 try/catch（原本若拋錯會讓使用者卡在成功畫面、本機留著剛提升過的 session），並在導回登入頁時比照既有 logout-button.tsx 補上 router.refresh()；pending 的導向 setTimeout 在元件 unmount 時會清除",
+      "【已修正】NEXT_PUBLIC_SITE_URL 未設定時，resetPasswordForEmail 的 redirectTo 會退化成字面字串 undefined/reset-password；已加上 window.location.origin 的 fallback",
+      "【已加上 UX 緩解，架構根治另開 TASK-058】architect 與 security-reviewer 都指出：@supabase/ssr 的 createBrowserClient 強制使用 PKCE flow，resetPasswordForEmail 產生的真實信件連結格式其實是 `?code=...&flow_id=...`，且 code_verifier 只存在『發起忘記密碼那一台瀏覽器』的儲存空間；若設計師在電腦上申請、在手機上開信，連結會被誤判為『已逾時或已使用』（其實是合法連結）。本卡先前用 Supabase Admin API 的 generate_link／verify 端點做的 curl 交叉驗證，走的是 implicit flow（回傳 #access_token=...），不是 resetPasswordForEmail 實際會走的 PKCE flow，所以先前『token 在 URL fragment、不會外洩到伺服器存取日誌』的結論不適用於真實流程（PKCE 下 code／flow_id 會在 query string）——已修正撤回此結論。已在對話中與使用者確認：先接受此限制，login-form.tsx 的忘記密碼成功文案已加上『請在這台裝置、這個瀏覽器開啟信件中的連結，換裝置或換瀏覽器開啟可能會顯示連結已逾時』提示；徹底修法（伺服器端 route handler + verifyOtp({type:'recovery', token_hash})，另需人工到 Supabase Dashboard 把 Recovery Email Template 改成 {{ .TokenHash }} 格式）已另開 TASK-058（backlog）追蹤",
+      "【已撤回錯誤結論，記錄為需要 Supabase Dashboard 設定的殘留風險】security-reviewer 指出先前『resetPasswordForEmail 不會洩漏帳號是否存在』的結論不夠精確：單次請求確實無法區分，但重複請求會有列舉 oracle——只有真實存在的帳號會進入寄信流程、進而受 per-email 最短間隔與寄信配額限制，本卡測試過程中 designer001@gmail.com 收到的 429 email rate limit exceeded 正是這個機制的展現（並非單純『尚未設定自訂 SMTP』的中性限制，而是可被用來判斷帳號是否存在的訊號）。根治需要在 Supabase Dashboard 開啟 CAPTCHA 保護並設定自訂 SMTP，屬於外部系統設定，非本卡程式碼可完全解決",
+      "【記錄為殘留風險，非本卡阻斷項】MIN_PASSWORD_LENGTH=6 對唯一管理者帳號（可讀寫所有預約與顧客個資）偏弱，與 .env.example 對 seed 帳號『至少 12 碼』的建議不一致；根治需要同步調整 Supabase Dashboard 的 Minimum password length 設定；updateUser 失敗時的通用錯誤文案雖不洩漏帳號狀態，但把 weak_password／same_password 都導向『請重新申請忘記密碼』會讓使用者多燒一次寄信配額，可用 error.code 分流優化，屬於低優先度加強項"
+    ],
+    "residual": "已修正認證繞過漏洞（H3）並補齊迴歸測試；signOut 穩健性、env var 防呆、PasswordStrengthMeter 測試缺口皆已補上。使用者於對話中已就以下項目做出決定：(1) PKCE 跨裝置重設會失效（M1）——先接受此限制並加上 UX 提示文案，架構根治另開 TASK-058（backlog）追蹤，執行時需人工到 Supabase Dashboard 修改 Recovery Email Template；(2) 忘記密碼流程存在帳號列舉 oracle 與缺乏 CAPTCHA／寄信節流（H1/H2）、(3) 密碼最短長度偏弱（M3）——使用者選擇不開新任務卡，先記錄為殘留風險，由使用者自行找時間到 Supabase Dashboard 開啟 CAPTCHA 保護、設定自訂 SMTP、調高 Minimum password length。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務 TASK-039 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准實作、修正後的認證繞過漏洞修復、以及殘留風險處理方式，轉 done；PKCE 跨裝置問題另開 TASK-058，Dashboard 設定項目使用者自行後續處理）"
+    }
+  ]
+}

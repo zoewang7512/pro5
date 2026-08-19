@@ -1,0 +1,61 @@
+{
+  "id": "TASK-046",
+  "title": "預約規則與政策設定 架構基礎（booking_policy 資料表、RLS、後台頁面骨架、Sidebar 連結）",
+  "content": "新增 booking_policy 單例資料表與 RLS policy（比照 store_settings/business_hours 模式），建立 /admin/booking-policy 受保護頁面骨架（唯讀顯示），Sidebar 新增「預約規則」導覽項目。不含編輯/儲存邏輯與 RPC 修改，留給 TASK-047/048。",
+  "stage": "ready",
+  "risk": "medium",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "預約規則與政策設定",
+  "userStory": "設定最短提前預約時間",
+  "track": "n/a",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-014"],
+  "order": 46,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約規則與政策設定/feature-spec.md",
+    "screenSpec": "ai/artifacts/預約規則與政策設定/screen-spec-預約規則頁.md",
+    "mockupDecision": "ai/artifacts/預約規則與政策設定/mockup-decision-預約規則頁.md",
+    "taskCard": "ai/artifacts/預約規則與政策設定/task-cards/TASK-046.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0008_booking_policy.sql",
+    "supabase/migrations/0008_booking_policy_down.sql",
+    "lib/admin/booking-policy.ts",
+    "app/admin/booking-policy/page.tsx",
+    "app/admin/_components/BookingPolicyForm.tsx",
+    "app/admin/_components/AdminShell.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-046~050 這批任務卡，轉 ready；前置任務皆已完成）"
+    }
+  ]
+}

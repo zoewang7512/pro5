@@ -1,0 +1,59 @@
+{
+  "id": "TASK-049",
+  "title": "預約規則與政策設定 顧客前台政策說明區塊",
+  "content": "顧客前台預約流程（ContactFormSection.tsx）新增政策說明資訊卡片（mockup 變體 B，置於送出按鈕正上方），文字依 booking_policy 目前設定值動態組成，讀取失敗靜默降級不阻擋既有流程。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "預約規則與政策設定",
+  "userStory": "顧客端顯示預約政策說明",
+  "track": "frontend",
+  "dependsOn": ["TASK-046"],
+  "order": 49,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/預約規則與政策設定/feature-spec.md",
+    "screenSpec": "ai/artifacts/預約規則與政策設定/screen-spec-顧客前台政策說明.md",
+    "mockupDecision": "ai/artifacts/預約規則與政策設定/mockup-decision-顧客前台政策說明.md",
+    "taskCard": "ai/artifacts/預約規則與政策設定/task-cards/TASK-049.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/_components/booking/BookingFlow.tsx",
+    "app/_components/booking/ContactFormSection.tsx",
+    "lib/booking/api.ts",
+    "lib/booking/policy-text.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-046~050 這批任務卡；本卡前置任務 TASK-046 尚未完成，暫留 backlog）"
+    }
+  ]
+}

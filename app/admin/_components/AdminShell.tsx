@@ -5,6 +5,8 @@ import Box from "@mui/material/Box";
 import { usePathname } from "next/navigation";
 import { Sidebar, type SidebarItem } from "@/components/ui/Sidebar";
 import { LogoutButton } from "../logout-button";
+import { useAdminProfile } from "./AdminProfileContext";
+import { resolveAdminDisplayName } from "@/lib/admin/account";
 
 // Sidebar 導覽上移到這裡（第二個後台頁面 /admin/business-hours 出現，比照
 // TASK-014 完成證據記錄的既知殘留風險：導覽項目原本寫在 AdminDashboard.tsx 頁面層，
@@ -13,13 +15,15 @@ import { LogoutButton } from "../logout-button";
 
 const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean }> = [
   { label: "預約", href: "/admin" },
-  { label: "服務設定", href: "/admin/services", disabled: true },
+  { label: "服務設定", href: "/admin/services" },
   { label: "營業時間", href: "/admin/business-hours" },
   { label: "商店設定", href: "/admin/store-settings" },
+  { label: "帳號設定", href: "/admin/account" },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { displayName, avatarUrl } = useAdminProfile();
   const items: SidebarItem[] = NAV_ITEMS.map((item) => ({
     ...item,
     active: pathname === item.href,
@@ -27,7 +31,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
-      <Sidebar title="理髮廳後台" items={items} logoutSlot={<LogoutButton />} />
+      <Sidebar
+        title="理髮廳後台"
+        items={items}
+        logoutSlot={<LogoutButton />}
+        profileName={resolveAdminDisplayName(displayName)}
+        profileAvatarUrl={avatarUrl}
+      />
       <Box component="main" sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {children}
       </Box>

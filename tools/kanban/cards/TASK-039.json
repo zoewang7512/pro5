@@ -1,0 +1,71 @@
+{
+  "id": "TASK-039",
+  "title": "設計師登入與帳號安全 登入頁改版（套用 design system，不變更登入邏輯）",
+  "content": "把 app/login/login-form.tsx 從純 inline style 改套用既有 MUI design system，比照已核准 mockup 變體 A（置中單卡片）。只改視覺，signInWithPassword 呼叫與錯誤處理/導向邏輯逐行保留。預留忘記密碼連結版位，MFA 步驟版位不在本卡渲染。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "設計師登入／登出",
+  "track": "frontend",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009"],
+  "order": 39,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-登入與驗證流程.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-登入與驗證流程.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-039.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/login/login-form.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "Browser 工具走查 /login：清除 session cookie 後確認登入預設狀態、輸入錯誤帳密後的失敗狀態（錯誤文案顯示於密碼欄位 helperText）、375px 手機寬度版型"
+    ],
+    "findings": [
+      "handleSubmit 內 signInWithPassword 呼叫參數、錯誤文案、router.replace/router.refresh 導向邏輯逐行未變，僅改寫外層 JSX／樣式為 MUI 元件",
+      "email/password 欄位的 autoComplete=\"username\"/\"current-password\" 屬性保留",
+      "security-reviewer 子代理審查結論：無安全性或驗證邏輯回歸，可移交人工審查；MUI Button loading={submitting} 會下推為 disabled，雙重送出保護仍有效；「忘記密碼？」佔位連結（Link component=\"span\"，無 href/onClick）不構成攻擊面",
+      "security-reviewer 提出 4 項非阻斷性建議：(1) disabled={submitting} 新增於 email/password 欄位，嚴格說已逾越「只改 JSX」範圍，方向是改善但建議揭露；(2) 錯誤訊息 helperText 恆常渲染、僅動態切換 role=\"alert\"，部分螢幕閱讀器對此播報可能不穩定；(3) 「忘記密碼？」連結有 cursor:pointer 視覺但無 href 不可鍵盤聚焦，對輔具使用者有誤導風險，建議接線前先處理或降級為 Typography；(4) 全站目前沒有任何 login 相關測試，建議另開任務補上"
+    ],
+    "residual": "登入成功情境未能實際截圖（測試帳號密碼未知），已透過程式碼比對確認成功路徑未被更動；登入中 loading 狀態因本機回應過快未截到畫面，改以程式碼比對 Button loading={submitting} 佐證。security-reviewer 建議 (3)（忘記密碼連結有 cursor:pointer 但不可鍵盤聚焦）已於 2026-08-18 修正：移除 cursor:pointer sx，改用預設 cursor（不再暗示可點擊），視覺樣式（連結色／底線）不變，tsc/lint 通過並以 Browser 工具確認 getComputedStyle cursor 已變為 auto。建議 (1)（disabled 範圍揭露）已在本卡證據中揭露、方向為改善非缺陷，使用者核准不另開卡片。建議 (2)(4) 已於 2026-08-18 另開 TASK-056（錯誤訊息 a11y 播報穩定性）與 TASK-057（補上登入表單測試），轉 ready。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡，轉 ready；前置任務皆已完成）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-039 實作與驗證證據，轉 done；security-reviewer 子代理審查於背景執行中，結果將於完成後補充於證據欄位）"
+    }
+  ]
+}

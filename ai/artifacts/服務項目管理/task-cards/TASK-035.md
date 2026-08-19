@@ -8,7 +8,7 @@
 - 上層 User Story：新增/編輯服務項目
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-034
-- 狀態：草稿（待核准後轉就緒）
+- 狀態：完成（人工已於 2026-08-18 驗收通過）
 - 風險等級：低（沿用 TASK-034 已建立的頁面骨架與既有 `services` RLS 邊界，寫入僅呼叫既有
   `admin full access to services` policy 保護的 `insert`／`update`，不新增資料表、不新增
   權限模型，比照 TASK-030 的低風險判定）
@@ -100,9 +100,22 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
+詳見 `tools/kanban/cards/TASK-035.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`lib/admin/services.ts`（新增 `createService`／`updateService`／三個驗證
+  函式）、`app/admin/_components/ServiceFormDialog.tsx`（新增）、
+  `app/admin/_components/ServicesTable.tsx`（接上新增/編輯按鈕與 Dialog）、
+  `tests/admin/services.test.ts`（新增）。
+- 執行過的指令：`npx tsc --noEmit`（乾淨）、`npm run lint`（0 problems，過程中修正一次
+  `react-hooks/set-state-in-effect` 違規）、`npm run build`（成功）、`npx vitest run`
+  （18 files / 152 tests passed，含新增 15 tests，無回歸）。
+- 測試輸出：`validateServiceName`／`validateServicePrice`／`validateServiceDuration`
+  純函式測試，`createService`／`updateService` 以 fake client 涵蓋成功/RLS 擋下/資料庫
+  錯誤三種情境。
+- 螢幕截圖：Browser 工具對真實 Supabase 專案手動走查，編輯既有服務項目（含驗證錯誤與
+  成功寫入並還原）、新增表單空白渲染與取消流程皆確認正確。
+- 已知限制：「新增服務項目」的實際資料庫寫入未在瀏覽器端送出驗證（後台目前無法清除
+  測試建立的服務項目，避免污染正式資料），改由單元測試涵蓋，與已驗證的 `updateService`
+  共用同一套邏輯，風險低。
 - 後續任務：TASK-037（整合驗證）。

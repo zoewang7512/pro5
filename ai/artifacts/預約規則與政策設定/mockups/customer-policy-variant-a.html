@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>顧客前台政策說明 Variant A · 精簡文字列，置於時段選擇後</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 375px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { width: 375px; height: 700px; background: var(--grey-100); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; flex-direction: column; }
+  .scroll { overflow-y: auto; flex: 1; padding: 20px; }
+
+  .fallback-title { font-size: 20px; font-weight: 700; color: var(--grey-900); margin: 0 0 16px; font-family: 'Noto Serif TC'; }
+  .section-summary { background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow-1); padding: 12px 14px; margin-bottom: 14px; }
+  .section-summary .cap { font-size: 11px; font-weight: 700; color: var(--primary-700); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+  .section-summary .val { font-size: 13px; color: var(--grey-900); font-weight: 600; }
+
+  .section-title { font-size: 11px; font-weight: 700; color: var(--grey-700); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; display: flex; align-items: center; }
+  .section-title .badge { width: 18px; height: 18px; border-radius: 50%; background: var(--primary-500); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; margin-right: 6px; }
+
+  .date-chip-row { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; }
+  .date-chip { flex-shrink: 0; padding: 6px 12px; border-radius: 999px; background: var(--surface); font-size: 12px; color: var(--grey-700); box-shadow: var(--shadow-1); }
+  .date-chip.active { background: var(--primary-500); color: #fff; }
+  .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .slot { background: var(--surface); border-radius: var(--radius-sm); padding: 10px; text-align: center; font-size: 12px; color: var(--grey-900); box-shadow: var(--shadow-1); }
+  .slot.selected { background: var(--primary-500); color: #fff; }
+
+  .policy-note { font-size: 11px; color: var(--grey-700); line-height: 1.6; padding: 4px 2px 16px; }
+  .policy-note b { color: var(--grey-900); font-weight: 600; }
+
+  .form-card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 16px; }
+  .form-field { margin-bottom: 10px; }
+  .form-field label { font-size: 11px; color: var(--grey-700); display: block; margin-bottom: 4px; }
+  .form-field .box { height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--grey-100); }
+  .btn { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 700; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">顧客前台政策說明 · Variant A：精簡文字列，置於時段選擇之後、聯絡表單之前</h1>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 兩項政策皆已設定</div>
+      <div class="screen">
+        <div class="scroll">
+          <h2 class="fallback-title">預約</h2>
+          <div class="section-summary"><div class="cap">服務</div><div class="val">經典剪髮 · 45 分鐘</div></div>
+          <div class="section-title"><span class="badge">2</span>選擇時段</div>
+          <div class="date-chip-row"><span class="date-chip active">今天</span><span class="date-chip">週三</span><span class="date-chip">週四</span><span class="date-chip">週五</span></div>
+          <div class="slot-grid">
+            <div class="slot selected">14:00</div><div class="slot">14:45</div><div class="slot">15:30</div>
+          </div>
+          <div class="policy-note">請於預約時段前 <b>3</b> 小時完成預約；預約時段前 <b>24</b> 小時內可免費取消或改期。</div>
+          <div class="section-title"><span class="badge">3</span>填寫聯絡資訊</div>
+          <div class="form-card">
+            <div class="form-field"><label>姓名</label><div class="box"></div></div>
+            <div class="form-field"><label>電話</label><div class="box"></div></div>
+            <div class="btn">確認預約</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 僅設定提前時間（取消時限未設定）</div>
+      <div class="screen">
+        <div class="scroll">
+          <h2 class="fallback-title">預約</h2>
+          <div class="section-summary"><div class="cap">服務</div><div class="val">經典剪髮 · 45 分鐘</div></div>
+          <div class="section-title"><span class="badge">2</span>選擇時段</div>
+          <div class="date-chip-row"><span class="date-chip active">今天</span><span class="date-chip">週三</span><span class="date-chip">週四</span></div>
+          <div class="slot-grid"><div class="slot selected">14:00</div><div class="slot">14:45</div><div class="slot">15:30</div></div>
+          <div class="policy-note">請於預約時段前 <b>1</b> 小時完成預約。</div>
+          <div class="section-title"><span class="badge">3</span>填寫聯絡資訊</div>
+          <div class="form-card"><div class="form-field"><label>姓名</label><div class="box"></div></div><div class="form-field"><label>電話</label><div class="box"></div></div><div class="btn">確認預約</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

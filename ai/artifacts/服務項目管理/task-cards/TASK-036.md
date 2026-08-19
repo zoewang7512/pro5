@@ -8,7 +8,7 @@
 - 上層 User Story：刪除或下架服務項目
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-034
-- 狀態：草稿（待核准後轉就緒）
+- 狀態：完成（人工已於 2026-08-18 驗收通過）
 - 風險等級：低（僅切換既有 `is_active` 布林欄位，沿用既有 `admin full access to services`
   RLS，不新增資料表或權限模型；下架後對顧客端與 `create_appointment`／`get_available_slots`
   的行為已由既有 `is_active = true` 過濾邏輯保證，本卡不修改任何 RPC）
@@ -96,9 +96,18 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
+詳見 `tools/kanban/cards/TASK-036.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`lib/admin/services.ts`（新增 `setServiceActive`）、
+  `app/admin/_components/ServicesTable.tsx`（接上下架/重新上架按鈕與二次確認
+  ConfirmDialog）、`tests/admin/services.test.ts`（新增 `setServiceActive` 測試）。
+- 執行過的指令：`npx tsc --noEmit`（乾淨）、`npm run lint`（0 problems）、
+  `npm run build`（成功）、`npx vitest run`（18 files / 155 tests passed，無回歸）。
+- 測試輸出：`setServiceActive` 成功下架/成功重新上架/RLS 擋下三種情境皆通過。
+- 螢幕截圖：Browser 工具對真實 Supabase 專案完整走查下架→重新上架全流程，二次確認
+  文案、Toast、狀態徽章、按鈕文字皆正確反映，資料已還原為原始值。
+- 已知限制：未額外驗證顧客前台即時不再顯示已下架服務（完全依賴既有未變更的
+  `is_active` 過濾查詢，已有既有測試覆蓋，判定低風險）；本次 Browser 工具座標點擊
+  對此頁面多次失效，改用 JS 派發原生 click 事件驗證，判斷為工具環境限制非程式缺陷。
 - 後續任務：TASK-037（整合驗證）。

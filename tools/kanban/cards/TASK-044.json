@@ -1,0 +1,79 @@
+{
+  "id": "TASK-044",
+  "title": "設計師登入與帳號安全 登入流程 MFA 挑戰步驟",
+  "content": "登入頁接上帳密驗證成功後的條件分支：若帳號已啟用 MFA，顯示 TOTP 驗證碼輸入步驟（重用 OtpInput），驗證通過才完成登入；未啟用 MFA 維持既有行為直接導向 /admin。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "設計師登入／登出",
+  "track": "frontend",
+  "dependsOn": ["TASK-039", "TASK-043"],
+  "order": 44,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-登入與驗證流程.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-登入與驗證流程.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-044.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/login/login-form.tsx",
+    "components/ui/OtpInput.tsx",
+    "tests/components/login-form.test.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npx vitest run tests/components/login-form.test.tsx（14/14 通過，8 既有 + 6 新增 MFA 案例）",
+      "npx vitest run --pool=forks --poolOptions.forks.singleFork（全專案 309/310 通過，唯一失敗案例 select.test.tsx 與本卡無關、單獨重跑可通過）",
+      "Browser 工具對真實 Supabase 專案完整走查：未啟用 MFA 登入無回歸（成功／密碼錯誤）；臨時啟用 MFA 後走查驗證碼步驟（預設／錯誤／成功，含手寫 TOTP 演算法計算真實驗證碼），完成後已停用回原狀態"
+    ],
+    "findings": [
+      "architect 審查發現本卡打壞既有測試 tests/components/login-form.test.tsx（2 案例回歸失敗，mock 缺 auth.mfa）、全程無 try/catch、AAL/factor 查詢失敗分支未 signOut 留下懸空 aal1 session、challenge 失敗誤用驗證碼錯誤文案、handleCancelMfa 缺 loading 狀態，皆已修正",
+      "security-reviewer 發現 Critical C1（MFA 步驟重新整理頁面即可被 is_admin() 導向 /admin，任務卡已預先核准的已知限制，重新確認並記錄）、Critical C2（AAL/factor 失敗分支未登出，已修正為 signOut 後才顯示錯誤）、High H1（改用其他方式登入誤用 global scope signOut 會撤銷所有裝置 session，已修正為 local scope）、Medium M2（aal 為 null 時會被誤判未啟用 MFA 而放行，已修正為 fail closed）",
+      "test-engineer 發現 npm run test 從未實際執行導致既有回歸未被察覺、「單元測試不適用」判斷不成立，已補上 6 個涵蓋 AAL fail-safe 分支的單元測試"
+    ],
+    "residual": "Critical C1（任務卡已預先核准的已知限制，非本卡新增缺陷）：MFA 判斷完全在應用層，is_admin() 頁面層/RLS 不檢查 aal，使用者在 MFA 步驟重新整理頁面即會被導向 /admin，等同繞過 MFA；真正修法需要 app/login/page.tsx／middleware.ts／admin/layout.tsx 檢查 aal claim，不在本卡允許變更清單內，建議與 TASK-043 的 H1 合併規劃新任務卡、盡快排入。前端無 MFA 驗證碼連續失敗次數上限（延續 TASK-043 已知限制）。真實 Authenticator App 手動走查留給 TASK-045，且建議用第二個獨立來源交叉核對本卡手寫 TOTP 腳本算出的驗證碼。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務 TASK-039/043 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "核准 TASK-043 轉 done，解除 TASK-044 前置任務阻塞，開始實作"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-19",
+      "text": "核准 TASK-044 實作與驗證證據，轉 done。Critical C1（MFA 步驟重新整理頁面可繞過）已知限制沿用既有 TASK-059 卡片另開後續任務處理，決定伺服器端只在關鍵入口點（app/login/page.tsx 重導向邏輯＋middleware/admin layout 路由守門）強制 aal2，不動個別 RLS policy；TASK-059 為後續任務，不卡住本卡轉 done。"
+    }
+  ]
+}

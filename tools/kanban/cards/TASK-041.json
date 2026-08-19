@@ -1,0 +1,73 @@
+{
+  "id": "TASK-041",
+  "title": "設計師登入與帳號安全 帳號設定：顯示名稱與大頭貼編輯",
+  "content": "帳號設定頁「個人資料」卡片接上編輯能力：顯示名稱可編輯儲存，大頭貼可上傳/更換/移除，成功後 Sidebar 即時反映。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "修改密碼／個人資料",
+  "track": "frontend",
+  "dependsOn": ["TASK-038"],
+  "order": 41,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-帳號設定頁.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-帳號設定頁.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-041.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/AccountSettingsView.tsx",
+    "lib/admin/account.ts",
+    "tests/admin/account.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npx vitest run（23 files／220 tests passed，含 tests/admin/account.test.ts 新增 22 case，既有測試無回歸）",
+      "Browser 工具對真實 Supabase 專案手動走查（designer001@gmail.com 登入）：編輯顯示名稱「Alex Wang」並儲存→頭像縮寫與 Sidebar 即時變成「A」／「Alex Wang」→用合成 File＋DataTransfer 觸發真實大頭貼上傳→頭像變成圖片、Sidebar 同步、「移除」按鈕由停用轉為啟用→點擊「移除」→頭像回退為縮寫、Sidebar 同步、「移除」按鈕轉回停用→清空顯示名稱→行內錯誤「顯示名稱為必填」＋欄位邊框變色，點擊「儲存」正確被擋下（focus 欄位、不呼叫 RPC、Sidebar 未變）→測試完成後以 service role 直接 PATCH admins 資料表，把 display_name／avatar_url 還原成測試前的原始快照（皆為 null），重新整理頁面確認 UI 與 Sidebar 皆已還原"
+    ],
+    "findings": [
+      "components/ui/ImageUploadField.tsx 目前的實作內部直接 import lib/store-settings.ts 的 uploadStoreImage／removeStoreImage／validateStoreImageFile（未把它們當成 props 注入），只能操作 store_settings 表與 store-assets bucket，無法直接重用於 admins 表／admin-assets bucket；且任務卡骨架（TASK-038 建立）本來就已經是「Avatar＋更換頭像／移除按鈕」的精簡版面（非 ImageUploadField 的拖放大方框版面），與 mockup 變體 A 的個人資料卡片版型一致。因此本卡在 AccountSettingsView.tsx 內直接寫大頭貼上傳邏輯（隱藏 input[type=file]＋按鈕觸發），未修改 ImageUploadField.tsx（未列在任務卡『允許變更的檔案』），也未產生新的共用元件",
+      "update_admin_profile(p_display_name, p_avatar_url) 是單一 UPDATE 同時寫入兩欄位，lib/admin/account.ts 的 uploadAdminAvatar／removeAdminAvatar／updateAdminProfile 皆要求呼叫端傳入『目前另一欄位的值』以避免意外覆寫，AccountSettingsView.tsx 三個操作（儲存名稱／上傳頭像／移除頭像）皆已正確帶入對方欄位目前值，Browser 走查確認三者互不影響對方欄位",
+      "displayName／avatarUrl 皆使用 context 的即時值（非 local snapshot），儲存成功後呼叫 refresh() 讓 Sidebar 與本頁同步更新，不需要整頁重新整理"
+    ],
+    "residual": "驗證名稱一旦儲存過非空值後，UI 目前不提供『清空回未設定狀態』的路徑（validateAdminDisplayName 擋掉空字串），這是刻意的產品行為（多數系統的顯示名稱不允許清空），非本卡遺漏；密碼／登入 Email／雙重驗證三張卡片仍維持唯讀，留給 TASK-042／TASK-043。整合測試（對真實 Supabase 專案驗證非管理員無法寫入）併入 TASK-045，本卡未重複涵蓋。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務 TASK-038 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准實作與驗證證據，轉 done）"
+    }
+  ]
+}

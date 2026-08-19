@@ -1,0 +1,58 @@
+{
+  "id": "TASK-045",
+  "title": "設計師登入與帳號安全 前後端串接驗證與端到端測試",
+  "content": "新增 npm run test:account 涵蓋 get_admin_profile/update_admin_profile RPC 與 admin-assets bucket 的權限邊界；重跑既有整合測試確認無回歸；Browser E2E 走查登入頁改版/忘記密碼/帳號設定頁五區塊/MFA 完整流程；至少各一次真實 email 收發與真實 Authenticator App 手動驗證；更新 project-map.md。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-038", "TASK-039", "TASK-040", "TASK-041", "TASK-042", "TASK-043", "TASK-044"],
+  "order": 45,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-045.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/account.integration.test.ts",
+    "vitest.account.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務尚未完成，暫留 backlog）"
+    }
+  ]
+}

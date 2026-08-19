@@ -1,0 +1,72 @@
+{
+  "id": "TASK-057",
+  "title": "設計師登入與帳號安全 補上登入表單測試（失敗／成功／送出中防重複）",
+  "content": "TASK-039 security-reviewer 審查發現全站目前沒有任何 login 相關測試，而登入頁是唯一的驗證入口。本卡為 app/login/login-form.tsx 補上元件測試：登入失敗顯示既有錯誤文案且不導向、登入成功呼叫 signInWithPassword 並觸發 router.replace(\"/admin\")／router.refresh()、送出中按鈕 disabled/loading 防止重複送出。測試應驗證現狀行為，不得為了測試而更動 login-form.tsx 既有邏輯或視覺。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "設計師登入／登出",
+  "track": "frontend",
+  "dependsOn": ["TASK-039"],
+  "order": 57,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-057.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/login/login-form.tsx",
+    "tests/components/login-form.test.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx vitest run tests/components/login-form.test.tsx（3 passed）",
+      "npx vitest run（全套 20 files / 173 tests passed，含新增 3 案例，既有測試無回歸）",
+      "npx tsc --noEmit",
+      "npm run lint"
+    ],
+    "findings": [
+      "新增 tests/components/login-form.test.tsx，比照 tests/components/image-upload-field.test.tsx 的 RTL + vitest 寫法：vi.mock 替換 @/lib/supabase/client 的 createClient（回傳假 signInWithPassword）與 next/navigation 的 useRouter（回傳假 replace/refresh），renderWithTheme 包 MUI theme",
+      "三個案例：(1) 登入失敗顯示既有錯誤文案且 router.replace/refresh 未被呼叫 (2) 登入成功時 signInWithPassword 收到正確的 { email, password } 參數且觸發 router.replace(\"/admin\")／router.refresh() (3) 送出中按鈕 disabled，第二次點擊（改用 fireEvent.click 而非 userEvent.click，因為 userEvent 會因 pointer-events:none 直接拒絕互動，反而測不到 React 層級的 disabled 是否真的擋下）不會觸發第二次 signInWithPassword 呼叫",
+      "除錯過程發現並修正一個測試撰寫上的陷阱：signInWithPasswordMock／routerReplaceMock／routerRefreshMock 由 vi.hoisted 建立、跨測試共用同一個 vi.fn() 實例，若不在 beforeEach 呼叫 vi.clearAllMocks()，後面案例的 toHaveBeenCalledTimes 斷言會把前面案例的呼叫次數也累加進去（第三案例一度誤判為呼叫 3 次而非 1 次）；加上 beforeEach(vi.clearAllMocks()) 後解決",
+      "MUI TextField 的 label 帶必填星號（例如「Email *」），getByLabelText 需加 { exact: false } 才能命中，否則精確比對「Email」會找不到元素"
+    ],
+    "residual": "測試不連線真實 Supabase，比照專案既有 mock 模式；未涵蓋 TASK-056 新增的 aria-live/role 屬性（該部分由 TASK-056 自身的 Browser 工具走查佐證，屬於不同驗證手法，未重複覆蓋）。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（源自 TASK-039 security-reviewer 審查建議 (4)，對話中核准另開任務卡處理，轉 ready）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（與 TASK-056 一起核准實作與驗證證據，轉 done）"
+    }
+  ]
+}

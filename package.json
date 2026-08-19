@@ -15,6 +15,8 @@
     "test:admin-booking": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.admin-booking.config.ts",
     "test:business-hours": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.business-hours.config.ts",
     "test:store-settings": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.store-settings.config.ts",
+    "test:services": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.services.config.ts",
+    "test:account": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.account.config.ts",
     "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
     "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs"
   },

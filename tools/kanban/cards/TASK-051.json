@@ -1,0 +1,62 @@
+{
+  "id": "TASK-051",
+  "title": "Email 通知與提醒 架構基礎（Resend 薄封裝、共用密鑰驗證、reminder_sent_at 欄位、環境變數）",
+  "content": "新增 appointments.reminder_sent_at 欄位、Resend API 薄封裝函式、webhook/排程端點共用的密鑰驗證工具函式（常數時間比較）、Email 內容組成純函式框架。不含任何實際觸發寄信的端點，留給 TASK-052/053/054。",
+  "stage": "ready",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "Email 通知與提醒",
+  "userStory": "預約成立寄送確認信",
+  "track": "backend",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009"],
+  "order": 51,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-051.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0010_appointments_reminder.sql",
+    "supabase/migrations/0010_appointments_reminder_down.sql",
+    ".env.example",
+    "lib/email/resend-client.ts",
+    "lib/email/format.ts",
+    "lib/webhooks/verify-secret.ts",
+    "lib/supabase/service-role.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-051~055 這批任務卡，轉 ready；前置任務皆已完成）"
+    }
+  ]
+}

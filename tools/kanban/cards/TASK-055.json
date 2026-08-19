@@ -1,0 +1,58 @@
+{
+  "id": "TASK-055",
+  "title": "Email 通知與提醒 前後端串接驗證與端到端測試",
+  "content": "新增 npm run test:notifications 涵蓋 webhook/排程端點密鑰驗證與查詢邏輯；重跑既有整合測試確認無回歸；至少各一次真實/測試模式 Resend API key 手動觸發四種信件確認送達；更新 project-map.md（含 Database Webhook/Vercel Cron 實際設定步驟）。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "Email 通知與提醒",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": ["TASK-051", "TASK-052", "TASK-053", "TASK-054"],
+  "order": 55,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-055.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/notifications.integration.test.ts",
+    "vitest.notifications.config.ts",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務尚未完成，暫留 backlog）"
+    }
+  ]
+}

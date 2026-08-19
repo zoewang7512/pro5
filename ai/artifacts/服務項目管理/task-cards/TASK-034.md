@@ -8,7 +8,7 @@
 - 上層 User Story：新增/編輯服務項目
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009, TASK-014
-- 狀態：草稿（待核准後轉就緒）
+- 狀態：完成（人工已於 2026-08-18 驗收通過）
 - 風險等級：中（新的受保護後台路由，唯讀顯示包含下架中項目的完整服務清單；沿用既有
   `AdminShell`／`is_admin()` 保護模式，不新增 RLS 或資料表，比照 TASK-018 的架構基礎卡風險
   等級）
@@ -108,9 +108,19 @@ TASK-036。
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
+詳見 `tools/kanban/cards/TASK-034.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`lib/admin/services.ts`（新增）、`lib/admin/format.ts`（新增 `formatPrice`）、
+  `app/admin/services/page.tsx`（新增）、`app/admin/_components/ServicesTable.tsx`（新增）、
+  `app/admin/_components/AdminShell.tsx`（移除服務設定 `disabled: true`）。
+- 執行過的指令：`npx tsc --noEmit`（乾淨）、`npm run lint`（0 problems）、`npm run build`
+  （成功，`/admin/services` 為 dynamic route）、`npx vitest run`（17 files / 137 tests
+  passed，無回歸）。
+- 測試輸出：既有單元測試套件全數通過，本卡未新增新的可獨立測試純函式邏輯。
+- 螢幕截圖：Browser 工具對真實 Supabase 專案手動走查，確認 Sidebar 連結、頁面標題、
+  三筆既有服務列表（含價格/時長/狀態徽章）、新增/編輯/下架按鈕皆正確渲染，深色主題
+  正確套用。
+- 已知限制：空狀態與載入中 Skeleton 未在真實環境實際觸發截圖（現有資料庫已有服務資料，
+  未執行破壞性清空操作），程式碼邏輯與 mockup 皆已涵蓋，非阻擋驗收的缺陷。
 - 後續任務：TASK-035（新增/編輯服務項目）、TASK-036（下架/重新上架服務項目）。

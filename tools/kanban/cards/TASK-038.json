@@ -1,0 +1,84 @@
+{
+  "id": "TASK-038",
+  "title": "設計師登入與帳號安全 架構基礎（admins 個人資料欄位、SECURITY DEFINER RPC、admin-assets bucket、帳號設定頁骨架、Sidebar 顯示登入者資訊）",
+  "content": "新增 admins.display_name/avatar_url 欄位與 get_admin_profile/update_admin_profile 兩支 SECURITY DEFINER RPC、admin-assets Storage bucket，建立 /admin/account 受保護頁面骨架（唯讀顯示），Sidebar 顯示登入者顯示名稱與大頭貼。不含可編輯表單互動，留給 TASK-041/042/043。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-18",
+  "epic": "設計師登入與帳號安全",
+  "userStory": "修改密碼／個人資料",
+  "track": "n/a",
+  "dependsOn": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-014"],
+  "order": 38,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": true,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
+    "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-帳號設定頁.md",
+    "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-帳號設定頁.md",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-038.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0007_admin_profile.sql",
+    "supabase/migrations/0007_admin_profile_down.sql",
+    "lib/admin/account.ts",
+    "app/admin/account/page.tsx",
+    "app/admin/_components/AccountSettingsView.tsx",
+    "app/admin/_components/AdminProfileContext.tsx",
+    "app/admin/_components/AdminShell.tsx",
+    "app/admin/layout.tsx",
+    "components/ui/Sidebar.tsx",
+    "tests/admin/account.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（乾淨）",
+      "npm run lint（0 problems）",
+      "npm run build（成功，/admin/account 為 dynamic route）",
+      "npx vitest run（19 files / 170 tests passed，含新增 tests/admin/account.test.ts 15 tests，既有測試無回歸）",
+      "architect 子代理審查：Request changes（4 項必修：Sidebar/AccountSettingsView 各自重複 fetch 個人資料且 Sidebar state 無對外更新通道、AccountSettingsView 缺 .catch 導致失敗時卡在 Skeleton、charAt(0) 會切壞 surrogate pair、預設回退文案「設計師」被直接當成可編輯欄位的 value）已修正",
+      "security-reviewer 子代理審查：Request changes（1 項必修：update_admin_profile 對超長 display_name 會讓 constraint 拋出原始 Postgres 錯誤、與函式註解宣稱的「不拋錯」矛盾；1 項驗證證據矛盾：anon 呼叫 RPC 理論上該被拒絕卻回傳空結果，經查為 Supabase 專案 public schema 的 default privileges 額外把 execute 權限授予 anon，只 revoke from public 沒用；1 項建議記錄取捨：admin-assets 是否該用 private bucket）已修正並重新驗證",
+      "修正後對真實 Supabase 專案重新驗證：anon 呼叫 get_admin_profile／update_admin_profile 皆正確回傳 401 permission denied（42501），修正前是 200 成功——確認修正生效；designer 正常讀寫個人資料成功；display_name／avatar_url 超長時函式內部驗證回傳 false（非拋出原始 constraint 錯誤），且不覆寫既有值；admin-assets bucket 上傳權限邊界（anon 被拒／designer 限定 avatar/ 前綴／公開讀取 200）重新驗證通過",
+      "Browser 工具對真實 Supabase 專案手動走查：登入後台→Sidebar 正確顯示「設」大頭貼縮寫與「設計師」預設名稱（server-rendered，無 pop-in）→切換至 /admin/business-hours 等其他後台頁面確認 Sidebar 個人資料區塊一致顯示、無重複載入閃爍→進入 /admin/account 確認四張卡片正確唯讀顯示，顯示名稱欄位為空值＋「尚未設定」placeholder（非「設計師」字面值）、Email 欄位顯示真實登入信箱、密碼欄位遮罩、MFA 顯示「未啟用」"
+    ],
+    "findings": [
+      "架構重構：個人資料狀態改為 app/admin/layout.tsx（server component）在伺服器端讀取一次（與既有 is_admin() 驗證併發），透過新增的 AdminProfileContext 提供給 AdminShell／AccountSettingsView 共用消費，不再各自獨立呼叫 get_admin_profile()；同時解決了 architect 指出的「TASK-041 存檔後 Sidebar 無法即時反映新名稱」的架構缺口——context 已內建 refresh()，TASK-041 只需在儲存成功後呼叫它。",
+      "安全性關鍵修正：Supabase 專案的 public schema default privileges 會讓新建立的 function 自動額外 grant execute 給 anon（獨立於 PUBLIC 偽角色之外），本專案既有的 create_appointment／get_available_slots／is_admin() 等函式並未受此影響是因為它們本來就設計成要開放給 anon／public；但本卡的兩支個人資料 RPC 設計意圖是僅限 authenticated，若不明確對 anon 額外 revoke，只 revoke from public 不會撤銷這個獨立授權——已修正為同時 revoke from public 與 revoke from anon，並以未登入的純 anon key 重新驗證取得 401 permission denied 的正確結果。",
+      "admin-assets bucket 維持 public（而非改 private + createSignedUrl）：已與 security-reviewer 提出的取捨一併記錄在 migration 檔案內（理由：單一管理員帳號、避免專案內兩種圖片存取模式增加維護複雜度、大頭貼非高敏感個資），非本卡遺漏，若未來風險模型改變（例如多位管理員）應重新評估。",
+      "未採納的次要建議（有意識決定不做，記錄於此）：architect 建議把 Sidebar 的 profileName／profileAvatarUrl 兩個 typed props 改成單一 profileSlot React.ReactNode（比照 logoutSlot 模式），評估後判斷目前的 typed props 寫法仍足夠簡單清楚，未來若有第三種 Sidebar 擴充區塊出現同樣的版面糾纏問題再一併重構；security-reviewer 建議一併修正既有 lib/store-settings.ts 的 trustedAssetUrl（與本卡新增的 resolveAdminAvatarUrl 邏輯重複），因不在本卡「允許變更的檔案」範圍內，未動既有檔案，留待後續任務卡處理。"
+    ],
+    "residual": "admins 表零 RLS policy 的既有安全姿態目前僅靠程式碼審查把關，沒有自動化測試斷言（security-reviewer 建議在 tests/rls.integration.test.ts 補一條 pg_policies 計數斷言防止未來意外新增），建議在 TASK-045 或後續測試強化任務中補上；TASK-045 的整合測試若用 service role client 直接呼叫 get_admin_profile／update_admin_profile 會得到 permission denied（因為只 grant 給 authenticated），需改用真實 designer session（signInWithPassword）驗證，已記錄供 TASK-045 參考。"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "核准（對話中核准 TASK-038~045 這批任務卡，轉 ready；前置任務皆已完成）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-18",
+      "text": "驗收通過，轉 Done"
+    }
+  ]
+}
