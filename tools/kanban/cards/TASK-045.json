@@ -2,10 +2,10 @@
   "id": "TASK-045",
   "title": "設計師登入與帳號安全 前後端串接驗證與端到端測試",
   "content": "新增 npm run test:account 涵蓋 get_admin_profile/update_admin_profile RPC 與 admin-assets bucket 的權限邊界；重跑既有整合測試確認無回歸；Browser E2E 走查登入頁改版/忘記密碼/帳號設定頁五區塊/MFA 完整流程；至少各一次真實 email 收發與真實 Authenticator App 手動驗證；更新 project-map.md。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "設計師登入與帳號安全",
@@ -26,8 +26,8 @@
     "product": false,
     "ui": false,
     "architecture": false,
-    "security": false,
-    "test": false,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -41,18 +41,42 @@
   "refs": [
     "tests/account.integration.test.ts",
     "vitest.account.config.ts",
-    "ai/context/project-map.md"
+    "ai/context/project-map.md",
+    "app/admin/_components/AccountSettingsView.tsx",
+    "tests/components/account-settings-view.test.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build",
+      "npx vitest run --pool=forks --poolOptions.forks.singleFork（全專案 321/321 通過，1 次全套件跑出既有不穩定測試 select.test.tsx，單獨重跑通過，與本卡無關）",
+      "npm run test:account（新增，17/17 通過，對真實 Supabase 專案）",
+      "npm run test:rls／test:booking／test:admin-booking／test:business-hours／test:store-settings／test:services（既有整合測試全數重跑，共 80 案例，皆無回歸）",
+      "Browser 工具 E2E 走查：登入頁無回歸、忘記密碼（觸發 rate limit，行為符合既有設計）、帳號設定頁個人資料編輯（測試後已還原）、MFA 完整流程",
+      "真實 Google Authenticator App 手動驗證：使用者實機掃描 QR Code 完成 MFA 啟用，用真實驗證碼完成登入，驗證後停用回原狀態"
+    ],
+    "findings": [
+      "security-reviewer Epic 總覽性審查：admins 表零 RLS policy、MFA 停用需要身分驗證、忘記密碼不洩漏帳號存在性，三項皆通過；額外發現 TASK-042／TASK-059 交界的整合問題（已啟用 MFA 時改密碼／Email 成功後 session 降回 aal1，下次瀏覽 /admin 會被無預警登出），使用者當場核准以 Toast 提示緩解，已實作並補測試",
+      "test-engineer 審查新增的 test:account 整合測試：發現一個斷言缺口（驗證碼錯誤案例未真的斷言 factor 狀態），已修正；其餘測試設計確認合理無 bug"
+    ],
+    "residual": "中度（已用 Toast 緩解，未完整修復）：已啟用 MFA 時改密碼／Email 後需要重新登入才能再次進入 /admin，完整修法（原地補回 aal2）需要在表單加驗證碼欄位，超出本卡範圍，已登記可選後續任務卡。忘記密碼／Email 變更真實收信驗證因無信箱存取權限，依任務卡已核准的 fallback 以確認呼叫行為正確替代。螢幕截圖未存成獨立檔案（既有工具限制）。RLS 層 aal2 強制檢查已在 TASK-059 登記後續任務卡。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-038~045 這批任務卡；本卡前置任務尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-20",
+      "text": "前置任務全數完成，核准開始實作。過程中協助用真實手機 Google Authenticator App 完成 MFA 手動驗證（先誤用相機掃描不成功，改用 App 內建掃描功能後成功）。security-reviewer 總覽性審查發現 TASK-042／TASK-059 交界問題後，核准以 Toast 提示（而非完整修復）處理，轉 verify 等待核准 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-20",
+      "text": "核准 TASK-045 實作與驗證證據，轉 done。「設計師登入與帳號安全」Epic 四個 User Story 至此整合驗證完整涵蓋。"
     }
   ]
 }

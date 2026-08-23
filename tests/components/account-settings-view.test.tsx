@@ -214,6 +214,23 @@ describe("AccountSettingsView - 密碼", () => {
     expect(screen.getByLabelText(/^確認新密碼/)).toHaveValue("");
   });
 
+  it("已啟用 MFA 時，密碼更新成功的 Toast 額外提醒需要重新登入完成驗證（TASK-045 發現：reauthenticateAdmin 會把 session 降回 aal1，不會自動補回 aal2）", async () => {
+    listMfaFactorsMock.mockResolvedValue({ ok: true, data: [{ id: "factor-1", status: "verified" }] });
+    updateAdminPasswordMock.mockResolvedValue({ ok: true });
+    const user = userEvent.setup({ delay: null });
+    renderView();
+    await screen.findByText("已啟用");
+
+    await user.type(getPasswordCardCurrentPasswordField(), "old-pass");
+    await user.type(screen.getByLabelText(/^新密碼/), "Abc12345");
+    await user.type(screen.getByLabelText(/^確認新密碼/), "Abc12345");
+    await user.click(screen.getByRole("button", { name: "更新密碼" }));
+
+    expect(
+      await screen.findByText("密碼已更新，其他裝置的登入已登出；已啟用雙重驗證，請重新登入以完成驗證"),
+    ).toBeInTheDocument();
+  });
+
   it("送出中「更新密碼」按鈕停用，防止重複送出觸發第二次 updateAdminPassword 呼叫", async () => {
     let resolveUpdate!: (value: { ok: true }) => void;
     updateAdminPasswordMock.mockImplementation(() => new Promise((resolve) => { resolveUpdate = resolve; }));
@@ -329,6 +346,25 @@ describe("AccountSettingsView - 登入 Email", () => {
     expect(getUserMock).toHaveBeenCalled();
     await waitFor(() => expect(emailField).toHaveValue("designer@example.com"));
     expect(emailPasswordField).toHaveValue("");
+  });
+
+  it("已啟用 MFA 時，Email 變更成功額外顯示 Toast 提醒需要重新登入完成驗證（TASK-045 發現：reauthenticateAdmin 會把 session 降回 aal1，不會自動補回 aal2）", async () => {
+    listMfaFactorsMock.mockResolvedValue({ ok: true, data: [{ id: "factor-1", status: "verified" }] });
+    updateAdminEmailMock.mockResolvedValue({ ok: true, pendingEmail: null });
+    const user = userEvent.setup({ delay: null });
+    renderView();
+    await screen.findByText("已啟用");
+
+    const emailField = screen.getByLabelText("目前 Email", { exact: false });
+    const emailPasswordField = getEmailCardCurrentPasswordField();
+    await user.clear(emailField);
+    await user.type(emailField, "new@example.com");
+    await user.type(emailPasswordField, "old-pass");
+    await user.click(screen.getByRole("button", { name: "更新 Email" }));
+
+    expect(
+      await screen.findByText("Email 變更請求已送出；已啟用雙重驗證，請重新登入以完成驗證"),
+    ).toBeInTheDocument();
   });
 
   it("送出失敗（非目前密碼錯誤）時顯示通用錯誤 Toast，不顯示待確認提示", async () => {

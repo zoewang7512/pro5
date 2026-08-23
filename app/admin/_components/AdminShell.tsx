@@ -17,6 +17,7 @@ const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean }> = [
   { label: "預約", href: "/admin" },
   { label: "服務設定", href: "/admin/services" },
   { label: "營業時間", href: "/admin/business-hours" },
+  { label: "預約規則", href: "/admin/booking-policy" },
   { label: "商店設定", href: "/admin/store-settings" },
   { label: "帳號設定", href: "/admin/account" },
 ];

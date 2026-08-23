@@ -195,7 +195,18 @@ export function AccountSettingsView() {
         // Supabase 在密碼變更成功時會登出除了目前這個 session 以外的其他 session
         // （既定行為，不是本卡引入的副作用），提前告知使用者，避免手機或其他瀏覽器
         // 突然被登出時摸不著頭緒（security-reviewer TASK-042 審查發現）。
-        showToast("密碼已更新，其他裝置的登入已登出，請重新登入", "success");
+        //
+        // 已啟用 MFA 時另外提醒：updateAdminPassword 內部的 reauthenticateAdmin 會用
+        // signInWithPassword 建立一個全新的 aal1 session，不會自動補回 aal2，下一次瀏覽
+        // /admin 會被 TASK-059 新增的伺服器端 aal 檢查（lib/auth/aal.ts）擋下並導向
+        // /login——這是 TASK-045 總覽性安全審查發現的跨任務卡（TASK-042／TASK-059）
+        // 整合問題，先用提示取代無預警被登出，完整修法（原地補回 aal2）留給後續任務卡。
+        showToast(
+          mfaFactorId
+            ? "密碼已更新，其他裝置的登入已登出；已啟用雙重驗證，請重新登入以完成驗證"
+            : "密碼已更新，其他裝置的登入已登出，請重新登入",
+          "success",
+        );
       } else if (result.reason === "wrong_password") {
         setCurrentPasswordError("目前密碼錯誤，請再試一次。");
         currentPasswordRef.current?.focus();
@@ -271,6 +282,12 @@ export function AccountSettingsView() {
         // pendingEmail 來自 AdminProfileContext（伺服器實際狀態），refresh() 讓待確認
         // banner 立即反映最新的 user.new_email，重新整理頁面也不會消失。
         await refresh();
+        // 已啟用 MFA 時提醒重新登入：理由與 handleUpdatePassword 上方註解相同
+        // （updateAdminEmail 內部同一個 reauthenticateAdmin 也會把 session 降回
+        // aal1，下一次瀏覽 /admin 會被擋下），見該處註解與 TASK-045 完成證據。
+        if (mfaFactorId) {
+          showToast("Email 變更請求已送出；已啟用雙重驗證，請重新登入以完成驗證", "success");
+        }
       } else if (result.reason === "wrong_password") {
         setEmailCurrentPasswordError("目前密碼錯誤，請再試一次。");
         emailCurrentPasswordRef.current?.focus();
@@ -335,7 +352,11 @@ export function AccountSettingsView() {
       }
       setMfaLoading(false);
     },
-    [supabase],
+    // setState 函式本身 identity 穩定，加進依賴陣列不會造成額外重跑，但需要明確列出讓
+    // React Compiler 的 preserve-manual-memoization 規則能對齊它自己推斷出的依賴——
+    // 這個回呼在本卡（TASK-045）新增 mfaFactorId 相關程式碼前不會觸發這條規則，是
+    // React Compiler 對整個元件做記憶化分析時的既有隱性依賴，補齊後才能通過 lint。
+    [supabase, setMfaFactorId, setMfaLoadError, setMfaLoading],
   );
 
   React.useEffect(() => {

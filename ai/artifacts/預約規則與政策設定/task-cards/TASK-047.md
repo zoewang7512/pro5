@@ -8,7 +8,7 @@
 - 上層 User Story：設定最短提前預約時間、設定可取消／改期時限
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-046
-- 狀態：已核准（2026-08-18），待前置任務 TASK-046 完成後轉就緒
+- 狀態：就緒（前置任務 TASK-046 已於 2026-08-23 完成）
 - 風險等級：低（沿用 TASK-046 已建立的 `booking_policy` RLS 邊界，寫入僅呼叫既有
   `is_admin()` policy 保護的 `update`，不修改任何預約寫入路徑的 RPC，比照 TASK-030
   的低風險判定）
@@ -23,7 +23,9 @@
 - 相關檔案：
   - `app/admin/_components/BookingPolicyForm.tsx`（TASK-046 建立的唯讀骨架，本卡接上
     編輯能力）
-  - `lib/admin/booking-policy.ts`（TASK-046 建立的讀取函式，本卡新增
+  - `lib/booking-policy.ts`（TASK-046 建立的讀取函式，放在 `lib/` 頂層而非 `lib/admin/`
+    ——`booking_policy` 是雙邊共享的網域資料，TASK-049 顧客前台直接 import 同一支
+    `getBookingPolicy`，理由見該檔案檔頭；本卡新增
     `updateBookingPolicy(minLeadTimeHours, cancelWindowHours)`）
   - `lib/admin/business-hours.ts` 的「驗證函式＋`updateBusinessHours`」模式可直接參考。
 - 既有模式：
@@ -35,8 +37,8 @@
 - 未知事項：無。
 - 允許變更的檔案：
   - `app/admin/_components/BookingPolicyForm.tsx`
-  - `lib/admin/booking-policy.ts`
-  - `tests/admin/booking-policy.test.ts`（新增，欄位驗證純函式的單元測試）
+  - `lib/booking-policy.ts`
+  - `tests/booking-policy.test.ts`（新增，欄位驗證純函式的單元測試）
 - 不得觸碰：
   - `supabase/migrations/`（不新增遷移，`booking_policy` 表已由 TASK-046 建立）。
   - `create_appointment`／`get_available_slots`（TASK-048 的範圍）。

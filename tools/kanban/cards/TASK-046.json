@@ -2,10 +2,10 @@
   "id": "TASK-046",
   "title": "預約規則與政策設定 架構基礎（booking_policy 資料表、RLS、後台頁面骨架、Sidebar 連結）",
   "content": "新增 booking_policy 單例資料表與 RLS policy（比照 store_settings/business_hours 模式），建立 /admin/booking-policy 受保護頁面骨架（唯讀顯示），Sidebar 新增「預約規則」導覽項目。不含編輯/儲存邏輯與 RPC 修改，留給 TASK-047/048。",
-  "stage": "ready",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "預約規則與政策設定",
@@ -25,9 +25,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -41,21 +41,44 @@
   "refs": [
     "supabase/migrations/0008_booking_policy.sql",
     "supabase/migrations/0008_booking_policy_down.sql",
-    "lib/admin/booking-policy.ts",
+    "lib/booking-policy.ts",
     "app/admin/booking-policy/page.tsx",
     "app/admin/_components/BookingPolicyForm.tsx",
-    "app/admin/_components/AdminShell.tsx"
+    "app/admin/_components/AdminShell.tsx",
+    "tests/booking-policy.integration.test.ts",
+    "vitest.booking-policy.config.ts",
+    "package.json"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過，/admin/booking-policy 路由正確產生）",
+      "npm run test:booking-policy（對真實 Supabase 專案，6/6 通過：anon 可讀／anon 寫入被拒／非管理員 authenticated 寫入被拒／designer 可寫入／insert 第二列被拒／min_lead_time_hours>720 被 constraint 擋下）",
+      "Browser 工具走查：登入後台（designer001@gmail.com）→ Sidebar 點擊「預約規則」→ 頁面正確顯示目前設定值（min_lead_time_hours=1、cancel_window_hours 留空）"
+    ],
+    "findings": [
+      "architect 審查（首輪 Request changes）：F1 MUST FIX（需人工決策）— lib/admin/booking-policy.ts 落點會讓 TASK-049 顧客前台被迫複製一份重複實作，比照 lib/store-settings.ts 的既有分層方向應放 lib/ 頂層；已詢問使用者並核准改為 lib/booking-policy.ts，同步修訂 TASK-047／TASK-049 任務卡的允許變更檔案清單。F2 預設值分散三處；F4 cancel_window_hours 缺上界（與 security-reviewer F5 重複）。F3/F5-F7 為 NICE TO HAVE（部分已一併處理，部分留給 TASK-047：disabled→readOnly 語意）。",
+      "security-reviewer 審查：RLS policy 設計本身正確、無可利用的開放存取路徑。F1 MUST FIX — 本卡零測試證據，已補上 tests/booking-policy.integration.test.ts（比照 TASK-029 先例）。F2 MUST FIX（跨切面既有問題，非本卡引入）— is_admin() 不檢查 aal，MFA 在資料層可被繞過，影響 booking_policy／store_settings／services 等所有寫入 policy；不阻擋本卡合併，但應在 TASK-047 真正開放寫入互動前修正，已建議另立任務追蹤。F3（與 architect F3 重複，已依使用者決定改為查無資料時回傳 ok:false）、F4（已加註解）、F5（cancel_window_hours 上界，已修正 SQL）、F6（已加 revoke truncate）、F7（已修正檔頭措辭）、F8（已簡化回滾腳本）皆已處理。",
+      "審查後修正並重新驗證：lib/admin/booking-policy.ts 搬移為 lib/booking-policy.ts（含更新 BookingPolicyForm.tsx 的 import 與 TASK-047/049 任務卡）；getBookingPolicy() 查無資料改回傳 ok:false；0008_booking_policy.sql 補 cancel_window_hours <=720 上界、revoke truncate、註解修正；0008_booking_policy_down.sql 移除脆弱的多餘 drop policy 陳述式並補回滾前記錄現值的提醒；BookingPolicyForm.tsx 移除不必要的中介變數。修正後 tsc/lint/build/整合測試重新驗證皆通過（使用者於 Supabase Dashboard SQL Editor 重新套用更新後的 migration）。"
+    ],
+    "residual": "is_admin() 不檢查 aal（MFA 在 RLS 資料層可被繞過）為跨切面既有問題，非本卡引入，影響本專案所有 is_admin() 寫入 policy；建議在 TASK-047 開放實際寫入互動前另立任務修正。BookingPolicyForm.tsx 的兩個欄位目前用 disabled（非 readOnly）呈現唯讀狀態，TASK-047 會讓欄位轉為可編輯，屆時一併檢視 a11y 語意與 helperText／錯誤訊息共用版位的處理方式（architect 提醒，避免版面跳動）。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-046~050 這批任務卡，轉 ready；前置任務皆已完成）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "實作與自我驗證完成（tsc/lint/build/整合測試皆通過，含瀏覽器互動走查），並經 architect／security-reviewer 兩個子代理審查；首輪皆有 MUST FIX 發現，其中檔案落點（lib/admin/ vs lib/ 頂層）與「查無資料降級行為」兩項已詢問使用者並依核准的方向修正，其餘發現皆已修正並重新驗證通過。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-23",
+      "text": "核准，轉 done。"
     }
   ]
 }

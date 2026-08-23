@@ -2,7 +2,7 @@
   "id": "TASK-047",
   "title": "預約規則與政策設定 後台預約規則表單編輯與儲存",
   "content": "接上 TASK-046 頁面骨架的表單編輯能力：最短提前預約時間（1~720 小時，必填）與可取消/改期時限（>=0 小時，選填）可編輯並儲存。不修改任何 RPC。",
-  "stage": "backlog",
+  "stage": "ready",
   "risk": "low",
   "owner": "",
   "agent": "",
@@ -40,8 +40,8 @@
   },
   "refs": [
     "app/admin/_components/BookingPolicyForm.tsx",
-    "lib/admin/booking-policy.ts",
-    "tests/admin/booking-policy.test.ts"
+    "lib/booking-policy.ts",
+    "tests/booking-policy.test.ts"
   ],
   "evidence": {
     "commands": [],
@@ -53,6 +53,11 @@
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-046~050 這批任務卡；本卡前置任務 TASK-046 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "前置任務 TASK-046 已完成並人工驗收，轉 ready。TASK-046 實作階段將讀取函式落點從原規劃的 lib/admin/booking-policy.ts 改為 lib/booking-policy.ts（頂層），已同步更新本卡的情境包與允許變更的檔案清單（含 refs），實作時請以 ai/artifacts/預約規則與政策設定/task-cards/TASK-047.md 最新版本為準。"
     }
   ]
 }

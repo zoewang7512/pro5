@@ -8,7 +8,7 @@
 - 上層 User Story：顧客端顯示預約政策說明
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-046
-- 狀態：已核准（2026-08-18），待前置任務 TASK-046 完成後轉就緒
+- 狀態：就緒（前置任務 TASK-046 已於 2026-08-23 完成）
 - 風險等級：低（純顯示區塊，讀取既有 `booking_policy` 的既有讀取權限（anon 可讀），
   不涉及新增權限模型或寫入邏輯，比照既有前台顯示類任務的低風險判定）
 
@@ -26,8 +26,10 @@
   - `app/_components/booking/BookingFlow.tsx`：需新增讀取 `booking_policy` 的
     effect（比照既有 `getStoreSettings` 獨立 fetch、互不阻塞既有預約流程的既有模式），
     將讀取結果往下傳給 `ContactFormSection`。
-  - `lib/booking/api.ts`：本卡新增 `getBookingPolicy(supabase)` 讀取函式（顧客端用，
-    比照既有 `getBusinessHours`／`getServices` 的薄封裝寫法）。
+  - `lib/booking-policy.ts`：TASK-046 已建立 `getBookingPolicy(supabase)` 讀取函式並放在
+    `lib/` 頂層（而非 `lib/admin/`），正是為了讓本卡直接 import 同一支函式，不需要在
+    `lib/booking/api.ts` 另寫一份重複的讀取邏輯（兩邊查詢形狀完全相同，不像
+    `business_hours` 有批次／單一 weekday 的既有差異）。
   - `ai/artifacts/預約規則與政策設定/mockups/customer-policy-variant-b.html`（已核准
     mockup，資訊卡片樣式）。
 - 既有模式：
@@ -46,7 +48,6 @@
 - 允許變更的檔案：
   - `app/_components/booking/BookingFlow.tsx`
   - `app/_components/booking/ContactFormSection.tsx`
-  - `lib/booking/api.ts`
   - `lib/booking/policy-text.ts`（新增，文案組成純函式）
   - `tests/lib/policy-text.test.ts`（新增）
 - 不得觸碰：

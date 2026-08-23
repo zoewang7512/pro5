@@ -2,7 +2,7 @@
   "id": "TASK-049",
   "title": "預約規則與政策設定 顧客前台政策說明區塊",
   "content": "顧客前台預約流程（ContactFormSection.tsx）新增政策說明資訊卡片（mockup 變體 B，置於送出按鈕正上方），文字依 booking_policy 目前設定值動態組成，讀取失敗靜默降級不阻擋既有流程。",
-  "stage": "backlog",
+  "stage": "ready",
   "risk": "low",
   "owner": "",
   "agent": "",
@@ -41,7 +41,7 @@
   "refs": [
     "app/_components/booking/BookingFlow.tsx",
     "app/_components/booking/ContactFormSection.tsx",
-    "lib/booking/api.ts",
+    "lib/booking-policy.ts",
     "lib/booking/policy-text.ts"
   ],
   "evidence": {
@@ -54,6 +54,11 @@
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-046~050 這批任務卡；本卡前置任務 TASK-046 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "前置任務 TASK-046 已完成並人工驗收，轉 ready。TASK-046 實作階段已把 getBookingPolicy 讀取函式放在 lib/booking-policy.ts（頂層），本卡直接 import 該函式即可，不需要在 lib/booking/api.ts 另寫一份，已同步更新本卡的情境包與允許變更的檔案清單（含 refs）。"
     }
   ]
 }
