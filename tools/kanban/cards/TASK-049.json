@@ -2,10 +2,10 @@
   "id": "TASK-049",
   "title": "預約規則與政策設定 顧客前台政策說明區塊",
   "content": "顧客前台預約流程（ContactFormSection.tsx）新增政策說明資訊卡片（mockup 變體 B，置於送出按鈕正上方），文字依 booking_policy 目前設定值動態組成，讀取失敗靜默降級不阻擋既有流程。",
-  "stage": "ready",
+  "stage": "done",
   "risk": "low",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "預約規則與政策設定",
@@ -27,7 +27,7 @@
     "ui": false,
     "architecture": false,
     "security": false,
-    "test": false,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -42,12 +42,22 @@
     "app/_components/booking/BookingFlow.tsx",
     "app/_components/booking/ContactFormSection.tsx",
     "lib/booking-policy.ts",
-    "lib/booking/policy-text.ts"
+    "lib/booking/policy-text.ts",
+    "tests/lib/policy-text.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npx vitest run（337/337，含新增 3 個 formatBookingPolicyText 測試，無回歸）"
+    ],
+    "findings": [
+      "本卡風險等級低、純顯示區塊、沿用 TASK-046 已審查通過的 booking_policy anon 可讀 RLS 邊界，未新增權限模型或寫入邏輯，比照 TASK-030／TASK-047 的既有判定，未派遣 architect／security-reviewer 正式審查。",
+      "mockup-decision 明訂『不新增元件』：改用既有 Alert severity=\"info\"（SlotPickerSection.tsx 已使用的既有慣例）呈現政策卡片，未手刻 mockup HTML 的一次性樣式。",
+      "Browser 面板本次未顯示，computer 的 screenshot 動作持續逾時失敗，未能取得像素螢幕截圖；改用 javascript_tool 讀取 DOM 內容與版面座標驗證：兩種文案情境（僅提前時間／兩項皆設定）皆正確顯示，行動裝置尺寸（375×812）下送出按鈕在兩種情境皆完整落在單一螢幕內（bottom 627px／651px，皆 < 812px），不需捲動即可見。驗證時暫時調整過正式 booking_policy 資料，已還原為原值（1／null）。"
+    ],
+    "residual": "與 TASK-047 相同的螢幕截圖缺口（Browser 面板未顯示），已用 DOM／版面座標驗證替代，功能與版面已確認正確；建議 TASK-050 整合驗證時視情況補拍像素螢幕截圖。"
   },
   "comments": [
     {
@@ -59,6 +69,16 @@
       "name": "Claude Code",
       "time": "2026-08-23",
       "text": "前置任務 TASK-046 已完成並人工驗收，轉 ready。TASK-046 實作階段已把 getBookingPolicy 讀取函式放在 lib/booking-policy.ts（頂層），本卡直接 import 該函式即可，不需要在 lib/booking/api.ts 另寫一份，已同步更新本卡的情境包與允許變更的檔案清單（含 refs）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "實作與自我驗證完成（tsc/lint/build/測試皆通過，含瀏覽器互動走查兩種文案情境與行動裝置版面）。風險等級低、未新增安全性表面，比照 TASK-030／TASK-047 未派遣 architect／security-reviewer 正式審查。像素螢幕截圖因 Browser 面板未顯示而缺漏，已用 DOM／版面座標驗證替代，詳見 residual。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-23",
+      "text": "核准，轉 done。"
     }
   ]
 }

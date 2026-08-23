@@ -2,10 +2,10 @@
   "id": "TASK-048",
   "title": "預約規則與政策設定 create_appointment／get_available_slots 讀取最短提前預約時間設定值",
   "content": "把 create_appointment 與 get_available_slots 目前寫死的「最短提前 1 小時」改為讀取 booking_policy.min_lead_time_hours；最遠視野上限（90 天）維持寫死不變。需與既有公休日、緩衝時間檢查正確共存。",
-  "stage": "ready",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "預約規則與政策設定",
@@ -25,9 +25,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -42,12 +42,25 @@
     "supabase/migrations/0009_booking_policy_lead_time.sql",
     "supabase/migrations/0009_booking_policy_lead_time_down.sql",
     "supabase/migrations/0002_booking_flow.sql",
-    "supabase/migrations/0004_slots_closures_buffer.sql"
+    "supabase/migrations/0004_slots_closures_buffer.sql",
+    "tests/booking.integration.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npm run test:booking（23/23，含新增 4 個 TASK-048 案例）",
+      "npm run test:admin-booking（13/13，無回歸）",
+      "npm run test:business-hours（18/18，無回歸）",
+      "npm run test:booking-policy（6/6，無回歸）"
+    ],
+    "findings": [
+      "architect／security-reviewer 審查：0009 migration 的 SQL 邏輯本身無需修改（逐行機械 diff 比對確認只有預期內的 4 處差異，忠實重現既有邏輯）。已處理的 NICE TO HAVE：limit 1 改為 where id = 1；回滾腳本補回被精簡掉的原始註解（含唯一解釋 ±1 天範圍限定理由的關鍵段落）；回滾腳本補上順序警告（先回滾 0009 再回滾 0008，否則 drop table restrict 偵測不到 plpgsql 函式體對表的隱性依賴）；針對 fallback 為 1 小時與 lib/booking-policy.ts『查無資料視為錯誤』方向相反的疑慮，已在 migration 註解明確登記為刻意取捨（可用性優先）與隱性約束（booking_policy 不得啟用 force row level security）。",
+      "test-engineer 審查 MUST FIX：原驗證契約允許整合測試延到 TASK-050，判定不足以涵蓋高風險變更，且既有『提前量／視野上限』案例其實從未真正控制過 booking_policy 的值、只是巧合通過——已依其具體案例設計（720 小時上限清空近期時段、3 小時邊界、公休日與緩衝時間組合案例）補齊，並在外層 beforeAll 明確控制 min_lead_time_hours=1 讓既有回歸案例不再是巧合。",
+      "實作測試時另外發現的真實臭蟲（非審查提出，補測試過程中實測發現）：3 小時邊界案例的測試用顧客姓名（TEST_MARKER 前綴＋案例描述）超過 create_appointment 的 50 字元上限，導致『提前量太早』案例其實是巧合通過姓名驗證的 VALIDATION_ERROR，並非真正驗證到提前量邏輯——已縮短測試姓名並補上 message 斷言防止同類問題再被掩蓋。"
+    ],
+    "residual": "booking_policy 表不得啟用 force row level security（否則兩支 RPC 的 fallback 邏輯會靜默把管理員設定的提前量放寬回 1 小時，已於 migration 註解登記，屬設計限制非程式碼缺陷）。未另外執行實作備註建議的手動瀏覽器/RPC 人工核對（6 小時案例）——自動化整合測試已用 720 小時／3 小時兩組數值更精確地涵蓋相同驗證目的，判定重複執行非必要。"
   },
   "comments": [
     {
@@ -59,6 +72,16 @@
       "name": "Claude Code",
       "time": "2026-08-23",
       "text": "前置任務 TASK-046 已完成並人工驗收，轉 ready。booking_policy 表已存在且可讀（min_lead_time_hours 目前為 1）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "實作與自我驗證完成，並經 architect／security-reviewer／test-engineer 三個子代理審查（高風險變更依規則需三方審查）。SQL 邏輯本身無需修改，流程面（測試延後決定、完成證據、審查發現）皆已依審查結果補齊修正，詳見 evidence.findings。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-23",
+      "text": "核准，轉 done。"
     }
   ]
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -17,9 +18,13 @@ export type ContactFormValues = {
 export type ContactFormSectionProps = {
   submitting: boolean;
   onSubmit: (values: ContactFormValues) => void;
+  // TASK-049：booking_policy 依目前設定值組成的政策說明文字（見
+  // lib/booking/policy-text.ts），null 代表讀取中或讀取失敗，兩種情況都不顯示卡片
+  // （靜默降級，不阻擋或干擾既有預約流程），不需要分開處理。
+  policyText: string | null;
 };
 
-export function ContactFormSection({ submitting, onSubmit }: ContactFormSectionProps) {
+export function ContactFormSection({ submitting, onSubmit, policyText }: ContactFormSectionProps) {
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -79,6 +84,7 @@ export function ContactFormSection({ submitting, onSubmit }: ContactFormSectionP
             disabled={submitting}
             slotProps={{ htmlInput: { inputMode: "email" } }}
           />
+          {policyText && <Alert severity="info">{policyText}</Alert>}
           <Button type="submit" variant="contained" loading={submitting} loadingPosition="start">
             送出預約
           </Button>

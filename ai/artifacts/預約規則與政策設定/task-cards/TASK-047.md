@@ -8,7 +8,7 @@
 - 上層 User Story：設定最短提前預約時間、設定可取消／改期時限
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-046
-- 狀態：就緒（前置任務 TASK-046 已於 2026-08-23 完成）
+- 狀態：完成（人工已於 2026-08-23 驗收通過）
 - 風險等級：低（沿用 TASK-046 已建立的 `booking_policy` RLS 邊界，寫入僅呼叫既有
   `is_admin()` policy 保護的 `update`，不修改任何預約寫入路徑的 RPC，比照 TASK-030
   的低風險判定）
@@ -76,9 +76,32 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：TASK-050（整合驗證）。
+詳見 `tools/kanban/cards/TASK-047.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`lib/booking-policy.ts`（修改，新增 `BookingPolicyInput`／
+  `validateMinLeadTimeHours`／`validateCancelWindowHours`／`updateBookingPolicy`）、
+  `app/admin/_components/BookingPolicyForm.tsx`（修改，唯讀骨架接上編輯／驗證／儲存，
+  拆出獨立管理編輯狀態的 `PolicyCard` 子元件，比照 `StoreSettingsForm.tsx` 的
+  `BasicInfoCard` 既有寫法）、`tests/booking-policy.test.ts`（新增，13 個單元測試）。
+- 執行過的指令：`npx tsc --noEmit`／`npm run lint`／`npm run build` 皆通過；
+  `npx vitest run`（334 tests，含新增 13 個驗證/寫入函式測試；4 個測試檔案在滿載並行
+  執行時因 5000ms timeout 出現既有的間歇性逾時，與本卡改動的檔案無關，逐一重跑該 4 個
+  檔案皆 100% 通過，非本卡引入的回歸）。
+- 審查：本卡風險等級低、沿用 TASK-046 已建立並經 architect／security-reviewer 審查通過的
+  `booking_policy` RLS 邊界，未新增任何安全性表面（寫入路徑就是同一張表的 `update`，
+  邊界已由 `tests/booking-policy.integration.test.ts` 涵蓋），比照 TASK-030 的既有判定，
+  未派遣 architect／security-reviewer 正式審查。
+- 測試輸出：`tests/booking-policy.test.ts` 涵蓋兩個驗證函式的邊界情況（必填／範圍／
+  非整數／留空）與 `updateBookingPolicy` 的成功／失敗／RLS 悄悄擋下寫入三種情境，
+  13/13 通過。
+- 螢幕截圖：Browser 工具走查編輯→驗證錯誤→修正→儲存成功→重新整理持久化全流程，
+  透過 DOM 內容（`get_page_text`／`javascript_tool` 讀取欄位值與按鈕狀態）逐步驗證，
+  結果符合預期（超出範圍顯示「請輸入 1～720 小時之間的整數」且未送出；修正後送出成功、
+  按鈕回到停用狀態；重新整理後資料庫確實已寫入新值）。本次 Browser 面板未顯示，
+  `computer` 的 screenshot 動作持續逾時失敗，未能取得像素螢幕截圖，以上述 DOM 驗證
+  作為替代證據；走查完成後已透過 UI 把資料改回原值（1／留空），未留下測試髒資料。
+- 已知限制：螢幕截圖缺口（見上）；`min_lead_time_hours`／`cancel_window_hours` 的
+  `TextField` 使用瀏覽器原生 `type="number"`，未特別處理小數點/科學記號等原生 number
+  input 的邊界輸入行為（`Number()` 轉換 + `Number.isInteger` 已擋下非整數，風險低）。
+- 後續任務：TASK-050（整合驗證，可視需要為本卡的寫入流程補充像素螢幕截圖）。

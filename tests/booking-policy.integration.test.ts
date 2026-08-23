@@ -143,6 +143,14 @@ describe("預約規則與政策設定：booking_policy 權限邊界（真實 Sup
     expect(data?.id).toBe(1);
   });
 
+  it("anon 可讀取的欄位集合鎖定為目前這 4 個公開欄位，未來新增欄位不會悄悄變成公開（RLS select policy 是整列 using(true)，沒有 column-level 限制，見 0008_booking_policy.sql 檔頭說明）", async () => {
+    const { data, error } = await anonClient.from("booking_policy").select("*").eq("id", 1).single();
+    expect(error).toBeNull();
+    expect(Object.keys(data ?? {}).sort()).toEqual(
+      ["cancel_window_hours", "id", "min_lead_time_hours", "updated_at"].sort(),
+    );
+  });
+
   it("anon 無法 update booking_policy", async () => {
     const { data } = await anonClient
       .from("booking_policy")

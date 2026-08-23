@@ -8,7 +8,7 @@
 - 上層 User Story：全部（整合驗證）
 - 分軌：整合
 - 前置任務（dependsOn）：TASK-046, TASK-047, TASK-048, TASK-049
-- 狀態：已核准（2026-08-18），待前置任務 TASK-046～049 完成後轉就緒
+- 狀態：完成（人工已於 2026-08-23 驗收通過）
 - 風險等級：高（涵蓋 `create_appointment`／`get_available_slots` 核心 RPC 修改的整合
   驗證，比照 TASK-048 的風險等級判定）
 
@@ -92,9 +92,56 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：無（本 Epic 三個 User Story 至此皆完整涵蓋）。
+詳見 `tools/kanban/cards/TASK-050.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`ai/context/project-map.md`（更新，新增 `booking_policy`／`test:booking-policy`
+  等說明）；`tests/booking-policy.integration.test.ts`（新增鎖定 anon 可讀欄位集合的
+  斷言）；以下檔案因 security-reviewer 的 Epic 總覽性審查發現而回頭修正（見下方
+  「審查」段落）：`tests/booking.integration.test.ts`（補快照 log、交叉引用註解）、
+  `app/admin/_components/BookingPolicyForm.tsx`（新增超過 336 小時的非阻斷性警示）、
+  `lib/booking-policy.ts`（`updateBookingPolicy` 補防禦性重跑驗證）、
+  `supabase/migrations/0009_booking_policy_lead_time.sql`（補交叉引用註解）、
+  `lib/booking/policy-text.ts`／`tests/lib/policy-text.test.ts`（修正「取消或改期」
+  文案語意）、`ai/artifacts/預約規則與政策設定/feature-spec.md`／
+  `mockup-decision-顧客前台政策說明.md`／`task-cards/TASK-047.md`／`TASK-048.md`／
+  `TASK-049.md`（文件同步與追溯性記錄）。
+- 執行過的指令：`npx tsc --noEmit`／`npm run lint`／`npm run build` 皆通過；
+  `npx vitest run`（337/337，無回歸）；`npm run test:booking-policy`（7/7，含新增的
+  欄位鎖定斷言）；`npm run test:booking`（23/23）；`npm run test:admin-booking`
+  （13/13）；`npm run test:business-hours`（18/18）；`npm run test:rls`（6/6）；
+  `npm run test:store-settings`（11/11）；`npm run test:services`（13/13）；
+  `npm run test:account`（17/17）——以上皆重跑無回歸。
+- 審查：依驗證契約要求派遣 security-reviewer 對整個 Epic（TASK-046～049 累積變更）
+  做總覽性審查。判定跨卡組合未引入新的權限提升或資料外洩路徑；發現 1 項 MUST FIX
+  （`tests/booking.integration.test.ts` 的 `booking_policy` 快照未印出，測試中斷會讓
+  正式環境卡在「預約全滅」的數值且無法還原——已修正，補上 `console.log`）與 7 項
+  NICE TO HAVE，已處理：欄位鎖定測試（防未來悄悄新增公開欄位）、force RLS 隱性約束的
+  交叉引用文件化、`updateBookingPolicy` 防禦性重跑驗證、`TASK-048.md` 允許變更清單的
+  追溯性補登；經人工核准後額外處理兩項原本標記為「留待決定」的發現：(1) 後台表單新增
+  「最短提前預約時間超過顧客前台可見的 14 天範圍」非阻斷性警示；(2) 修正顧客前台
+  「取消或改期」文案語意（原文案與後台說明文字語意相反），同步更新 `feature-spec.md`
+  與 mockup-decision 的偏離紀錄。
+- 測試輸出：見上方「執行過的指令」，整合測試涵蓋 `booking_policy` RLS 邊界＋欄位鎖定、
+  提前量設定值對 `get_available_slots`／`create_appointment` 的影響（含公休日／緩衝
+  時間組合案例）、既有八個整合測試套件重跑無回歸。
+- 螢幕截圖：Browser 工具桌面尺寸走查完整流程——登入後台→「預約規則」頁儲存新數值
+  （4 小時／48 小時）→顯示成功 Toast→切到顧客前台確認可選時段與政策文字皆正確反映
+  新設定（「請於預約時段前 4 小時完成預約。請於預約時段前 48 小時以前完成取消或
+  改期。」）→調回預設值（1／留空）確認資料庫已還原；另外驗證超過 336 小時的非阻斷性
+  警示正確顯示且不阻擋儲存按鈕。本次 Browser 面板未顯示，`computer` 的 screenshot
+  動作持續逾時失敗，以 `javascript_tool` 讀取 DOM 內容作為替代證據（與 TASK-047／049
+  相同的已知限制）。
+- 已知限制／殘留風險：
+  - `booking_policy` 表不得啟用 `force row level security`（TASK-048 已記錄，本卡
+    補上功能性迴歸偵測器的交叉引用文件化，無法直接斷言 `relforcerowsecurity`——
+    PostgREST 只暴露 `public` schema）。
+  - `cancel_window_hours` 目前只顯示、不強制執行（`feature-spec.md` 已核准的非目標），
+    與 `lib/booking-policy.ts` 對查無資料一律視為錯誤的設計理由形成張力——待「顧客
+    自助取消/改期」Epic 接上強制邏輯時應回頭核對顯示文字與實際行為是否一致。
+  - `booking_policy` 沒有 `updated_by` 稽核欄位（與 `store_settings`／`business_hours`
+    現況一致，非本 Epic 退步，但攻擊者取得管理員 session 後可透過這個欄位無症狀關閉
+    整個預約功能且不留鑑識紀錄）——建議另立跨 Epic 的 backlog 任務，不在本卡處理。
+  - 螢幕截圖缺口（Browser 面板未顯示），已用 DOM 驗證替代。
+- 後續任務：無（本 Epic 三個 User Story 至此皆完整涵蓋）；殘留風險已如上登記，供後續
+  Epic 或 backlog 任務參考。

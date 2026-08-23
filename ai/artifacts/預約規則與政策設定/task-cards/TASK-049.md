@@ -8,7 +8,7 @@
 - 上層 User Story：顧客端顯示預約政策說明
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-046
-- 狀態：就緒（前置任務 TASK-046 已於 2026-08-23 完成）
+- 狀態：完成（人工已於 2026-08-23 驗收通過）
 - 風險等級：低（純顯示區塊，讀取既有 `booking_policy` 的既有讀取權限（anon 可讀），
   不涉及新增權限模型或寫入邏輯，比照既有前台顯示類任務的低風險判定）
 
@@ -91,9 +91,40 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：TASK-050（整合驗證）。
+詳見 `tools/kanban/cards/TASK-049.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`lib/booking/policy-text.ts`（新增，`formatBookingPolicyText` 純函式）、
+  `tests/lib/policy-text.test.ts`（新增，3 個單元測試）、
+  `app/_components/booking/BookingFlow.tsx`（修改，新增獨立 `getBookingPolicy` effect，
+  `.catch` 靜默降級為不顯示卡片）、`app/_components/booking/ContactFormSection.tsx`
+  （修改，新增 `policyText` prop，用既有 `Alert severity="info"` 元件呈現於送出按鈕
+  正上方——mockup-decision 明訂「不新增元件」，比照 `SlotPickerSection.tsx` 已使用的
+  `Alert severity="info"` 既有慣例，未使用 mockup HTML 手刻的一次性樣式）。
+- 執行過的指令：`npx tsc --noEmit`／`npm run lint`／`npm run build` 皆通過；
+  `npx vitest run`（337 tests，含新增 3 個文案組成測試，無回歸）。
+- 審查：本卡風險等級低、純顯示區塊、沿用 TASK-046 已審查通過的 `booking_policy` anon
+  可讀 RLS 邊界，未新增權限模型或寫入邏輯，比照 TASK-030／TASK-047 的既有判定，未派遣
+  architect／security-reviewer 正式審查。
+- 測試輸出：`formatBookingPolicyText` 涵蓋兩項皆設定／僅提前時間（`cancel_window_hours`
+  為 `null`）／`cancel_window_hours` 為 `0`（刻意設定「隨時可取消」，非未設定，用 `==
+  null` 而非真值判斷正確區分）三種情境，3/3 通過。
+- 螢幕截圖：Browser 工具走查顧客前台預約流程（選服務→選時段→聯絡表單），透過
+  `javascript_tool` 讀取 DOM 內容驗證：(1) 預設值（`min_lead_time_hours=1`、
+  `cancel_window_hours=null`）僅顯示「請於預約時段前 1 小時完成預約。」；(2) 暫時調整
+  為 `3`／`24` 後正確顯示「請於預約時段前 3 小時完成預約。預約時段前 24 小時內可免費
+  取消或改期。」，驗證後已還原為原值；(3) 行動裝置尺寸（375×812）下兩種情境的「送出
+  預約」按鈕皆完整落在單一螢幕內（`bottom` 分別為 627px／651px，皆小於 812px 視窗
+  高度），不需捲動即可見，未出現 mockup-decision 擔心的擠壓問題。本次 Browser 面板
+  未顯示，`computer` 的 screenshot 動作持續逾時失敗，未能取得像素螢幕截圖，以上述
+  DOM／版面座標驗證作為替代證據。
+- 已知限制：與 TASK-047 相同的螢幕截圖缺口（Browser 面板未顯示）；未測試三個以上服務
+  同時存在、或聯絡表單欄位驗證錯誤同時顯示時的版面互動（超出本卡「僅新增政策說明卡片」
+  的範圍）。
+- 後續任務：TASK-050（整合驗證，可視需要補拍像素螢幕截圖）。
+
+**TASK-050 追記**：上方「取消或改期」句子的文案（「N 小時內可免費取消或改期」）經
+security-reviewer 於 TASK-050 Epic 總覽性審查發現與後台說明文字語意相反（見
+`lib/booking/policy-text.ts` 檔頭說明），已依人工核准修正為「請於預約時段前 N 小時
+以前完成取消或改期」，`feature-spec.md` 與本卡上方引用的文案範例已是修正前的歷史記錄，
+現行程式碼與測試以修正後版本為準。

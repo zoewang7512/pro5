@@ -2,10 +2,10 @@
   "id": "TASK-050",
   "title": "預約規則與政策設定 前後端串接驗證與端到端測試",
   "content": "新增 npm run test:booking-policy 涵蓋 booking_policy 的 RLS 邊界與調整最短提前預約時間後 get_available_slots/create_appointment 的實際行為（含與既有公休日/緩衝時間規則同時生效的組合案例）；重跑既有整合測試確認無回歸；Browser E2E 走查完整流程；更新 project-map.md。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "預約規則與政策設定",
@@ -26,8 +26,8 @@
     "product": false,
     "ui": false,
     "architecture": false,
-    "security": false,
-    "test": false,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -41,18 +41,53 @@
   "refs": [
     "tests/booking-policy.integration.test.ts",
     "vitest.booking-policy.config.ts",
-    "ai/context/project-map.md"
+    "ai/context/project-map.md",
+    "tests/booking.integration.test.ts",
+    "app/admin/_components/BookingPolicyForm.tsx",
+    "lib/booking-policy.ts",
+    "lib/booking/policy-text.ts",
+    "tests/lib/policy-text.test.ts",
+    "supabase/migrations/0009_booking_policy_lead_time.sql"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npx vitest run（337/337，無回歸）",
+      "npm run test:booking-policy（7/7，含新增欄位鎖定斷言）",
+      "npm run test:booking（23/23）",
+      "npm run test:admin-booking（13/13）",
+      "npm run test:business-hours（18/18）",
+      "npm run test:rls（6/6）",
+      "npm run test:store-settings（11/11）",
+      "npm run test:services（13/13）",
+      "npm run test:account（17/17）",
+      "Browser 工具桌面尺寸走查：後台預約規則頁設定 4／48 儲存 → 顧客前台確認可選時段與政策文字皆正確反映 → 調回預設值確認資料庫已還原；另驗證超過 336 小時的非阻斷性警示正確顯示且不阻擋儲存"
+    ],
+    "findings": [
+      "派遣 security-reviewer 對整個 Epic（TASK-046～049 累積變更）做總覽性審查，判定跨卡組合未引入新的權限提升或資料外洩路徑。1 項 MUST FIX：tests/booking.integration.test.ts 的 booking_policy 快照未印出，測試中斷會讓正式環境卡在「預約全滅」的數值且無法還原——已修正補上 console.log。",
+      "7 項 NICE TO HAVE 已處理：anon 可讀欄位集合鎖定測試（tests/booking-policy.integration.test.ts）、force RLS 隱性約束與 720 小時測試案例的交叉引用文件化（0009 migration ＋ 測試註解）、updateBookingPolicy 防禦性重跑驗證（lib/booking-policy.ts）、TASK-048.md 允許變更檔案清單的追溯性補登（tests/booking.integration.test.ts 原漏列）。",
+      "經人工核准後額外處理兩項原列為「留待決定」的發現：(1) BookingPolicyForm.tsx 新增最短提前預約時間超過顧客前台可見 14 天（336 小時）範圍時的非阻斷性警示；(2) 修正顧客前台『取消或改期』文案語意（原文案『N 小時內可免費取消』與後台說明『至少需提前 N 小時』語意相反），改為『N 小時以前完成取消或改期』，同步更新 feature-spec.md 與 mockup-decision 的偏離紀錄、lib/booking/policy-text.ts 與其單元測試。",
+      "XSS／注入風險二次確認：formatBookingPolicyText 內插值受資料庫 check constraint 約束且經 React 自動轉義，無需修改。"
+    ],
+    "residual": "cancel_window_hours 目前只顯示、不強制執行（feature-spec.md 已核准的非目標），待後續「顧客自助取消/改期」Epic 接上強制邏輯時應回頭核對顯示文字與實際行為是否一致。booking_policy 沒有 updated_by 稽核欄位（與 store_settings／business_hours 現況一致，非本 Epic 退步，但值得記錄：攻擊者取得管理員 session 後可透過這個欄位無症狀關閉整個預約功能且不留鑑識紀錄），建議另立跨 Epic 的 backlog 任務。像素螢幕截圖因 Browser 面板未顯示而缺漏，已用 DOM 驗證替代。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-046~050 這批任務卡；本卡前置任務尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "前置任務 TASK-046～049 皆已完成並人工驗收，開始實作。實作與自我驗證完成，並依驗證契約要求派遣 security-reviewer 對整個 Epic 做總覽性審查；審查發現的 1 項 MUST FIX 與多項 NICE TO HAVE 皆已修正，其中兩項（前端警示、顧客文案語意修正）先詢問使用者並依核准方向處理。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-23",
+      "text": "核准，轉 done。"
     }
   ]
 }

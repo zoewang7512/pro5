@@ -2,10 +2,10 @@
   "id": "TASK-047",
   "title": "預約規則與政策設定 後台預約規則表單編輯與儲存",
   "content": "接上 TASK-046 頁面骨架的表單編輯能力：最短提前預約時間（1~720 小時，必填）與可取消/改期時限（>=0 小時，選填）可編輯並儲存。不修改任何 RPC。",
-  "stage": "ready",
+  "stage": "done",
   "risk": "low",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "預約規則與政策設定",
@@ -27,7 +27,7 @@
     "ui": false,
     "architecture": false,
     "security": false,
-    "test": false,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -44,9 +44,19 @@
     "tests/booking-policy.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npx vitest run（334 tests；4 個測試檔案在滿載並行執行時出現既有間歇性 5000ms timeout，逐一重跑該 4 個檔案皆 100% 通過，與本卡改動的檔案無關，非本卡引入的回歸）",
+      "npx vitest run tests/booking-policy.test.ts（13/13 通過）",
+      "Browser 工具走查：編輯最短提前預約時間為超出範圍值（800）→ 顯示錯誤「請輸入 1～720 小時之間的整數」且未送出 → 修正為 2／24 → 送出成功、按鈕回到停用狀態 → 重新整理頁面確認資料庫已寫入新值 → 改回原值（1／留空）並儲存還原"
+    ],
+    "findings": [
+      "本卡風險等級低、寫入路徑沿用 TASK-046 已建立並經 architect／security-reviewer 審查通過的 booking_policy RLS 邊界（未新增安全性表面），比照 TASK-030 的既有判定，未派遣 architect／security-reviewer 正式審查。",
+      "Browser 面板本次未顯示，computer 工具的 screenshot 動作持續逾時失敗，未能取得像素螢幕截圖；改用 get_page_text／javascript_tool 讀取 DOM 內容（欄位值、按鈕 disabled 狀態、重新整理後的持久化結果）作為驗證證據，功能行為已確認符合預期。"
+    ],
+    "residual": "螢幕截圖缺口：驗證契約要求的「編輯中、驗證錯誤、儲存中、儲存成功」四張像素截圖未能取得（Browser 面板未顯示），已用 DOM 內容驗證替代，功能已確認正確；建議 TASK-050 整合驗證時視情況補拍。"
   },
   "comments": [
     {
@@ -58,6 +68,16 @@
       "name": "Claude Code",
       "time": "2026-08-23",
       "text": "前置任務 TASK-046 已完成並人工驗收，轉 ready。TASK-046 實作階段將讀取函式落點從原規劃的 lib/admin/booking-policy.ts 改為 lib/booking-policy.ts（頂層），已同步更新本卡的情境包與允許變更的檔案清單（含 refs），實作時請以 ai/artifacts/預約規則與政策設定/task-cards/TASK-047.md 最新版本為準。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "實作與自我驗證完成（tsc/lint/build/測試皆通過，含瀏覽器互動走查）。風險等級低、未新增安全性表面，比照 TASK-030 未派遣 architect／security-reviewer 正式審查。像素螢幕截圖因 Browser 面板未顯示而缺漏，已用 DOM 驗證替代，詳見 residual。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-23",
+      "text": "核准，轉 done。"
     }
   ]
 }

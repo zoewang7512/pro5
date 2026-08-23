@@ -7,8 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { createAppointment, getServices, getBusinessHours, getAvailableSlots } from "@/lib/booking/api";
 import { buildDateRange, getTaipeiToday } from "@/lib/booking/date-range";
 import { getBookingErrorMessage } from "@/lib/booking/error-messages";
+import { formatBookingPolicyText } from "@/lib/booking/policy-text";
 import { buildSlotGrid, type SlotCell } from "@/lib/booking/slot-grid";
 import type { AppointmentConfirmation, AvailableSlot, BusinessHours, Service } from "@/lib/booking/types";
+import { getBookingPolicy } from "@/lib/booking-policy";
 import { EMPTY_STORE_SETTINGS, getStoreSettings, resolveStoreDisplay, type StoreSettings } from "@/lib/store-settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { BrandHeaderSection, BrandHeaderSectionSkeleton } from "./BrandHeaderSection";
@@ -45,6 +47,7 @@ export function BookingFlow() {
   const [servicesResult, setServicesResult] = React.useState<ServicesResult | null>(null);
   const [slotsResult, setSlotsResult] = React.useState<SlotsResult | null>(null);
   const [brandSettings, setBrandSettings] = React.useState<StoreSettings | null>(null);
+  const [policyText, setPolicyText] = React.useState<string | null>(null);
 
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
   const [editingService, setEditingService] = React.useState(false);
@@ -83,6 +86,27 @@ export function BookingFlow() {
       .catch(() => {
         if (cancelled) return;
         setBrandSettings(EMPTY_STORE_SETTINGS);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  // 政策說明卡片的讀取獨立於其他 fetch，各自的 effect／state，互不阻塞——
+  // 比照品牌顯示區塊的既有模式：讀取慢或失敗不應延遲或中斷既有預約流程；.catch 確保
+  // promise reject（非 getBookingPolicy 內部已處理的 {ok:false} 分支，而是呼叫本身
+  // 拋出）時仍靜默降級為不顯示卡片，不顯示錯誤訊息（TASK-049 任務卡「讀取失敗 THE
+  // SYSTEM SHALL 靜默降級」的驗收標準）。
+  React.useEffect(() => {
+    let cancelled = false;
+    getBookingPolicy(supabase)
+      .then((result) => {
+        if (cancelled) return;
+        setPolicyText(result.ok ? formatBookingPolicyText(result.data) : null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPolicyText(null);
       });
     return () => {
       cancelled = true;
@@ -225,7 +249,7 @@ export function BookingFlow() {
           )}
 
           {selectedService && selectedSlot && !editingService && !editingSlot && (
-            <ContactFormSection submitting={submitting} onSubmit={handleSubmitContact} />
+            <ContactFormSection submitting={submitting} onSubmit={handleSubmitContact} policyText={policyText} />
           )}
         </>
       )}

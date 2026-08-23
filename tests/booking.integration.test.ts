@@ -4,8 +4,15 @@
 // 其他情境下被跑到，所以缺設定時直接噴錯而非略過，避免「忘了填 .env.local
 // 卻顯示測試通過」的誤導。測試資料（services／customers／appointments）於
 // afterAll 清除。
+// TASK-048 起，本檔案也讀寫 booking_policy（TASK-046 建立的單例表，見
+// tests/booking-policy.integration.test.ts 對其 RLS 邊界的獨立測試）：
+// get_available_slots／create_appointment 改讀 booking_policy.min_lead_time_hours
+// 取代原本寫死的 1 小時，本檔案既有的「提前量／視野上限」案例因此第一次隱性耦合到這個
+// 設定值——beforeAll 明確把它設回 1（不能假設環境當下剛好是預設值），afterAll 還原成
+// 套用測試前的原始快照（test-engineer 於 TASK-048 審查提出：這個回歸安全網原本只是巧合
+// 通過，必須明確控制數值才能真正驗證「未調整設定值時行為與修改前完全一致」）。
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -135,7 +142,7 @@ async function callCreateAppointment(
 // 時段；選接近視野上限的日期，真實顧客提前這麼久預約的機率低很多，降低與
 // 正式資料衝突或互相干擾的風險（仍非絕對隔離，不要對正式環境重複高頻率跑本
 // 測試套件）。
-const OPEN_DATES = generateOpenWeekdays(9, 70);
+const OPEN_DATES = generateOpenWeekdays(10, 70);
 const [
   OCCUPIED_DATE,
   FREE_DATE,
@@ -146,12 +153,21 @@ const [
   EXCLUSION_DATE,
   BOOKING_LIMIT_DATE,
   RLS_FIXTURE_DATE,
+  BUFFER_LEAD_TIME_DATE,
 ] = OPEN_DATES;
+
+// booking_policy 的提前量測試需要「近期」的營業日（min_lead_time_hours 上限 720 小時＝
+// 30 天，遠小於上面 OPEN_DATES 刻意選用的 +70 天起點，用遠期日期測不出任何提前量過濾
+// 效果）。用明天起最近一個營業日，時間窗夠短，正式顧客提前這麼短時間預約的機率相對高，
+// 這是唯一必須承受一點與正式資料互相干擾風險的測試群組（見下方 describe 的檔頭說明）。
+const NEAR_TERM_OPEN_DATE = generateOpenWeekdays(1, 1)[0];
 
 describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
   let serviceRoleClient: SupabaseClient;
   let anonClient: SupabaseClient;
   let testServiceId: string;
+  let originalMinLeadTimeHours: number;
+  let originalCancelWindowHours: number | null;
 
   beforeAll(async () => {
     serviceRoleClient = createClient(url!, serviceRoleKey!, {
@@ -173,6 +189,33 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       .single();
     if (error) throw error;
     testServiceId = service.id;
+
+    // 記錄 booking_policy 目前的快照（不能假設是預設值 1，可能已被後台設定頁調整過），
+    // 再明確設回 1——本檔案下面「提前量／視野上限」既有 describe 的斷言（假設提前量
+    // 恰為 1 小時）原本只是巧合通過，改成明確控制數值才是真正驗證「未調整設定值時行為
+    // 與修改前完全一致」（test-engineer 於 TASK-048 審查提出）。
+    const { data: policySnapshot, error: policySnapshotError } = await serviceRoleClient
+      .from("booking_policy")
+      .select("min_lead_time_hours, cancel_window_hours")
+      .eq("id", 1)
+      .single();
+    if (policySnapshotError) throw policySnapshotError;
+    originalMinLeadTimeHours = policySnapshot.min_lead_time_hours;
+    originalCancelWindowHours = policySnapshot.cancel_window_hours;
+
+    // 印到終端機/CI log 供程序被強制中斷時人工還原（比照 tests/booking-policy.integration.test.ts／
+    // tests/business-hours.integration.test.ts 的既有慣例）：本檔案下面的 booking_policy
+    // describe 區塊會把正式環境的 min_lead_time_hours 暫時改到 720，若行程在該 it 與
+    // afterEach 之間被強制中斷，顧客前台 14 天視窗內會全數清空且不顯示任何錯誤訊息
+    // （security-reviewer 於 TASK-050 總覽性審查認定 MUST FIX），只有這行 log 能讓人工
+    // 知道原始值該還原成什麼。
+    console.log(`[booking.integration.test] 原始 booking_policy 快照（供中斷後人工還原用）：${JSON.stringify(policySnapshot)}`);
+
+    const { error: setDefaultLeadError } = await serviceRoleClient
+      .from("booking_policy")
+      .update({ min_lead_time_hours: 1 })
+      .eq("id", 1);
+    if (setDefaultLeadError) throw setDefaultLeadError;
   });
 
   afterAll(async () => {
@@ -196,6 +239,12 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       .delete()
       .eq("id", testServiceId);
     if (deleteServiceError) throw deleteServiceError;
+
+    const { error: restorePolicyError } = await serviceRoleClient
+      .from("booking_policy")
+      .update({ min_lead_time_hours: originalMinLeadTimeHours, cancel_window_hours: originalCancelWindowHours })
+      .eq("id", 1);
+    if (restorePolicyError) throw restorePolicyError;
   });
 
   describe("get_available_slots", () => {
@@ -642,6 +691,146 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .single();
       if (customerRefetchError) throw customerRefetchError;
       expect(customerAfter.name).toBe(fixtureCustomer.name);
+    });
+  });
+
+  // TASK-048：get_available_slots／create_appointment 改讀 booking_policy.min_lead_time_hours。
+  // 這個 describe 內每個案例都會暫時把 booking_policy 改成非預設值，各自在該 it 內把值
+  // 改回 1（外層 beforeAll 已設定的基準值），確保不影響同檔案內宣告順序在後、依賴預設值
+  // 的其他測試——vitest 預設依宣告順序循序執行 describe/it，本區塊刻意放在檔案最後，
+  // 不會有任何後續案例受影響。
+  // NEAR_TERM_OPEN_DATE 是唯一使用「近期」（明天起最近一個營業日）而非 +70 天的日期
+  // （見上方常數宣告的說明）：min_lead_time_hours 的上限是 720 小時＝30 天
+  // （0008_booking_policy.sql 的 check constraint），遠小於 +70 天，用遠期日期測不出任何
+  // 提前量過濾效果；也因此這是本檔案中相對可能與正式顧客資料互相干擾的測試群組。
+  describe("booking_policy 讀取：提前量設定值影響 get_available_slots／create_appointment（TASK-048）", () => {
+    afterEach(async () => {
+      const { error } = await serviceRoleClient.from("booking_policy").update({ min_lead_time_hours: 1 }).eq("id", 1);
+      if (error) throw error;
+    });
+
+    // 這個案例同時是 booking_policy 不得啟用 force row level security 這條隱性約束的
+    // 功能性迴歸偵測器（見 0009_booking_policy_lead_time.sql 檔頭說明）：若有人不小心
+    // 對 booking_policy 執行 alter table ... force row level security，兩支 RPC 的
+    // select 會讀到 0 列、coalesce 靜默退回 1 小時，時段就不會消失，這裡會失敗。不要
+    // 因為看似與下面「3 小時邊界」案例重複而刪掉或簡化本案例。
+    it("min_lead_time_hours 設為上限 720 小時時，近期營業日的可預約時段全部消失（證明確實讀取設定值，而非仍寫死 1 小時）", async () => {
+      // 先在預設值（1 小時，外層 beforeAll 已設定）下確認這個日期本來就有時段，
+      // 避免後面的「消失」斷言只是巧合成立（該日期其實從來就沒有任何時段）。
+      const baseline = await callGetAvailableSlots(anonClient, testServiceId, NEAR_TERM_OPEN_DATE);
+      expect(baseline.ok).toBe(true);
+      if (!baseline.ok) return;
+      expect(baseline.data.length).toBeGreaterThan(0);
+
+      const { error: setLeadError } = await serviceRoleClient
+        .from("booking_policy")
+        .update({ min_lead_time_hours: 720 })
+        .eq("id", 1);
+      if (setLeadError) throw setLeadError;
+
+      const envelope = await callGetAvailableSlots(anonClient, testServiceId, NEAR_TERM_OPEN_DATE);
+      expect(envelope).toEqual({ ok: true, data: [] });
+    });
+
+    it("min_lead_time_hours 設為非預設值（3 小時）時，create_appointment 以新門檻判斷提前量：差 10 分鐘未達門檻應拒絕，超過門檻應成功", async () => {
+      const { error: setLeadError } = await serviceRoleClient
+        .from("booking_policy")
+        .update({ min_lead_time_hours: 3 })
+        .eq("id", 1);
+      if (setLeadError) throw setLeadError;
+
+      // 姓名長度必須留在 create_appointment 的 50 字元上限內（見 0002_booking_flow.sql
+      // 第 183-186 行），加上 TEST_MARKER 前綴後預算有限——這裡刻意用短字尾，避免像
+      // 「lead-policy-too-soon」這樣的字尾把總長度推過 50 字元，讓回傳的其實是姓名驗證
+      // 的 VALIDATION_ERROR，跟我們真正要測的提前量 VALIDATION_ERROR 混在一起、巧合通過
+      // 卻沒測到真正的行為（test-engineer 於 TASK-048 審查後的實測發現）。
+      const tooSoon = await callCreateAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: new Date(Date.now() + (2 * 60 + 50) * 60_000).toISOString(),
+        customerName: `${TEST_MARKER} too-soon`,
+        customerPhone: testPhone(),
+      });
+      expect(tooSoon.ok).toBe(false);
+      if (tooSoon.ok) return;
+      expect(tooSoon.error_code).toBe("VALIDATION_ERROR");
+      expect(tooSoon.message).toBe("start_at out of allowed range");
+
+      const farEnough = await callCreateAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: new Date(Date.now() + (3 * 60 + 10) * 60_000).toISOString(),
+        customerName: `${TEST_MARKER} far-enough`,
+        customerPhone: testPhone(),
+      });
+      expect(farEnough.ok).toBe(true);
+    });
+
+    it("組合案例：公休日（週日，business_hours.is_closed）的早退判斷不受提前量設定值影響（新增的 booking_policy 讀取插在公休判斷之前，不應短路或跳過該判斷）", async () => {
+      const { error: setLeadError } = await serviceRoleClient
+        .from("booking_policy")
+        .update({ min_lead_time_hours: 2 })
+        .eq("id", 1);
+      if (setLeadError) throw setLeadError;
+
+      const date = nextClosedWeekday(1);
+      const envelope = await callGetAvailableSlots(anonClient, testServiceId, date);
+      expect(envelope).toEqual({ ok: true, data: [] });
+    });
+
+    it("組合案例：緩衝時間排除與提前量放行同時正確生效，互不遮蔽（AND 關係）", async () => {
+      // 用遠期日期（EXCLUSION_DATE 等既有池同款的 +70 天日期）讓提前量檢查對這個時段
+      // 必然放行（720 小時上限＝30 天，遠小於 70 天），只單獨驗證緩衝時間排除邏輯在
+      // 本卡修改後仍然正確生效，不受新插入的 booking_policy 讀取影響。
+      const { data: originalService, error: originalServiceError } = await serviceRoleClient
+        .from("services")
+        .select("buffer_minutes")
+        .eq("id", testServiceId)
+        .single();
+      if (originalServiceError) throw originalServiceError;
+
+      const { error: setLeadError } = await serviceRoleClient
+        .from("booking_policy")
+        .update({ min_lead_time_hours: 5 })
+        .eq("id", 1);
+      if (setLeadError) throw setLeadError;
+
+      const { error: setBufferError } = await serviceRoleClient
+        .from("services")
+        .update({ buffer_minutes: 15 })
+        .eq("id", testServiceId);
+      if (setBufferError) throw setBufferError;
+
+      try {
+        const fixtureStart = isoAt(BUFFER_LEAD_TIME_DATE, 14, 0);
+        const fixtureEnd = isoAt(BUFFER_LEAD_TIME_DATE, 14, 30);
+        const { error: insertError } = await serviceRoleClient.from("appointments").insert({
+          service_id: testServiceId,
+          customer_name: `${TEST_MARKER} buffer-lead-fixture`,
+          start_at: fixtureStart,
+          end_at: fixtureEnd,
+          status: "pending",
+        });
+        if (insertError) throw insertError;
+
+        const envelope = await callGetAvailableSlots(anonClient, testServiceId, BUFFER_LEAD_TIME_DATE);
+        expect(envelope.ok).toBe(true);
+        if (!envelope.ok) return;
+
+        const startEpochs = envelope.data.map((slot) => epoch(slot.start_at));
+        // 候選時段一律對齊 30 分鐘格點（10:00 起算），13:30-14:00 加上自身 15 分鐘緩衝後
+        // 延伸到 14:15，與既有 14:00-14:30 預約重疊；14:30-15:00 落在既有預約結束後的
+        // 15 分鐘緩衝內（14:30 + 15 分鐘 = 14:45，與此候選時段仍重疊）——兩者皆應被緩衝
+        // 時間排除，即使提前量檢查（5 小時門檻對 70 天後的日期必然放行）沒有把它們擋下。
+        expect(startEpochs).not.toContain(epoch(isoAt(BUFFER_LEAD_TIME_DATE, 13, 30)));
+        expect(startEpochs).not.toContain(epoch(isoAt(BUFFER_LEAD_TIME_DATE, 14, 30)));
+        // 16:00 遠離緩衝範圍且提前量必然放行，應正常出現。
+        expect(startEpochs).toContain(epoch(isoAt(BUFFER_LEAD_TIME_DATE, 16, 0)));
+      } finally {
+        const { error: restoreBufferError } = await serviceRoleClient
+          .from("services")
+          .update({ buffer_minutes: originalService.buffer_minutes })
+          .eq("id", testServiceId);
+        if (restoreBufferError) throw restoreBufferError;
+      }
     });
   });
 });

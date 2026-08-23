@@ -8,7 +8,7 @@
 - 上層 User Story：設定最短提前預約時間
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-046
-- 狀態：就緒（前置任務 TASK-046 已於 2026-08-23 完成）
+- 狀態：完成（人工已於 2026-08-23 驗收通過）
 - 風險等級：高（修改 `create_appointment`／`get_available_slots`——顧客端唯一的預約
   寫入路徑與可預約時段查詢路徑——把寫死的 1 小時提前量改為從 `booking_policy` 讀取，
   任何邏輯錯誤可能導致合法預約被誤擋，或非法預約被放行；需與既有公休日、緩衝時間檢查
@@ -61,6 +61,10 @@ min_lead_time_hours`；最遠視野上限（90 天）維持寫死不變。
   - `supabase/migrations/0009_booking_policy_lead_time_down.sql`（新增，還原成
     `create or replace function` 換回寫死 1 小時的原始版本，比照既有 down migration
     慣例，不用 `drop function`，避免顧客端預約功能出現空窗）
+  - `tests/booking.integration.test.ts`（修改；原規劃未列入，test-engineer 於實作階段
+    審查認定 MUST FIX——本卡驗證契約原允許整合測試延到 TASK-050，但判定不足以涵蓋
+    高風險變更，要求現在就補上，已記錄在完成證據；此處補齊允許清單使卡片自洽，
+    security-reviewer 於 TASK-050 Epic 總覽性審查發現此帳面落差）
 - 不得觸碰：
   - `booking_policy` 表結構（TASK-046 已建立，本卡只讀取）。
   - 前端任何檔案（`lib/booking/api.ts`／`app/_components/booking/`）——不新增錯誤碼、
@@ -103,10 +107,19 @@ min_lead_time_hours`；最遠視野上限（90 天）維持寫死不變。
 ## 驗證契約
 
 - 單元測試：不適用（本卡純 SQL migration，無可抽出的 TypeScript 純函式邏輯）。
-- 整合測試：擴充 `tests/booking.integration.test.ts`（或 TASK-050 統一擴充的整合測試
-  檔案）新增案例：調整 `min_lead_time_hours` 後 `get_available_slots`／
-  `create_appointment` 的正確回應；與既有公休日／緩衝時間規則同時生效的組合案例；驗證
-  後還原設定值為預設 1 小時，避免污染其他測試。
+- 整合測試：擴充 `tests/booking.integration.test.ts` 新增案例（test-engineer 於實作
+  階段審查認定 MUST FIX：原規劃允許延到 TASK-050，但這是修改顧客端唯一預約路徑的高風險
+  變更，且既有「提前量／視野上限」案例其實從未真正控制過 `booking_policy` 的值，只是
+  巧合通過，必須現在就補上明確案例，理由與 TASK-046 的先例一致）：
+  - 外層 `beforeAll` 明確記錄快照並把 `min_lead_time_hours` 設回 1，讓既有回歸案例
+    真正驗證「未調整設定值時行為與修改前完全一致」，而非依賴環境當下剛好是預設值。
+  - `min_lead_time_hours` 設為上限 720 小時 → 近期營業日的 `get_available_slots`
+    全部清空（先在預設值下確認該日期本來就有時段，避免恆真斷言）。
+  - `min_lead_time_hours` 設為非預設值（3 小時）→ `create_appointment` 差 10 分鐘
+    未達門檻應拒絕、超過門檻應成功（邊界案例）。
+  - 組合案例：公休日早退判斷不受提前量讀取影響；緩衝時間排除與提前量放行同時正確生效、
+    互不遮蔽（AND 關係）。
+  - 驗證後還原設定值為 1，`afterAll` 失敗要 throw，不吞掉。
 - E2E 測試：不適用（無 UI 變更，前端沿用既有 `get_available_slots` 回傳結果渲染，見
   「情境包」不得觸碰前端的決策）。
 - 型別檢查：`tsc --noEmit` 成功。
@@ -119,9 +132,37 @@ min_lead_time_hours`；最遠視野上限（90 天）維持寫死不變。
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：TASK-050（整合驗證）。
+詳見 `tools/kanban/cards/TASK-048.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`supabase/migrations/0009_booking_policy_lead_time.sql`／`_down.sql`
+  （新增）、`tests/booking.integration.test.ts`（修改，新增 booking_policy 快照/還原
+  與 4 個 TASK-048 新案例）。
+- 執行過的指令：`npx tsc --noEmit`／`npm run lint`／`npm run build` 皆通過；
+  `npm run test:booking`（23/23，含新增 4 案例）、`npm run test:admin-booking`
+  （13/13）、`npm run test:business-hours`（18/18）、`npm run test:booking-policy`
+  （6/6）皆通過、無回歸。
+- 審查：本卡風險等級高，依既有慣例派遣 architect／security-reviewer／test-engineer
+  三個子代理審查。architect／security-reviewer 判定 SQL 邏輯本身無需修改（忠實重現
+  既有邏輯、防呆與回滾正確），但各提出數項 NICE TO HAVE 已一併處理：`limit 1` 改為
+  `where id = 1`（語意自足）；回滾腳本補回被精簡掉的原始註解（含 architect 認定「全
+  專案唯一解釋 ±1 天範圍限定為何存在」的關鍵說明）並加上回滾順序警告（若要一併回滾
+  0008，必須先回滾 0009，否則 `drop table restrict` 偵測不到 plpgsql 函式體的隱性
+  依賴）；針對 security-reviewer 指出「查無資料時 fallback 為 1 小時」與 TASK-046
+  `lib/booking-policy.ts`「查無資料視為錯誤」方向相反的疑慮，已在 migration 註解明確
+  登記這是刻意的不對稱取捨（可用性優先於一致性）與隱性約束（`booking_policy` 不得啟用
+  `force row level security`）。test-engineer 判定驗證契約 MUST FIX（見上方「驗證
+  契約」段落），已依其具體案例設計實作測試，實測時另外發現一個真實測試臭蟲：測試用
+  顧客姓名（`TEST_MARKER` 前綴＋案例描述）超過資料庫 50 字元上限，導致「提前量太早」
+  案例其實是巧合通過姓名驗證錯誤，已修正並補上更精確的 `message` 斷言防止同類問題
+  再次被掩蓋。
+- 測試輸出：`tests/booking.integration.test.ts` 新增 4 案例（720 小時上限清空近期
+  時段、3 小時邊界差 10 分鐘判斷、公休日早退不受影響、緩衝時間與提前量互不遮蔽），皆
+  通過；既有 19 案例（含「提前量／視野上限」）改為在明確控制的 `min_lead_time_hours=1`
+  下執行，不再是巧合通過。
+- 螢幕截圖：不適用（無 UI 變更）。
+- 已知限制：`booking_policy` 表不得啟用 `force row level security`（否則 fallback
+  邏輯會靜默放寬提前量設定，已於 migration 註解登記）；未依實作備註另外走一輪手動
+  瀏覽器/RPC 人工核對（6 小時案例）——自動化整合測試已用 720 小時／3 小時兩組數值更
+  precise 地涵蓋同一驗證目的，判定重複執行手動核對非必要。
+- 後續任務：TASK-050（整合驗證，可視需要擴充涵蓋更多提前量與其他規則的組合情境）。
