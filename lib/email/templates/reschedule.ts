@@ -1,6 +1,7 @@
 import { escapeHtml, formatAppointmentDateTime } from "@/lib/email/format";
+import { wrapEmailBody } from "@/lib/email/templates/_layout";
 
-// 改期通知信的內容組成純函式（TASK-053）。
+// 改期通知信的內容組成純函式（TASK-053；Header/Footer 版型 TASK-060）。
 
 export type RescheduleEmailInput = {
   customerName: string;
@@ -9,6 +10,8 @@ export type RescheduleEmailInput = {
   newStartAt: string;
   storeName?: string | null;
   storePhone?: string | null;
+  storeLogoUrl?: string | null;
+  storeAddress?: string | null;
 };
 
 export type RescheduleEmailContent = { subject: string; html: string };
@@ -35,7 +38,7 @@ export function buildRescheduleEmail(input: RescheduleEmailInput): RescheduleEma
     ? `<p>若新時段不方便，歡迎聯絡我們調整：${escapeHtml(input.storePhone.trim())}</p>`
     : "<p>若新時段不方便，請與我們聯繫調整。</p>";
 
-  const html = [
+  const bodyHtml = [
     `<p>${safeCustomerName} 您好，</p>`,
     `<p>您在${safeStoreName}的預約時段已異動：</p>`,
     "<ul>",
@@ -45,6 +48,14 @@ export function buildRescheduleEmail(input: RescheduleEmailInput): RescheduleEma
     "</ul>",
     contactLine,
   ].join("\n");
+
+  const html = wrapEmailBody({
+    storeName: input.storeName,
+    storeLogoUrl: input.storeLogoUrl,
+    storePhone: input.storePhone,
+    storeAddress: input.storeAddress,
+    bodyHtml,
+  });
 
   return { subject, html };
 }

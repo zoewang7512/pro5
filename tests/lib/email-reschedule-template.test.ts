@@ -42,4 +42,16 @@ describe("buildRescheduleEmail", () => {
     expect(html).toContain("您在測試髮廊的預約時段已異動");
     expect(html).toContain("若新時段不方便，歡迎聯絡我們調整：0912-345-678");
   });
+
+  it("提供 storeLogoUrl／storeAddress 時，Header/Footer（TASK-060）正確帶入", () => {
+    const { html } = buildRescheduleEmail({
+      ...baseInput,
+      storeName: "路口理髮廳",
+      storePhone: "02-1234-5678",
+      storeAddress: "台北市大安區忠孝東路四段1號",
+      storeLogoUrl: "https://example.invalid/storage/v1/object/public/store-assets/logo/abc.png",
+    });
+    expect(html).toContain('<img src="https://example.invalid/storage/v1/object/public/store-assets/logo/abc.png"');
+    expect(html).toContain("路口理髮廳・02-1234-5678・台北市大安區忠孝東路四段1號");
+  });
 });

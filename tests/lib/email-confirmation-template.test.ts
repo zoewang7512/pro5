@@ -54,4 +54,22 @@ describe("buildConfirmationEmail", () => {
     expect(html).toContain("您在我們的預約已成立");
     expect(html).not.toContain("如需異動預約");
   });
+
+  it("提供 storeLogoUrl／storeAddress 時，Header/Footer（TASK-060）正確帶入", () => {
+    const { html } = buildConfirmationEmail({
+      ...baseInput,
+      storeName: "路口理髮廳",
+      storePhone: "02-1234-5678",
+      storeAddress: "台北市大安區忠孝東路四段1號",
+      storeLogoUrl: "https://example.invalid/storage/v1/object/public/store-assets/logo/abc.png",
+    });
+    expect(html).toContain('<img src="https://example.invalid/storage/v1/object/public/store-assets/logo/abc.png"');
+    expect(html).toContain("路口理髮廳・02-1234-5678・台北市大安區忠孝東路四段1號");
+  });
+
+  it("未提供 storeLogoUrl 時 Header 改顯示店名文字，既有內文邏輯不受影響", () => {
+    const { html } = buildConfirmationEmail({ ...baseInput, storeName: "路口理髮廳" });
+    expect(html).not.toContain("<img");
+    expect(html).toContain("您在路口理髮廳的預約已成立");
+  });
 });

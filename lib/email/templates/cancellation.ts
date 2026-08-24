@@ -1,6 +1,7 @@
 import { escapeHtml, formatAppointmentDateTime } from "@/lib/email/format";
+import { wrapEmailBody } from "@/lib/email/templates/_layout";
 
-// 取消通知信的內容組成純函式（TASK-053）。
+// 取消通知信的內容組成純函式（TASK-053；Header/Footer 版型 TASK-060）。
 
 export type CancellationEmailInput = {
   customerName: string;
@@ -8,6 +9,8 @@ export type CancellationEmailInput = {
   startAt: string;
   storeName?: string | null;
   storePhone?: string | null;
+  storeLogoUrl?: string | null;
+  storeAddress?: string | null;
 };
 
 export type CancellationEmailContent = { subject: string; html: string };
@@ -35,7 +38,7 @@ export function buildCancellationEmail(input: CancellationEmailInput): Cancellat
     ? `<p>如需重新預約或有任何問題，歡迎聯絡我們：${escapeHtml(input.storePhone.trim())}</p>`
     : "";
 
-  const html = [
+  const bodyHtml = [
     `<p>${safeCustomerName} 您好，</p>`,
     `<p>您在${safeStoreName}的以下預約已取消：</p>`,
     "<ul>",
@@ -47,6 +50,14 @@ export function buildCancellationEmail(input: CancellationEmailInput): Cancellat
   ]
     .filter(Boolean)
     .join("\n");
+
+  const html = wrapEmailBody({
+    storeName: input.storeName,
+    storeLogoUrl: input.storeLogoUrl,
+    storePhone: input.storePhone,
+    storeAddress: input.storeAddress,
+    bodyHtml,
+  });
 
   return { subject, html };
 }

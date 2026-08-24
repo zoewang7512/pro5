@@ -1,8 +1,9 @@
 import { escapeHtml, formatAppointmentDateTime } from "@/lib/email/format";
+import { wrapEmailBody } from "@/lib/email/templates/_layout";
 
-// 預約成立確認信的內容組成純函式（TASK-052）。不做任何 I/O，方便單元測試；
-// 呼叫端（app/api/webhooks/appointment-events/route.ts）負責查詢服務名稱／店家
-// 資訊後傳入這裡組裝。
+// 預約成立確認信的內容組成純函式（TASK-052；Header/Footer 版型 TASK-060）。不做
+// 任何 I/O，方便單元測試；呼叫端（app/api/webhooks/appointment-events/route.ts）
+// 負責查詢服務名稱／店家資訊後傳入這裡組裝。
 
 export type ConfirmationEmailInput = {
   customerName: string;
@@ -10,6 +11,8 @@ export type ConfirmationEmailInput = {
   startAt: string;
   storeName?: string | null;
   storePhone?: string | null;
+  storeLogoUrl?: string | null;
+  storeAddress?: string | null;
 };
 
 export type ConfirmationEmailContent = { subject: string; html: string };
@@ -38,7 +41,7 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): Confirmat
     ? `<p>如需異動預約，歡迎聯絡我們：${escapeHtml(input.storePhone.trim())}</p>`
     : "";
 
-  const html = [
+  const bodyHtml = [
     `<p>${safeCustomerName} 您好，</p>`,
     `<p>您在${safeStoreName}的預約已成立：</p>`,
     "<ul>",
@@ -50,6 +53,14 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): Confirmat
   ]
     .filter(Boolean)
     .join("\n");
+
+  const html = wrapEmailBody({
+    storeName: input.storeName,
+    storeLogoUrl: input.storeLogoUrl,
+    storePhone: input.storePhone,
+    storeAddress: input.storeAddress,
+    bodyHtml,
+  });
 
   return { subject, html };
 }

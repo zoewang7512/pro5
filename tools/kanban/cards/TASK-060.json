@@ -1,33 +1,35 @@
 {
   "id": "TASK-060",
   "title": "Email 通知與提醒 確認信視覺優化（店家 Logo／結尾簽章）",
-  "content": "在確認信加入店家 Logo 圖片與結尾簽章，改善目前純文字格式陽春的觀感。尚未走過 spec-interrogation／mockup 決策，未知事項見任務卡「情境包」段落，非 AI-ready，不得直接開始實作。",
-  "stage": "backlog",
+  "content": "Header 採 primary.50 banner + 置中放大 Logo（無 Logo 時顯示大字店名，變體 C 樣式）；Footer 採一行小字簽章「店名・電話・地址」緊接內文最後一段（變體 B 樣式）。套用到四種信件，抽成共用函式 lib/email/templates/_layout.ts。mockup 已核准，見 mockup-decision-確認信版型.md。",
+  "stage": "done",
   "risk": "low",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-24",
   "epic": "Email 通知與提醒",
   "userStory": "預約成立寄送確認信",
   "track": "backend",
-  "dependsOn": ["TASK-052"],
+  "dependsOn": [
+    "TASK-052"
+  ],
   "order": 60,
   "readiness": {
-    "problem_clear": false,
-    "non_goals_clear": false,
-    "acceptance_testable": false,
-    "files_known": false,
-    "scope_defined": false,
-    "verification_contract": false,
-    "human_approval_recorded": false
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
   },
   "gates": {
-    "product": false,
-    "ui": false,
+    "product": true,
+    "ui": true,
     "architecture": false,
     "security": false,
-    "test": false,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -39,13 +41,28 @@
     "pr": ""
   },
   "refs": [
+    "lib/email/templates/_layout.ts",
     "lib/email/templates/confirmation.ts",
-    "app/api/webhooks/appointment-events/route.ts"
+    "lib/email/templates/cancellation.ts",
+    "lib/email/templates/reschedule.ts",
+    "lib/email/templates/reminder.ts",
+    "app/api/webhooks/appointment-events/route.ts",
+    "app/api/cron/appointment-reminders/route.ts",
+    "tests/lib/email-layout.test.ts"
   ],
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npx vitest run（新增/修改測試檔案，117/117 通過）",
+      "npm test（476/478，2 個既有 flaky 逾時與本卡無關）",
+      "npm run test:notifications（19/19 通過，無回歸）",
+      "npx vercel deploy --prod --yes（重新部署）",
+      "正式環境手動觸發確認信，使用者已在真實信箱確認 Header/Footer 顯示正常"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "Email 客戶端字體 fallback／深色模式自動反轉為 email 媒介既有技術限制，已記錄於 screen-spec；低風險任務未另外呼叫 architect/security-reviewer 子代理審查"
   },
   "comments": [
     {

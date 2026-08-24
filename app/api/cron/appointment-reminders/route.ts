@@ -4,7 +4,7 @@ import { verifyBearerSecret } from "@/lib/webhooks/verify-secret";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendEmail } from "@/lib/email/resend-client";
 import { buildReminderEmail } from "@/lib/email/templates/reminder";
-import { getStoreSettings } from "@/lib/store-settings";
+import { getStoreSettings, resolveStoreDisplay } from "@/lib/store-settings";
 import {
   claimAppointmentsForReminder,
   computeReminderWindow,
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   // 店家聯絡資訊整批次共用一次查詢即可（不像顧客資料逐筆不同），比照
   // TASK-052/053 的既有模式；查無資料或查詢失敗時使用預設值，不阻擋整批次寄信。
   const storeSettingsResult = await getStoreSettings(supabase);
-  const storeSettings = storeSettingsResult.ok ? storeSettingsResult.data : null;
+  const storeDisplay = storeSettingsResult.ok ? resolveStoreDisplay(storeSettingsResult.data) : null;
 
   let sentCount = 0;
 
@@ -92,8 +92,10 @@ export async function GET(req: NextRequest) {
         customerName: appointment.customer_name,
         serviceName: appointment.service_name,
         startAt: appointment.start_at,
-        storeName: storeSettings?.name,
-        storePhone: storeSettings?.phone,
+        storeName: storeDisplay?.name,
+        storePhone: storeDisplay?.phone,
+        storeLogoUrl: storeDisplay?.logoUrl,
+        storeAddress: storeDisplay?.address,
       });
 
       const result = await sendEmail({ to: appointment.customer_email, subject, html });

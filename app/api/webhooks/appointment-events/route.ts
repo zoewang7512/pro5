@@ -8,7 +8,7 @@ import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
 import { buildCancellationEmail } from "@/lib/email/templates/cancellation";
 import { buildRescheduleEmail } from "@/lib/email/templates/reschedule";
 import { classifyAppointmentUpdate, type AppointmentUpdateSnapshot } from "@/lib/email/classify-appointment-update";
-import { getStoreSettings } from "@/lib/store-settings";
+import { getStoreSettings, resolveStoreDisplay } from "@/lib/store-settings";
 
 // Supabase Database Webhook 觸發端點（TASK-052：appointments INSERT → 確認信；
 // TASK-053：appointments UPDATE → 取消/改期通知信，同一支端點依 type 分派，
@@ -168,14 +168,16 @@ async function handleAppointmentInsert(record: Record<string, unknown> | null) {
       supabase.from("services").select("name").eq("id", claimed.service_id).maybeSingle(),
       getStoreSettings(supabase),
     ]);
-    const storeSettings = storeSettingsResult.ok ? storeSettingsResult.data : null;
+    const storeDisplay = storeSettingsResult.ok ? resolveStoreDisplay(storeSettingsResult.data) : null;
 
     const { subject, html } = buildConfirmationEmail({
       customerName: claimed.customer_name,
       serviceName: (service as { name: string } | null)?.name ?? "服務",
       startAt: claimed.start_at,
-      storeName: storeSettings?.name,
-      storePhone: storeSettings?.phone,
+      storeName: storeDisplay?.name,
+      storePhone: storeDisplay?.phone,
+      storeLogoUrl: storeDisplay?.logoUrl,
+      storeAddress: storeDisplay?.address,
     });
 
     const result = await sendEmail({ to: claimed.customer_email, subject, html });
@@ -277,7 +279,7 @@ async function handleAppointmentUpdate(
       getStoreSettings(supabase),
     ]);
     const serviceName = (service as { name: string } | null)?.name ?? "服務";
-    const storeSettings = storeSettingsResult.ok ? storeSettingsResult.data : null;
+    const storeDisplay = storeSettingsResult.ok ? resolveStoreDisplay(storeSettingsResult.data) : null;
 
     const { subject, html } =
       classification === "cancelled"
@@ -285,16 +287,20 @@ async function handleAppointmentUpdate(
             customerName: identity.customer_name,
             serviceName,
             startAt: record.start_at,
-            storeName: storeSettings?.name,
-            storePhone: storeSettings?.phone,
+            storeName: storeDisplay?.name,
+            storePhone: storeDisplay?.phone,
+            storeLogoUrl: storeDisplay?.logoUrl,
+            storeAddress: storeDisplay?.address,
           })
         : buildRescheduleEmail({
             customerName: identity.customer_name,
             serviceName,
             oldStartAt: oldRecord.start_at,
             newStartAt: record.start_at,
-            storeName: storeSettings?.name,
-            storePhone: storeSettings?.phone,
+            storeName: storeDisplay?.name,
+            storePhone: storeDisplay?.phone,
+            storeLogoUrl: storeDisplay?.logoUrl,
+            storeAddress: storeDisplay?.address,
           });
 
     const result = await sendEmail({ to: identity.customer_email, subject, html });

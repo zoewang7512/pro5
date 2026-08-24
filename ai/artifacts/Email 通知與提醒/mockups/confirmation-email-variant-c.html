@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>變體 C：Logo Banner 大圖＋卡片化簽章頁尾</title>
+<style>
+  body { margin: 0; padding: 40px 16px; background: #EFEAE2; font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif; }
+  .page-title { max-width: 560px; margin: 0 auto 8px; font-size: 20px; font-weight: 700; color: #2B2622; }
+  .page-note { max-width: 560px; margin: 0 auto 32px; font-size: 13px; color: #6B6259; line-height: 1.5; }
+  .preview-block { max-width: 560px; margin: 0 auto 48px; }
+  .client-chrome { font-size: 12px; color: #6B6259; padding: 0 4px 8px; line-height: 1.6; }
+  .client-chrome b { color: #2B2622; font-weight: 600; }
+  .state-label { display: inline-block; font-size: 12px; font-weight: 700; color: #FFFFFF; background: #A9812F; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+  <div class="page-title">變體 C — Logo Banner 大圖＋卡片化簽章頁尾</div>
+  <div class="page-note">Header：淺金色（primary.50）色塊 banner，Logo 置中放大，品牌識感最強。Footer：簽章改用獨立的淺灰底卡片（grey.100），店名／電話／地址視覺上自成一區塊，像一張隨信附上的小名片，三個變體中最「有設計感」但版面也最重。</div>
+
+  <!-- 狀態一：有 Logo -->
+  <div class="preview-block">
+    <div class="state-label">狀態：有 Logo（store_settings.logo_url 已設定）</div>
+    <div class="client-chrome">寄件人：<b>路口理髮廳 &lt;onboarding@resend.dev&gt;</b><br/>主旨：<b>預約確認：經典剪髮 2026年8月20日（三）14:00</b></div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#FFFFFF;border:1px solid #E4DDD1;border-radius:12px;overflow:hidden;">
+      <tr>
+        <td style="padding:32px 32px;text-align:center;background:#FBF4E2;">
+          <img src="https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/logo/27261ae8-7038-4ec4-a2a2-eac615ae02cd.png" alt="路口理髮廳" width="160" style="max-height:64px;width:auto;height:64px;display:inline-block;" />
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px 32px 8px;font-size:14px;line-height:1.7;color:#2B2622;">
+          <p style="margin:0 0 16px;">王小明 您好，</p>
+          <p style="margin:0 0 16px;">您在路口理髮廳的預約已成立：</p>
+          <ul style="margin:0 0 16px;padding-left:20px;">
+            <li style="margin-bottom:4px;">服務項目：經典剪髮</li>
+            <li>預約時段：2026年8月20日（三）14:00</li>
+          </ul>
+          <p style="margin:0 0 20px;">期待您的光臨。</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 32px 28px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EE;border-radius:8px;">
+            <tr>
+              <td style="padding:16px 20px;text-align:center;font-size:12px;line-height:1.6;color:#6B6259;">
+                <div style="font-family:Georgia,'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif;font-weight:700;font-size:14px;color:#6F531E;margin-bottom:4px;">路口理髮廳</div>
+                <div>02-1234-5678</div>
+                <div>台北市大安區忠孝東路四段1號</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 狀態二：無 Logo -->
+  <div class="preview-block">
+    <div class="state-label" style="background:#6B6259;">狀態：無 Logo（店家尚未上傳，banner 改顯示店名，維持品牌色塊）</div>
+    <div class="client-chrome">寄件人：<b>路口理髮廳 &lt;onboarding@resend.dev&gt;</b><br/>主旨：<b>預約確認：經典剪髮 2026年8月20日（三）14:00</b></div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#FFFFFF;border:1px solid #E4DDD1;border-radius:12px;overflow:hidden;">
+      <tr>
+        <td style="padding:28px 32px;text-align:center;background:#FBF4E2;">
+          <div style="font-family:Georgia,'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif;font-size:22px;font-weight:700;color:#6F531E;letter-spacing:0;">路口理髮廳</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px 32px 8px;font-size:14px;line-height:1.7;color:#2B2622;">
+          <p style="margin:0 0 16px;">王小明 您好，</p>
+          <p style="margin:0 0 16px;">您在路口理髮廳的預約已成立：</p>
+          <ul style="margin:0 0 16px;padding-left:20px;">
+            <li style="margin-bottom:4px;">服務項目：經典剪髮</li>
+            <li>預約時段：2026年8月20日（三）14:00</li>
+          </ul>
+          <p style="margin:0 0 20px;">期待您的光臨。</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 32px 28px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EE;border-radius:8px;">
+            <tr>
+              <td style="padding:16px 20px;text-align:center;font-size:12px;line-height:1.6;color:#6B6259;">
+                <div style="font-family:Georgia,'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif;font-weight:700;font-size:14px;color:#6F531E;margin-bottom:4px;">路口理髮廳</div>
+                <div>02-1234-5678</div>
+                <div>台北市大安區忠孝東路四段1號</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</body>
+</html>

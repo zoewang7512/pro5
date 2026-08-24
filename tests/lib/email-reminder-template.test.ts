@@ -51,4 +51,16 @@ describe("buildReminderEmail", () => {
     const { html } = buildReminderEmail({ ...baseInput, storeName: "<b>測試髮廊</b>" });
     expect(html).toContain("提醒您在&lt;b&gt;測試髮廊&lt;/b&gt;的預約即將到來");
   });
+
+  it("提供 storeLogoUrl／storeAddress 時，Header/Footer（TASK-060）正確帶入", () => {
+    const { html } = buildReminderEmail({
+      ...baseInput,
+      storeName: "路口理髮廳",
+      storePhone: "02-1234-5678",
+      storeAddress: "台北市大安區忠孝東路四段1號",
+      storeLogoUrl: "https://example.invalid/storage/v1/object/public/store-assets/logo/abc.png",
+    });
+    expect(html).toContain('<img src="https://example.invalid/storage/v1/object/public/store-assets/logo/abc.png"');
+    expect(html).toContain("路口理髮廳・02-1234-5678・台北市大安區忠孝東路四段1號");
+  });
 });

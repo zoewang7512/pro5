@@ -1,6 +1,7 @@
 import { escapeHtml, formatAppointmentDateTime } from "@/lib/email/format";
+import { wrapEmailBody } from "@/lib/email/templates/_layout";
 
-// 預約前提醒信的內容組成純函式（TASK-054）。
+// 預約前提醒信的內容組成純函式（TASK-054；Header/Footer 版型 TASK-060）。
 
 export type ReminderEmailInput = {
   customerName: string;
@@ -8,6 +9,8 @@ export type ReminderEmailInput = {
   startAt: string;
   storeName?: string | null;
   storePhone?: string | null;
+  storeLogoUrl?: string | null;
+  storeAddress?: string | null;
 };
 
 export type ReminderEmailContent = { subject: string; html: string };
@@ -33,7 +36,7 @@ export function buildReminderEmail(input: ReminderEmailInput): ReminderEmailCont
     ? `<p>如有問題，歡迎聯絡我們：${escapeHtml(input.storePhone.trim())}</p>`
     : "";
 
-  const html = [
+  const bodyHtml = [
     `<p>${safeCustomerName} 您好，</p>`,
     `<p>提醒您在${safeStoreName}的預約即將到來：</p>`,
     "<ul>",
@@ -45,6 +48,14 @@ export function buildReminderEmail(input: ReminderEmailInput): ReminderEmailCont
   ]
     .filter(Boolean)
     .join("\n");
+
+  const html = wrapEmailBody({
+    storeName: input.storeName,
+    storeLogoUrl: input.storeLogoUrl,
+    storePhone: input.storePhone,
+    storeAddress: input.storeAddress,
+    bodyHtml,
+  });
 
   return { subject, html };
 }
