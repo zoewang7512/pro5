@@ -1,11 +1,11 @@
 {
   "id": "TASK-054",
   "title": "Email 通知與提醒 預約前 24 小時提醒信（Vercel Cron）",
-  "content": "新增 vercel.json crons 設定與 /api/cron/appointment-reminders：定時查詢 start_at 落在 24 小時時間窗、狀態為 pending/confirmed、reminder_sent_at 為 null 的預約，逐筆寄送提醒信並更新 reminder_sent_at 防重複。",
-  "stage": "backlog",
+  "content": "新增 vercel.json crons 設定與 /api/cron/appointment-reminders：定時查詢時間窗內、狀態為 pending/confirmed、reminder_sent_at 為 null 的預約，逐筆寄送提醒信並更新 reminder_sent_at 防重複。Vercel Hobby 方案限制每日一次，時間窗改為 0～26 小時。",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "Email 通知與提醒",
@@ -25,9 +25,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -42,18 +42,62 @@
     "vercel.json",
     "app/api/cron/appointment-reminders/route.ts",
     "lib/email/templates/reminder.ts",
-    "lib/admin/appointment-reminders.ts"
+    "lib/admin/appointment-reminders.ts",
+    "lib/admin/appointments.ts",
+    "tests/admin/appointment-reminders.test.ts",
+    "tests/lib/email-reminder-template.test.ts",
+    "tests/api/appointment-reminders-cron.test.ts",
+    "tests/admin/appointments.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過，/api/cron/appointment-reminders 出現在路由清單）",
+      "npx vitest run（新增/擴充測試檔案 41/41 通過）",
+      "npx vitest run（完整套件 461 tests：460 通過／1 失敗，closed-dates-section.test.tsx 既有並行 flaky，單獨重跑 100% 通過，與本卡無關）"
+    ],
+    "findings": [
+      "architect MUST FIX（最關鍵）：初版時間窗（20-48小時）下界非 0 會讓「排程執行後才建立、提前量落在下界附近」的預約永久漏寄，且原本以為的自我修復不成立。已改為 0-26 小時，下界 0 保證任何還沒開始的預約都會被某次執行看到，上界比每日執行間隔多至少 1 小時安全邊際。",
+      "architect／security-reviewer 皆提出 MUST FIX：claim 查詢失敗原本回 200，會讓排程失敗對監控完全隱形（webhook 端點回 200 的理由是 pg_net 語境專屬，對 cron 不適用）。已改為查詢失敗回 500。",
+      "security-reviewer MUST FIX：批次無上限、無 maxDuration，逾時會讓已 claim 但未寄出的預約永久漏寄且無告警。已加 limit(100)、order(start_at)、maxDuration=60、時間預算提前中止機制（逼近預算時釋放剩餘去重佔位）。",
+      "security-reviewer MUST FIX（跨檔案正確性缺陷）：lib/admin/appointments.ts 的 rescheduleAppointment 沒有重設 reminder_sent_at，已提醒過的預約改期後新時段永久收不到提醒信。已在同一次 UPDATE 一併加 reminder_sent_at: null（確認不會誤觸發 TASK-053 的 UPDATE webhook trigger）。此檔案不在原允許變更清單內，已補列並記錄不違反 TASK-053 的『不修改既有行為』限制的理由。",
+      "NICE TO HAVE（已一併處理）：claim 查詢改用內嵌 services(name) 避免 N+1；修正『釋放供重試』的誠實性註解；回應欄位 scanned 改名 claimed；補上 storeName XSS escape 測試與連續兩筆失敗的整合測試。",
+      "NICE TO HAVE（已記錄為殘留風險，未實作）：排程模式的重放風險（密鑰外洩可提前觸發造成『提醒抑制』），需要新增節流狀態追蹤，留待未來另立任務卡。",
+      "test-engineer：完成證據原本空白（已補齊）；E2E 真實環境驗證完全沒有證據（見 residual）。"
+    ],
+    "residual": "真實 Vercel Cron／Supabase 環境完全尚未驗證：vercel.json 尚未隨新程式碼一起部署（本卡實作與審查修正期間未執行 vercel deploy，比照 TASK-053 的教訓，真實環境驗證前必須先確認並重新部署）。待人工依序完成：vercel deploy --prod 部署最新程式碼（含 vercel.json）→ 確認 Vercel Dashboard 出現 Cron 排程 → 建立/調整一筆測試預約落在 0-26 小時窗內且有真實可收信 email → 手動 curl 帶 CRON_SECRET 呼叫已部署端點模擬觸發 → 人工確認收到提醒信且 reminder_sent_at 更新 → 測試改期一筆已提醒過的預約確認 reminder_sent_at 正確重設 → 確認未帶密鑰時回 401。另外殘留：(1) 排程重放風險（密鑰外洩可提前觸發造成提醒抑制），留待未來另立任務卡；(2) EMAIL_FROM_ADDRESS 仍是 Resend 沙盒地址；(3) 大批次可能觸及 Resend 2 req/s 限流，會走既有失敗重試路徑，不會遺失只會延後，本專案量小暫不處理。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務 TASK-051 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "要求開始 TASK-054。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "實作完成，查證 Vercel Hobby 方案限制 cron 每日一次，調整時間窗設計。依規則派遣 architect／security-reviewer／test-engineer 三方審查（高風險變更），三方皆順利完成。發現一個關鍵的時間窗數學缺陷（會永久漏寄部分預約）與一個跨檔案的正確性缺陷（改期未重設去重欄位），以及批次逾時保護缺失，皆已修正並重新驗證（41 個新/擴充測試全數通過，完整套件 460/461，唯一失敗為既有 flaky）。architecture／security／test gate 皆設為 true。stage 設為 verify，等待人工核准；真實 Vercel Cron 環境的端對端驗證仍待人工完成（含重新部署），詳見 evidence.residual。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "針對 rescheduleAppointment 重設 reminder_sent_at 的修正提問：若新時段在 24 小時內，不再提醒也沒關係，因為顧客還是會收到改期通知信。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "說明現有「永遠重設 reminder_sent_at」的設計已同時滿足使用者的放寬條件、且正確處理使用者未提及的情境：排程每日只跑一次，近期改期（新時段在窗內）實務上通常沒有機會再觸發第二次排程，不會造成重複提醒；重設真正保護的是「改期到較遠未來、且該預約先前已被提醒過」的情境——若不重設，這類預約會永久收不到新時段的提醒，改期通知信（改期當下寄出）無法取代「新時段前提醒」的功能。結論：現有實作沒有殘留邏輯缺漏，不需要修改。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "核准，轉 done。真實 Vercel Cron 環境的端對端驗證（含重新部署）仍待後續完成，見 evidence.residual。"
     }
   ]
 }

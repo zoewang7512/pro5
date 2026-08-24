@@ -179,7 +179,14 @@ export async function rescheduleAppointment(
   // Modal 看最新狀態再試一次。
   const { data, error } = await supabase
     .from("appointments")
-    .update({ start_at: newStartAt, end_at: newEndAt })
+    // reminder_sent_at 一併重設回 null（TASK-054 審查發現的修正）：若這筆預約
+    // 在改期前已經被排程端點 claim／寄過提醒信，改期後若不重設，
+    // reminder_sent_at 仍是非 null，之後永遠不會再被排程撈到，等於新時段
+    // 永久收不到提醒信。重設不會誤觸發 0012 migration 的 UPDATE webhook
+    // trigger——那個 trigger 的 WHEN 條件本來就是看 start_at／end_at 是否
+    // 變動，這次 UPDATE 已經在改 start_at／end_at，一併多帶一個欄位不會
+    // 額外觸發或改變分類結果。
+    .update({ start_at: newStartAt, end_at: newEndAt, reminder_sent_at: null })
     .eq("id", appointmentId)
     .eq("start_at", currentStartAt)
     .in("status", ["pending", "confirmed"])

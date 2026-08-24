@@ -135,10 +135,16 @@ describe("rescheduleAppointment", () => {
     const { client, update, eq, inFilter } = fakeUpdateClient({ data: [{ id: "appt-1" }], error: null });
     const result = await rescheduleAppointment(client, "appt-1", currentStartAt, newStartAt, newEndAt);
     expect(result).toEqual({ ok: true, data: undefined });
-    expect(update).toHaveBeenCalledWith({ start_at: newStartAt, end_at: newEndAt });
+    expect(update).toHaveBeenCalledWith({ start_at: newStartAt, end_at: newEndAt, reminder_sent_at: null });
     expect(eq).toHaveBeenNthCalledWith(1, "id", "appt-1");
     // 樂觀鎖：帶上呼叫端看到的原 start_at，防止用陳舊資料覆寫別處已改動的時段（lost update）。
     expect(eq).toHaveBeenNthCalledWith(2, "start_at", currentStartAt);
     expect(inFilter).toHaveBeenCalledWith("status", ["pending", "confirmed"]);
+  });
+
+  it("改期時一併把 reminder_sent_at 重設回 null（TASK-054 修正：避免已提醒過的預約改期後新時段永久收不到提醒信）", async () => {
+    const { client, update } = fakeUpdateClient({ data: [{ id: "appt-1" }], error: null });
+    await rescheduleAppointment(client, "appt-1", currentStartAt, newStartAt, newEndAt);
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ reminder_sent_at: null }));
   });
 });
