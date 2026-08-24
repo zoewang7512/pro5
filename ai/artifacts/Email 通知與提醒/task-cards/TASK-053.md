@@ -47,6 +47,38 @@
     「預約已改期：{新日期} {新時間}」，內文包含原時段與新時段對照。
 - 未知事項：無（Database Webhook 的建立方式已於 TASK-052 定案，本卡沿用同一個
   trigger／設定，不需要重新設定）。
+
+**TASK-051 審查後追加的注意事項**：與 TASK-052 相同，取消／改期通知信內插的顧客
+姓名等使用者輸入務必先呼叫 `lib/email/format.ts` 的 `escapeHtml`（email HTML
+injection 防護，見 TASK-052 情境包同一項 MUST FIX 的完整說明）。
+
+**TASK-052 審查後追加的注意事項**（architect／security-reviewer 於 TASK-052 審查
+提出，留給本卡實作時處理）：
+- **payload 設計無法直接沿用 TASK-052 的「只送 id」模式**：TASK-052 的 `INSERT`
+  trigger 只送 `record: {id}`，route 端用 service role client 依 id 回讀資料庫
+  最新值組信——這是為了避免把 `access_token` 等整列個資送到 webhook 目標網址
+  （見 `supabase/migrations/0011_appointments_insert_webhook.sql` 的說明）。但
+  `UPDATE` 事件的分類邏輯（取消 vs 改期，見上方「假設」段落）需要比對
+  `old_record` 與 `record` 的 `status`／`start_at`／`end_at`，而 `old_record`
+  在 `UPDATE` 語句執行後**無法從資料庫回讀**（資料庫此時只剩新值）。因此本卡的
+  `UPDATE` trigger 必須讓 payload 至少帶上分類所需的欄位（例如
+  `old_record: {status, start_at, end_at}`、`record: {id, status, start_at,
+  end_at}`），不能只送 `id`；建議白名單到剛好夠分類與組信用的欄位（例如額外加
+  `customer_name`／`customer_email`，但**不要**用 `to_jsonb(old)`／`to_jsonb(new)`
+  整列送出，避免重蹈 `access_token` 外洩的問題）。
+- **確認信去重的 `UPDATE` 本身會再觸發一次本卡的 trigger，需要 `when` 子句排除**：
+  TASK-052 的 route handler 為了去重會對 `appointments` 執行一次
+  `update ... set confirmation_sent_at = ...`，這個 `UPDATE` 也會經過既有的
+  `appointments_set_updated_at` trigger（`0001_core_schema.sql`）動到
+  `updated_at`，並且會被本卡新增的 `UPDATE` trigger 攔到。本卡的 trigger 建立時
+  務必加 `when (old.status is distinct from new.status or old.start_at is
+  distinct from new.start_at or old.end_at is distinct from new.end_at)`
+  這類條件，只在真正的取消／改期時才觸發，避免確認信去重寫入或未來
+  `reminder_sent_at`／本卡自己的去重欄位寫入被誤判成一次新的預約異動而寄出錯誤的
+  通知信或造成不必要的 webhook 負載。
+- **pg_net 不會重試**：與 TASK-052 相同的既知限制（見 0011 migration 檔頭），本卡
+  的去重／補償設計需要延續 TASK-052 route.ts 的「claim 失敗就釋放佔位供後續補寄」
+  模式，不能假設 Supabase 或 pg_net 會自動重送失敗的 webhook 請求。
 - 允許變更的檔案：
   - `app/api/webhooks/appointment-events/route.ts`
   - `lib/email/templates/cancellation.ts`（新增）

@@ -1,11 +1,11 @@
 {
   "id": "TASK-052",
   "title": "Email 通知與提醒 預約成立確認信",
-  "content": "新增 /api/webhooks/appointment-events 處理 appointments INSERT 事件，組確認信內容並呼叫 Resend 寄送；定案並實作 Supabase Database Webhook 建立方式（migration SQL trigger 或 Dashboard 設定，密鑰不得進版控明文）。",
-  "stage": "backlog",
+  "content": "新增 /api/webhooks/appointment-events 處理 appointments INSERT 事件，組確認信內容並呼叫 Resend 寄送；定案並實作 Supabase Database Webhook 建立方式（migration SQL trigger + Supabase Vault 動態讀取密鑰，密鑰不進版控明文）。",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "Email 通知與提醒",
@@ -25,9 +25,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -41,18 +41,59 @@
   "refs": [
     "app/api/webhooks/appointment-events/route.ts",
     "lib/email/templates/confirmation.ts",
-    "supabase/migrations/0011_appointments_insert_webhook.sql"
+    "supabase/migrations/0011_appointments_insert_webhook.sql",
+    "supabase/migrations/0011_appointments_insert_webhook_down.sql",
+    "tests/api/appointment-events-webhook.test.ts",
+    "tests/lib/email-confirmation-template.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過，/api/webhooks/appointment-events 出現在路由清單；TASK-051 遺留的 resend SDK optional peer dep 建置風險確認不存在）",
+      "npx vitest run tests/api/appointment-events-webhook.test.ts tests/lib/email-confirmation-template.test.ts（24/24 通過）",
+      "npx vitest run（完整套件 395 tests：390 通過／5 失敗，失敗集中在 account-settings-view.test.tsx／login-form.test.tsx，單獨重跑 100% 通過，屬既有滿載並行執行間歇性問題，與本卡無關）"
+    ],
+    "findings": [
+      "派遣 architect／security-reviewer／test-engineer 三方審查（高風險依規則需三方審查），三方首輪皆為「需要修改」。三方一致提出的最關鍵 MUST FIX：notify_appointment_insert() trigger 原本沒有例外處理，掛在 appointments 的 AFTER INSERT（create_appointment RPC 的寫入路徑）上，任何非預期例外會讓寄確認信這個附加動作使顧客的預約整筆回滾——已加 exception when others 包住整段 trigger body。",
+      "architect／security-reviewer MUST FIX：原本用 to_jsonb(new) 把整列（含 access_token 等個資）送到 webhook body——已改成 payload 只帶 {id}，route.ts 用 service role client 依 id 原子性地 claim 並回讀資料庫最新欄位，完全不信任 payload 攜帶的其他內容。",
+      "architect／security-reviewer MUST FIX：去重佔位（confirmation_sent_at）搶到後若寄信失敗或拋出例外，原本沒有任何補償，而 pg_net 實際上不會重試（原始程式碼註解誤寫『避免觸發 webhook 重試風暴』，該理由對自建 trigger 不成立）——已在失敗/例外時把去重欄位補償釋放回 null 供後續補寄，並修正相關註解與 migration 檔頭的部署順序說明。",
+      "test-engineer MUST FIX：完成證據與看板卡片原本完全空白——本次已補齊。",
+      "NICE TO HAVE 已一併處理：改用既有 lib/store-settings.ts 的 getStoreSettings 移除重複查詢；trigger 加 revoke execute from public 與 when (customer_email is not null)；net.http_post timeout 從 5000 調到 15000ms；email 主旨剝除換行字元防 header injection；webhook payload 的 id 加 UUID 格式驗證。",
+      "已將與 TASK-053 相關的審查發現（payload『只送 id』模式無法沿用到 UPDATE 分支、需要 when 子句避免確認信去重的 UPDATE 被誤判成新的預約異動、pg_net 不重試的既有限制）補進 TASK-053 情境包。"
+    ],
+    "residual": "真實環境端對端驗證已於 2026-08-24 由人工完成：部署到 Vercel（https://pro5-nu.vercel.app）並設定所需環境變數；套用 0011 migration（套用過程發現 CREATE TRIGGER 的 WHEN 子句順序寫反導致語法錯誤，已修正，交易正確回滾未留殘留狀態，重跑成功）；Vault 建立 appointment_webhook_url／appointment_webhook_secret 兩個密鑰並以 true/false 比對查詢確認值正確；npm run test:booking（真實資料庫）23/23 通過，net._http_response 確認 webhook 正確觸發且只對有 customer_email 的預約觸發；EMAIL_FROM_ADDRESS 先前為空導致第一次測試預約寄信失敗（MISSING_CONFIG，驗證了失敗路徑的優雅處理與去重釋放機制正確運作），改用 Resend 沙盒地址 onboarding@resend.dev 後重測，人工確認收到確認信，內容正確。剩餘限制：(1) EMAIL_FROM_ADDRESS 仍是 Resend 沙盒地址，只能寄給 Resend 帳號本人，正式上線前需完成自己網域驗證；(2) 使用者反饋確認信格式簡陋，希望之後加 Logo 與簽章，已記錄為後續待辦，不在本卡範圍；(3) .env.example 的 Database Webhook 說明段落仍是舊假設，已開背景任務卡片追蹤（task_2c34ce5b），非阻斷本卡完成。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務 TASK-051 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "要求開始 TASK-052；確認已完成 Resend 帳號註冊並把 EMAIL_API_KEY 填入 .env.local。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "實作與自我驗證完成，並經 architect／security-reviewer／test-engineer 三方審查（高風險變更依規則需三方審查）。三方首輪皆判定需要修改，關鍵發現（trigger 缺例外處理可能讓預約整筆回滾、webhook payload 洩漏 access_token 等個資、去重佔位失敗無補償且 pg_net 不會重試、完成證據未填寫）皆已修正並重新驗證通過，詳見 evidence.findings。真實 Supabase 環境的端對端驗證仍是明確的殘留風險（migration 尚未套用、Vault 密鑰尚未建立、EMAIL_FROM_ADDRESS 為空），見 evidence.residual。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "核准，轉 done。真實 Supabase 環境的端對端驗證（migration 套用、Vault 密鑰建立、EMAIL_FROM_ADDRESS 設定、實際測試預約收信）仍待人工後續完成，見 evidence.residual。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "陪同使用者完成真實環境端對端驗證：部署 Vercel、套用 0011 migration（過程中發現並修正 WHEN 子句順序的語法錯誤）、設定 Vault 兩個密鑰、補上 EMAIL_FROM_ADDRESS（Resend 沙盒地址）、npm run test:booking 真實資料庫驗證無回歸、實際測試預約成功收到確認信。TASK-052 的殘留風險已完全解除，詳見 evidence.residual 更新內容。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "確認收到確認信，內容格式簡陋，希望之後加上店家 Logo 圖片與結尾簽章。已記錄為後續待辦，非本卡範圍。"
     }
   ]
 }

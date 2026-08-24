@@ -2,10 +2,10 @@
   "id": "TASK-051",
   "title": "Email 通知與提醒 架構基礎（Resend 薄封裝、共用密鑰驗證、reminder_sent_at 欄位、環境變數）",
   "content": "新增 appointments.reminder_sent_at 欄位、Resend API 薄封裝函式、webhook/排程端點共用的密鑰驗證工具函式（常數時間比較）、Email 內容組成純函式框架。不含任何實際觸發寄信的端點，留給 TASK-052/053/054。",
-  "stage": "ready",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "Email 通知與提醒",
@@ -25,9 +25,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -42,21 +42,49 @@
     "supabase/migrations/0010_appointments_reminder.sql",
     "supabase/migrations/0010_appointments_reminder_down.sql",
     ".env.example",
+    "package.json",
     "lib/email/resend-client.ts",
     "lib/email/format.ts",
     "lib/webhooks/verify-secret.ts",
-    "lib/supabase/service-role.ts"
+    "lib/supabase/service-role.ts",
+    "tests/lib/verify-secret.test.ts",
+    "tests/lib/email-format.test.ts",
+    "tests/lib/email-resend-client.test.ts",
+    "tests/lib/supabase-service-role.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npx vitest run（371/371，含新增 34 個測試；1 個既有測試檔案並行執行時逾時，單獨重跑 100% 通過，與本卡無關）"
+    ],
+    "findings": [
+      "派遣 architect／security-reviewer／test-engineer 三方審查（高風險依規則需三方審查），三方首輪皆為「需要修改」。security-reviewer 最關鍵 MUST FIX：resend-client.ts 的 html 參數缺少 escape 工具，而 create_appointment 對顧客姓名只檢查長度不過濾字元，直接內插會形成 email HTML injection／釣魚管道——已新增 lib/email/format.ts 的 escapeHtml 並在檔頭明確要求使用。",
+      "architect／security-reviewer 皆提出 MUST FIX：verifySecret 原本 expected: string 的型別誘導呼叫端寫出 fail-open 的危險轉型（String(process.env.X) 在未設定時得到字面值 \"undefined\"，攻擊者送出該值即可繞過驗證）——已改為 expected: string | null | undefined，函式內部統一收斂判斷。",
+      "architect／security-reviewer 皆提出 MUST FIX：service-role.ts／resend-client.ts「僅限伺服器端」原本只靠註解——已安裝 server-only 套件加 import 強制編譯期檢查，並修正 service-role.ts 兩處不精確的風險描述。",
+      "architect MUST FIX：resend 依賴版本用 caret 與專案精確鎖版慣例不符——已改為精確版本。",
+      "test-engineer MUST FIX：resend-client.ts 完全無測試覆蓋（任務卡驗收標準明訂）——已補 4 情境的 mock 測試。",
+      "NICE TO HAVE 已一併處理：不記錄可能含個資的原始錯誤物件；新增 verifyBearerSecret 供 TASK-054 使用；補 10 秒逾時（Promise.race，SDK 無 signal 注入點）；.env.example 補強密鑰產生與治理說明；formatAppointmentDateTime 對無效輸入改為明確 throw；補週日/週六與極長/非 ASCII 密鑰測試案例；service-role.ts 補輕量測試。",
+      "已將與後續任務相關的審查發現（escapeHtml 要求、resend build 風險提醒、重複寄送防護建議）補進 TASK-052/053/054 情境包，供後續實作參考。"
+    ],
+    "residual": "verify-secret.ts 的常數時間特性無法被黑箱單元測試直接證明，依賴 code review 確認（已由 architect／security-reviewer 完成）。lib/email/resend-client.ts／lib/webhooks/verify-secret.ts 尚未被任何 app/api/ 端點實際 import，npm run build 因此還沒真正編譯到這兩個模組，resend SDK 內部有未安裝 optional peer dep 的動態 import，理論上可能在 TASK-052 才浮現 build 問題，已提醒屆時立即重跑 build。確認信/通知信的重複寄送防護尚未設計，留給 TASK-052/053 判斷。README.md 的環境變數說明表未同步（不在本卡允許變更清單內），已開背景任務卡片追蹤（task_01c99219），非阻斷本卡完成。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-051~055 這批任務卡，轉 ready；前置任務皆已完成）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-23",
+      "text": "實作與自我驗證完成，並經 architect／security-reviewer／test-engineer 三方審查（高風險變更依規則需三方審查）。三方首輪皆判定需要修改，關鍵發現（email HTML injection 防護缺口、密鑰驗證型別導致的 fail-open 風險、僅靠註解的伺服器端限制）皆已修正並重新驗證通過，詳見 evidence.findings。stage 設為 verify，待人工核准後才轉 done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-23",
+      "text": "核准，轉 done。使用者尚未註冊 Resend 帳號，需在 TASK-052 開始前完成（confirmation：使用者要求屆時提醒）。"
     }
   ]
 }

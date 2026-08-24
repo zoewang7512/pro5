@@ -50,6 +50,26 @@
     不會有效能疑慮），若未來預約量大幅增加需要分頁處理，屬於獨立的效能優化項目。
 - 未知事項：實際部署使用的 Vercel 方案（Hobby／Pro）與其 Cron 執行頻率限制，需在
   實作階段查證並記錄。
+
+**TASK-051 審查後追加的注意事項**（security-reviewer／architect 於 TASK-051 審查提出，
+留給本卡實作時處理）：
+- `lib/webhooks/verify-secret.ts` 已提供 `verifyBearerSecret(authorization, expected)`
+  直接處理 Vercel Cron 送出的 `Authorization: Bearer <CRON_SECRET>` 格式，不需要自己
+  手刻前綴解析（避免用 `.includes()` 或忽略大小寫等容易寫錯的版本）；`verifySecret`
+  本身也已改為 `expected: string | null | undefined`，呼叫時可直接傳入
+  `process.env.CRON_SECRET`，不需要（也不應該）自己做 `!` 或 `String(...)` 轉換。
+- 建議查詢符合條件預約時用 `update ... where reminder_sent_at is null returning *`
+  的「claim 模式」取得寄送權，而不是先 `select` 再逐筆 `update`——否則若排程重疊執行
+  （例如手動觸發與排程觸發時間相近，或單次執行超過排程間隔），可能兩個執行個體都
+  select 到同一批尚未標記的預約，造成重複寄送。
+- 內插進提醒信 HTML 的所有非系統計算值（顧客姓名等）務必先呼叫
+  `lib/email/format.ts` 的 `escapeHtml`，理由見該函式註解（TASK-052 已記錄同一項
+  MUST FIX，本卡同樣適用）。
+- `lib/email/resend-client.ts` 目前尚未被任何檔案實際 import／打包過，本卡第一次
+  import 後請重跑 `npm run build` 確認 Turbopack 沒有因為 `resend` SDK 內部的動態
+  import（`@react-email/render`）而編譯失敗；若失敗，已知解法是在 `next.config.ts`
+  加 `serverExternalPackages: ["resend"]`（與 TASK-052 共用同一個潛在問題，若
+  TASK-052 已經處理過，本卡應該不會再遇到）。
 - 允許變更的檔案：
   - `vercel.json`（新增或擴充 `crons` 設定）
   - `app/api/cron/appointment-reminders/route.ts`（新增）

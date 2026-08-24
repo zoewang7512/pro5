@@ -8,7 +8,7 @@
 - 上層 User Story：預約成立寄送確認信
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009
-- 狀態：就緒（使用者於對話中核准，2026-08-18）
+- 狀態：完成（人工已於 2026-08-23 驗收通過）
 - 風險等級：高（首次在本專案引入第三方 Email 服務與對外可觸發端點的共用密鑰機制；密鑰
   驗證邏輯若有缺陷，後續所有 webhook／排程端點都會繼承這個安全漏洞，需架構、安全性、
   測試三方審查）
@@ -113,9 +113,85 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
+詳見 `tools/kanban/cards/TASK-051.json` 的 `evidence` 欄位（commands／findings／residual）。
+摘要：
+
+- 變更的檔案：`supabase/migrations/0010_appointments_reminder.sql`／`_down.sql`
+  （新增，`appointments.reminder_sent_at` 欄位）、`.env.example`（修改，新增
+  `SUPABASE_WEBHOOK_SECRET`／`CRON_SECRET` 並補強產生方式說明）、`package.json`／
+  `package-lock.json`（新增 `resend`／`server-only` 兩個依賴，皆精確鎖版）、
+  `lib/supabase/service-role.ts`（新增）、`lib/webhooks/verify-secret.ts`（新增，
+  含 `verifySecret`／`verifyBearerSecret`）、`lib/email/resend-client.ts`（新增）、
+  `lib/email/format.ts`（新增，含 `formatAppointmentDateTime`／`escapeHtml`）、
+  `tests/lib/verify-secret.test.ts`／`email-format.test.ts`／
+  `email-resend-client.test.ts`／`supabase-service-role.test.ts`（新增，共 34 個
+  測試）。另外把 TASK-051 審查發現中與後續任務相關的注意事項（HTML escape 要求、
+  build 風險提醒、重複寄送防護建議）補進 TASK-052／053／054 的情境包，供後續實作
+  參考（純文件補充，未變更這三張卡的範圍或核准狀態）。
+- 執行過的指令：`npx tsc --noEmit`／`npm run lint`／`npm run build` 皆通過；
+  `npx vitest run`（371 tests，含新增 34 個測試；1 個既有測試檔案
+  `closed-dates-section.test.tsx` 在滿載並行執行時出現既有的間歇性 5000ms
+  timeout，單獨重跑 100% 通過，與本卡改動的檔案無關，非本卡引入的回歸）。
+- 審查：本卡風險等級高，依規則派遣 architect／security-reviewer／test-engineer
+  三方審查。三方皆判定首輪「需要修改」，關鍵發現與修正：
+  1. **security-reviewer MUST FIX（最關鍵）**：`lib/email/resend-client.ts` 的
+     `html` 參數沒有配套的 escape 工具，而 `create_appointment` 對顧客姓名只檢查
+     長度、不過濾字元，若後續任務卡直接內插姓名到信件 HTML，會形成 email HTML
+     injection／釣魚管道。已在 `lib/email/format.ts` 新增 `escapeHtml`，並在
+     `resend-client.ts` 檔頭明確要求「html 視為已信任的最終內容，非系統計算值
+     必須先 escape」。
+  2. **architect／security-reviewer 皆提出 MUST FIX**：`verifySecret` 原本要求
+     `expected: string`，會誘導呼叫端寫出 `process.env.X!`（未設定時丟未預期的
+     TypeError）或更危險的 `String(process.env.X)`（未設定時得到字面值
+     `"undefined"`，攻擊者送出 header 值 `"undefined"` 就會通過驗證，等同無防護）。
+     已改為 `expected: string | null | undefined`，函式內部 `if (!expected) return
+     false` 統一收斂，呼叫端不需要也不應該自己轉換。
+  3. **architect／security-reviewer 皆提出 MUST FIX**：`lib/supabase/
+     service-role.ts`／`resend-client.ts` 原本「僅限伺服器端使用」只靠註解警告，
+     沒有任何機制。已安裝 `server-only` 套件並在兩個檔案加
+     `import "server-only"`，一旦被拉進 client 匯入鏈會直接建置失敗；同時修正
+     `service-role.ts` 註解中兩處不精確的風險描述（`SUPABASE_SERVICE_ROLE_KEY`
+     不會被打包進瀏覽器 bundle、`appointments` 對 authenticated 的 `is_admin()`
+     其實有 `admin full access` policy）。
+  4. **architect MUST FIX**：`package.json` 的 `resend` 依賴原用 `^6.22.0`，與
+     本專案其餘 runtime 依賴一律精確鎖版的既有慣例不符，已改為 `6.22.0`。
+  5. **test-engineer MUST FIX**：`lib/email/resend-client.ts` 完全沒有測試覆蓋
+     （任務卡驗收標準明訂「型別與參數正確」）。已補上 mock-based 測試涵蓋缺少
+     環境變數／成功路徑參數映射／API 回傳 error（確認不外洩個資）／拋出例外
+     四種情境。
+  6. NICE TO HAVE 已一併處理：不記錄 Resend 原始錯誤物件（可能含收件人 email，
+     只記錄 `name`／`statusCode`）；新增 `verifyBearerSecret` 供 TASK-054 直接
+     解析 Vercel Cron 的 `Bearer` 前綴；`resend-client.ts` 補上 10 秒逾時
+     （SDK 本身無 timeout 注入點，改用 `Promise.race` 實作）；`.env.example`
+     補跨平台密鑰產生指令、要求兩組密鑰不得相同、要求 ASCII-only；
+     `formatAppointmentDateTime` 對無效輸入改為明確 throw 而非產生亂碼字串；
+     補上週日／週六（陣列頭尾）與極長密鑰／非 ASCII 密鑰的測試案例；
+     `lib/supabase/service-role.ts` 補上輕量測試。
+  7. 未處理／延後：`lib/webhooks/` 目錄命名（architect 建議改名 `lib/auth/`）
+     維持任務卡原核准的路徑，僅在檔頭註解補充說明涵蓋 cron；`README.md` 的
+     環境變數說明表未同步（不在本卡允許變更清單內，已開背景任務卡片追蹤，
+     見 residual）；重複寄送防護、build 風險驗證等已記錄為 TASK-052／053／054
+     的情境包追加事項，留給該卡實作時處理。
+- 測試輸出：新增 39 個單元測試（`verifySecret`／`verifyBearerSecret` 16 個、
+  `formatAppointmentDateTime`／`escapeHtml` 10 個、`sendEmail` 5 個、
+  `createServiceRoleClient` 3 個，另有既有 `password-strength.test.ts`／
+  `aal.test.ts`／`policy-text.test.ts` 等既有 `tests/lib/` 測試不變），全數通過。
+  已知限制：黑箱測試無法直接證明 `verifySecret` 的常數時間特性本身，這項安全屬性
+  依賴程式碼審查（已由 architect／security-reviewer 確認實作路徑），已在
+  `verify-secret.ts` 與測試檔案中明確記錄此限制。
+- 螢幕截圖：不適用（無 UI）。
+- 已知限制／殘留風險：
+  - Resend SDK（6.22.0）未提供 per-call timeout 注入點，`resend-client.ts` 的
+    逾時處理只能讓呼叫端不再等待，原始 fetch 請求可能仍在背景執行，非真正取消。
+  - `lib/email/resend-client.ts`／`lib/webhooks/verify-secret.ts` 尚未被任何
+    `app/api/` 端點實際 import／打包過，`npm run build` 因此還沒有真正編譯到
+    這兩個模組；`resend` SDK 內部對未安裝的 optional peer dep 有動態 import，
+    理論上可能在 TASK-052 第一次真正 import 後才浮現 build 問題，已記錄在
+    TASK-052／054 情境包提醒屆時立即重跑 build 確認。
+  - 確認信／通知信的重複寄送防護（webhook 重試導致同一事件觸發兩次）尚未設計，
+    留給 TASK-052／053 的架構審查判斷是否需要新增去重欄位。
+  - `README.md` 的環境變數說明表未同步更新（不在本卡允許變更清單內），已開背景
+    任務卡片追蹤，非阻斷本卡完成。
+  - Supabase Database Webhook 的實際建立方式（migration SQL trigger vs Dashboard
+    手動設定）仍待 TASK-052 架構審查定案，本卡未預先假設。
 - 後續任務：TASK-052（確認信）、TASK-053（取消/改期通知信）、TASK-054（提醒信）。

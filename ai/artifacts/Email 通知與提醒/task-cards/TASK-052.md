@@ -8,7 +8,9 @@
 - 上層 User Story：預約成立寄送確認信
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-051
-- 狀態：已核准（2026-08-18），待前置任務 TASK-051 完成後轉就緒
+- 狀態：完成（人工已於 2026-08-24 驗收通過）。真實 Supabase 環境的端對端驗證
+  （migration 套用、Vault 密鑰建立、`EMAIL_FROM_ADDRESS` 設定、實際測試預約收信）
+  仍待人工後續完成，見「完成證據」的「已知限制／殘留風險」段落。
 - 風險等級：高（新增對外可觸發的 webhook 端點，若密鑰驗證被繞過或 payload 驗證不足，
   可能被利用來查詢預約資料或觸發大量寄信；需架構、安全性、測試三方審查）
 
@@ -52,6 +54,23 @@ TASK-051 建立的 Resend 封裝寄送；同時定案並實作 Supabase Database
   - `record.customer_email` 為空字串或 `null` 時，不呼叫 Resend，函式提早 return
     成功狀態（不視為錯誤）。
 - 未知事項：Supabase Vault 或等效密鑰儲存機制的實際可行性，需在實作階段驗證。
+
+**TASK-051 審查後追加的注意事項**（security-reviewer／architect 於 TASK-051 審查提出，
+留給本卡實作時處理）：
+- **必須**對內插進 email HTML 的所有非系統計算值（顧客姓名、備註等使用者輸入）呼叫
+  `lib/email/format.ts` 的 `escapeHtml`——`create_appointment` 對 `customer_name`
+  只檢查長度 ≤ 50、不過濾字元，未跳脫直接內插會形成 email HTML injection／釣魚管道
+  （MUST FIX 等級）。
+- `lib/email/resend-client.ts` 目前完全沒有被任何檔案實際 import／打包過；`resend`
+  SDK 內部對 `@react-email/render`（未安裝的 optional peer dep）有動態 import，
+  理論上可能在 Turbopack 真正編譯到這個模組時才會浮現 build 問題。本卡第一次 import
+  `resend-client.ts` 後請立刻重跑 `npm run build` 確認；若失敗，已知解法是在
+  `next.config.ts` 加 `serverExternalPackages: ["resend"]`。
+- 重複寄送防護：確認信目前沒有任何去重欄位（`booking_policy` Epic 的
+  `reminder_sent_at` 只保護提醒信／TASK-054）。若 Supabase Database Webhook 因網路
+  重試等原因對同一筆 `INSERT` 觸發兩次，會寄出兩封確認信。是否需要新增
+  `confirmation_sent_at` 欄位（可能需要 `0011` migration）做去重，或評估「重複寄送
+  確認信」的實際影響可接受，留給本卡的架構審查判斷。
 - 允許變更的檔案：
   - `app/api/webhooks/appointment-events/route.ts`（新增）
   - `lib/email/templates/confirmation.ts`（新增，確認信內容組成純函式）
@@ -107,9 +126,120 @@ TASK-051 建立的 Resend 封裝寄送；同時定案並實作 Supabase Database
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：TASK-053（同一端點的 UPDATE 分支）、TASK-055（整合驗證）。
+- 變更的檔案：
+  - `app/api/webhooks/appointment-events/route.ts`（新增，本專案第一支 API
+    Route）。
+  - `lib/email/templates/confirmation.ts`（新增，確認信內容組成純函式）。
+  - `supabase/migrations/0011_appointments_insert_webhook.sql`／`_down.sql`
+    （新增：`appointments.confirmation_sent_at` 欄位、`pg_net` extension、
+    `notify_appointment_insert()` trigger function 與 trigger）。
+  - `tests/api/appointment-events-webhook.test.ts`（新增，16 個測試）、
+    `tests/lib/email-confirmation-template.test.ts`（新增，8 個測試）。
+  - `ai/artifacts/Email 通知與提醒/task-cards/TASK-053.md`（修改，補充下一張卡
+    的情境包，見下方「後續任務」）。
+- 執行過的指令：
+  - `npx tsc --noEmit`（通過）／`npm run lint`（通過）／`npm run build`（通過，
+    `/api/webhooks/appointment-events` 出現在路由清單；確認 TASK-051 遺留的
+    resend SDK optional peer dep 建置風險**不存在**，不需要
+    `serverExternalPackages`）。
+  - `npx vitest run tests/api/appointment-events-webhook.test.ts
+    tests/lib/email-confirmation-template.test.ts`（24/24 通過）。
+  - `npx vitest run`（完整套件 395 tests：390 通過／5 失敗，失敗集中在
+    `tests/components/account-settings-view.test.tsx`（2 個）與
+    `tests/components/login-form.test.tsx`（3 個），單獨重跑 100% 通過，屬既有
+    「滿載並行執行間歇性逾時/輸入競態」的已知問題（與 TASK-051 記錄的
+    `closed-dates-section.test.tsx` 同一類），與本卡變更無關，非本卡引入的
+    回歸）。
+- 審查：本卡風險等級高，依規則派遣 architect／security-reviewer／test-engineer
+  三方審查。三方首輪皆判定「需要修改」，關鍵發現與修正：
+  1. **三方一致提出的最關鍵 MUST FIX**：`notify_appointment_insert()` trigger
+     原本沒有例外處理，掛在 `appointments` 的 `AFTER INSERT`（`create_appointment`
+     RPC 的寫入路徑）上，任何非預期例外（Vault 權限問題、`net.http_post` 解析
+     失敗等）都會讓「寄確認信」這個附加動作使顧客的預約整筆回滾，直接違反任務卡
+     「webhook 是旁路機制，不影響既有預約寫入邏輯」的設計意圖——已加
+     `exception when others then raise warning ...; return new;` 包住整段
+     trigger body。
+  2. **architect／security-reviewer MUST FIX**：原本用 `to_jsonb(new)` 把整列
+     （含 `access_token` 這個顧客自助查詢用的 capability token、`customer_phone`
+     等個資）送到 webhook 目標網址——已改成 payload 只帶 `{id}`，`route.ts` 用
+     service role client 依 id 原子性地 claim＋回讀資料庫最新的
+     `customer_name`／`customer_email`／`start_at`／`service_id`，完全不信任
+     payload 攜帶的其他欄位內容。
+  3. **architect／security-reviewer MUST FIX**：去重佔位
+     （`confirmation_sent_at`）搶到後，若組信/查詢/寄信任一步驟失敗或拋出例外，
+     原本沒有任何補償，而 **`pg_net` 實際上不會重試**（原始程式碼註解誤寫「避免
+     觸發 webhook 重試風暴」，該理由對自建的 `pg_net` trigger 不成立）——已在
+     `sendEmail` 失敗或例外時把 `confirmation_sent_at` 補償釋放回 `null`，供
+     未來人工/排程補寄機制重新處理；同時修正相關程式碼註解與 migration 檔頭，
+     明確記錄「`pg_net` 不會重試」與正確的部署順序（先部署帶密鑰的應用程式 →
+     套用 migration → 最後才建立 Vault 密鑰，順序錯誤會有空窗期遺失確認信）。
+  4. **test-engineer MUST FIX**：完成證據與看板卡片原本完全空白——本次已補齊
+     （即本節內容）。
+  5. NICE TO HAVE 已一併處理：改用既有 `lib/store-settings.ts` 的
+     `getStoreSettings`，移除重複的 `store_settings` 查詢與型別 cast；trigger
+     加 `revoke execute ... from public`；trigger 加
+     `when (new.customer_email is not null)` 減少無謂觸發；`net.http_post` 的
+     `timeout_milliseconds` 從 5000 調到 15000（避免監控訊號因逾時誤判）；
+     email 主旨剝除換行字元防 header injection；webhook payload 的 `id` 加
+     UUID 格式驗證。
+  6. 已將與 TASK-053 相關的審查發現（TASK-052 的「payload 只送 id」模式無法
+     直接沿用到 `UPDATE` 分支——`old_record` 事後無法從資料庫回讀；需要 `when`
+     子句避免確認信去重的 `UPDATE` 被誤判成一次新的預約異動；`pg_net` 不重試的
+     既有限制）補進 TASK-053 情境包，供該卡實作時參考。
+- 測試輸出：新增 24 個測試（webhook 端點 16 個：密鑰驗證 3 種失敗態、
+  payload 驗證、去重命中/未命中/查詢失敗、Resend 成功/失敗與補償釋放、例外與
+  補償釋放、非 appointments 事件、UPDATE type no-op 等；確認信範本 8 個：主旨
+  格式、HTML injection 防護、店名/電話可選欄位組合），全數通過。
+- 螢幕截圖：不適用（無 UI）。
+- 已知限制／殘留風險：
+  - ~~真實 Supabase 環境尚未驗證~~ **已於 2026-08-24 由人工完成端對端驗證**：
+    1. 部署正式應用程式到 Vercel（`https://pro5-nu.vercel.app`），帶正確的
+       `SUPABASE_WEBHOOK_SECRET`／`EMAIL_API_KEY`／`SUPABASE_SERVICE_ROLE_KEY`
+       等環境變數（`NEXT_PUBLIC_*` 系列用 `--visibility config --no-sensitive`
+       加入，其餘用預設 sensitive）。部署過程中發現 `vercel link` 會在
+       `.gitignore` 底部多加一行重複的 `.env*`，已清理避免與既有
+       `.env.* / !.env.example` 規則衝突。
+    2. 套用 `0011_appointments_insert_webhook.sql` 到正式 Supabase 專案時，第一次
+       貼上執行遇到 `syntax error at or near "for"`：`create trigger` 的
+       `WHEN (condition)` 子句寫在 `FOR EACH ROW` 之前，順序寫反了（PostgreSQL
+       規定 `FOR EACH ROW` 須在 `WHEN` 之前）。已修正檔案順序並在該處補上註解
+       記錄這個踩過的坑；確認語法錯誤發生時整段 `begin;...commit;` 交易正確
+       回滾、沒有殘留任何部分套用的狀態，重新執行後套用成功
+       （`confirmation_sent_at` 欄位確認存在）。
+    3. 在 Supabase Dashboard SQL Editor 執行 `vault.create_secret(...)` 建立
+       `appointment_webhook_url`（正式部署網址）／`appointment_webhook_secret`
+       （與 `SUPABASE_WEBHOOK_SECRET` 一致）。第一次執行時 `appointment_webhook_url`
+       撞到 `duplicate key value violates unique constraint "secrets_name_idx"`
+       （批次重跑導致），排查後確認兩筆密鑰其實都已成功建立；額外用一段只回傳
+       `true/false`（不外洩密鑰內容）的比對查詢確認兩個密鑰的值與預期完全相符。
+    4. `EMAIL_FROM_ADDRESS` 最初仍留空（尚未驗證正式寄件網域），第一次真實測試
+       預約因此在 Vercel log 出現 `sendEmail: 缺少 EMAIL_API_KEY 或
+       EMAIL_FROM_ADDRESS 環境變數設定`（`MISSING_CONFIG`）——這正確證明了整條
+       管線（trigger → Vault → pg_net → 正式環境 → 密鑰驗證 → 去重佔位 → 寄信
+       失敗優雅處理並釋放佔位 → 回 200）完全照設計運作，只差寄件地址未設定。
+       改用 Resend 沙盒寄件地址 `onboarding@resend.dev`（僅能寄給 Resend 帳號
+       本人註冊信箱，正式上線前仍需驗證自己的網域）補上後重新部署。
+    5. `npm run test:booking`（真實 Supabase 專案）23/23 通過，確認新 trigger 不
+       影響既有預約流程；並用 `net._http_response` 確認測試流程中唯一一筆帶
+       `customer_email` 的預約正確觸發 webhook（`status_code = 200`），其餘無
+       email 的測試預約被 `when (customer_email is not null)` 正確過濾、未觸發。
+    6. 用真實可收信 email 建立一筆測試預約（服務：京喚羽，2026-08-26 13:30），
+       **人工確認收到確認信**，Vercel log 顯示成功（無 `MISSING_CONFIG` 或其他
+       error log）。至此「顧客完成預約後收到確認信」這條驗收標準完整驗證通過。
+    - 使用者對收到的確認信內容回饋：「格式有點簡陋」，希望之後加上店家 Logo
+      圖片與結尾簽章——這是視覺/內容優化，不在本卡原核准範圍內，已記錄為後續
+      待辦（見下方「後續任務」），需要另外走 UI/內容變更的規劃流程（例如決定
+      Logo 圖片來源網址的絕對路徑、簽章內容），不在本卡緊急修正範圍。
+  - `.env.example` 的 Database Webhook 說明段落仍描述舊的「Dashboard 手動設定」
+    假設，與本卡定案的 Vault 方案不符；不在本卡允許變更檔案清單內，已開背景
+    任務卡片追蹤（`task_2c34ce5b`），非阻斷本卡完成。
+  - `resend-client.ts` 的逾時處理仍非真正取消（TASK-051 已記錄的既有限制，本卡
+    未改變此行為）。
+  - `EMAIL_FROM_ADDRESS` 目前仍是 Resend 沙盒地址 `onboarding@resend.dev`（只能
+    寄給 Resend 帳號本人），正式上線前需要在 Resend 完成自己網域的驗證並改用
+    正式寄件地址，否則無法寄給任意顧客信箱。
+- 後續任務：TASK-053（同一端點的 `UPDATE` 分支，情境包已補充 payload 設計限制、
+  `when` 子句建議、`pg_net` 不重試的既有限制）、TASK-055（整合驗證）、新增待辦
+  「確認信視覺優化（Logo／簽章）」（使用者於 2026-08-24 收到測試信後提出，待另開
+  任務卡規劃）、「Resend 正式網域驗證」（上線前必須完成，否則 `EMAIL_FROM_ADDRESS`
+  只能用沙盒地址寄給帳號本人）。

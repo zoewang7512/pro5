@@ -1,0 +1,62 @@
+{
+  "id": "TASK-060",
+  "title": "Email 通知與提醒 確認信視覺優化（店家 Logo／結尾簽章）",
+  "content": "在確認信加入店家 Logo 圖片與結尾簽章，改善目前純文字格式陽春的觀感。尚未走過 spec-interrogation／mockup 決策，未知事項見任務卡「情境包」段落，非 AI-ready，不得直接開始實作。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-24",
+  "epic": "Email 通知與提醒",
+  "userStory": "預約成立寄送確認信",
+  "track": "backend",
+  "dependsOn": ["TASK-052"],
+  "order": 60,
+  "readiness": {
+    "problem_clear": false,
+    "non_goals_clear": false,
+    "acceptance_testable": false,
+    "files_known": false,
+    "scope_defined": false,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-060.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/email/templates/confirmation.ts",
+    "app/api/webhooks/appointment-events/route.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "TASK-052 端對端驗證收到測試確認信後提出：格式簡陋，希望之後加上店家 Logo 圖片與結尾簽章。要求先開一張任務卡記錄，不急著實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "建立本卡，狀態為草稿。Logo 來源、簽章內容範圍、email 客戶端相容性、是否連帶影響 TASK-053/054 信件範本等決策尚未定案，開始實作前需先走 spec-interrogation／ui-mockup-gate 補齊，見任務卡「未知事項」段落。"
+    }
+  ]
+}
