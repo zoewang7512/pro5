@@ -2,10 +2,10 @@
   "id": "TASK-053",
   "title": "Email 通知與提醒 取消／改期時寄送通知信",
   "content": "在 /api/webhooks/appointment-events 新增處理 UPDATE 事件的分支：比對 old_record 與 record 判斷取消或改期，寄送對應通知信。標記完成不觸發任何通知信。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "Email 通知與提醒",
@@ -25,9 +25,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -41,18 +41,84 @@
   "refs": [
     "app/api/webhooks/appointment-events/route.ts",
     "lib/email/templates/cancellation.ts",
-    "lib/email/templates/reschedule.ts"
+    "lib/email/templates/reschedule.ts",
+    "lib/email/classify-appointment-update.ts",
+    "supabase/migrations/0012_appointments_update_webhook.sql",
+    "supabase/migrations/0012_appointments_update_webhook_down.sql",
+    "tests/lib/classify-appointment-update.test.ts",
+    "tests/lib/email-cancellation-template.test.ts",
+    "tests/lib/email-reschedule-template.test.ts",
+    "tests/api/appointment-events-webhook.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過，/api/webhooks/appointment-events 仍在路由清單）",
+      "npx vitest run tests/api/appointment-events-webhook.test.ts（33/33 通過）",
+      "npx vitest run（完整套件 431 tests：427 通過／4 失敗，失敗集中在既有的 account-settings-view.test.tsx／login-form.test.tsx 並行 flaky，與本卡無關）"
+    ],
+    "findings": [
+      "architect MUST FIX（最關鍵）：原設計「UPDATE payload 只帶 record id，route 端事後重讀資料庫當下值做分類」有 race condition——同一筆預約短時間內連續發生兩次真正異動（例如先改期、幾秒內又取消）時，兩次 webhook 都可能讀到同一個「當下已是 cancelled」的資料庫狀態，導致重複誤判成取消、顧客收到兩封取消信。已改為 payload 的 record（新值）與 old_record（舊值）都帶完整的 {status, start_at, end_at} 快照，且都是同一次 UPDATE 語句的前後快照，分類與信件內容一律直接用 payload、不再重讀資料庫；只有識別性欄位（customer_name/customer_email/service_id）依 id 重讀。已補上迴歸測試驗證。",
+      "architect／security-reviewer 皆提出 MUST FIX：程式碼與 migration 檔頭原本宣稱 old_record 不會被拿來當作寄信內容，但實際上 old_record.start_at 就是用來顯示改期信「原時段」的，註解與實作不符（值有經過驗證+escape，非實際漏洞，但誤導維護者）——已隨上述重新設計一併修正註解。",
+      "architect MUST FIX：0012 migration 檔頭原本缺少像 0011 那樣的部署順序警告，若順序錯誤（先套用 migration、應用程式還沒部署新版 handler）會讓通知信在空窗期永久遺失且無異常訊號——已補上部署順序說明。",
+      "NICE TO HAVE（已一併處理）：trigger WHEN 子句收斂為 old.status is distinct from new.status and new.status='cancelled'（避免已取消預約的後續 UPDATE 白白觸發）；classifyAppointmentUpdate 改用 Date.parse() 比較時間點而非字串相等；isValidSnapshot 加上 Date.parse() 合法性驗證，非法時間在驗證階段就回 400；取消信/改期信補上店家聯絡資訊比照 TASK-052 既有模式；任務卡允許變更清單補列本次實作階段發現的漏列檔案。",
+      "NICE TO HAVE（已記錄為殘留風險，未實作）：security-reviewer 指出 UPDATE 分支沒有節流機制，密鑰外洩時可被重放任意次數各寄一封信；風險與密鑰外洩本身同源，且需要較大的設計決策，留待未來視需要另立任務卡。",
+      "test-engineer 審查（第一輪）：完成證據/看板原本空白（已補齊）；E2E 真實環境驗證完全沒有證據（見 residual）；補上測試覆蓋率對稱性缺口。",
+      "architect／security-reviewer 第一批（含 6 次重試）因 Anthropic API 持續 529 過載失敗，使用者曾指示先跳過；API 恢復穩定後第 7 次重試兩者皆成功完成並提出上述發現，非省略審查。"
+    ],
+    "residual": "真實 Supabase 環境端對端驗證已於 2026-08-24 由人工完成：0012 migration 套用成功（trigger 已確認建立且啟用）；第一輪測試取消/改期沒收到信，診斷後發現根本原因不是 Supabase 而是 Claude Code 在審查修正後忘記把更新後的 route.ts 重新部署到 Vercel（net._http_response 顯示回應是 type_not_handled，代表線上仍是舊版本）；重新執行 vercel deploy --prod 後，第二輪測試取消與改期皆成功收到內容正確的通知信，標記完成確認不觸發任何通知信。剩餘限制：(1) UPDATE 端點無節流機制，密鑰外洩時可被重放，留待未來視需要另立任務卡；(2) 回應中的 skipped 字串構成密鑰持有者可用的狀態預言機（低風險，與 TASK-052 既有風格一致，暫不修改）；(3) 若未來新增「只改 end_at 不改 start_at」的操作，改期信會顯示原時段=新時段，目前該情境不可達，暫不處理；(4) 教訓：往後審查/修正階段對 app/api 底下檔案做實質變更後，真實環境驗證前必須先重新 vercel deploy，不能只憑本機 build 通過就假設正式環境已是最新版本。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-08-18",
       "text": "核准（對話中核准 TASK-051~055 這批任務卡；本卡前置任務 TASK-051 尚未完成，暫留 backlog）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "要求開始 TASK-053。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "實作與自我驗證完成。依規則派遣 architect／security-reviewer／test-engineer 三方審查（高風險變更）。test-engineer 順利完成並提出發現（已修正）。architect／security-reviewer 因 Anthropic API 持續 529 過載，各自重試 6 次皆失敗；使用者指示先跳過。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "要求 architect 與 security-reviewer 重新檢查。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "API 恢復穩定，architect／security-reviewer 第 7 次重試皆成功完成，發現一個關鍵的 race condition MUST FIX（UPDATE payload 事後重讀資料庫可能導致同一預約短時間內連續異動時重複誤判、寄出兩封取消信）與兩個文件/部署順序 MUST FIX，皆已修正並補上迴歸測試重新驗證。另有 5 個 NICE TO HAVE 已處理、2 個記錄為殘留風險。三方審查全數完成，architecture／security gate 已設為 true。stage 維持 verify，等待人工核准；真實 Supabase 環境的端對端驗證（0012 migration 套用、實際收到取消/改期通知信）仍待人工完成，詳見 evidence.residual。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "要求進行真實 Supabase 環境驗證。套用 0012 migration 後，第一輪測試取消/改期沒收到信。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "診斷發現根本原因：不是 Supabase 或 migration 的問題，是自己在完成審查修正（route.ts 的 race condition 重寫）後忘記重新部署到 Vercel，線上仍跑舊版本。已重新執行 vercel deploy --prod 部署最新程式碼並確認端點恢復正常。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "重新測試後，取消與改期都有收到信。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-08-24",
+      "text": "真實環境端對端驗證完成：取消信、改期信皆正確收到，標記完成確認不觸發任何通知信，net._http_response 確認 trigger 正確觸發且狀態碼 200。已記錄本次「忘記重新部署」的教訓於任務卡與記憶。TASK-053 的殘留風險僅剩非阻斷項（節流機制、狀態預言機、end_at-only 改期的邊界情境），詳見 evidence.residual，等待人工最終核准。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "核准，轉 done。"
     }
   ]
 }

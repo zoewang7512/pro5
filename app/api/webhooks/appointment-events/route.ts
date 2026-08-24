@@ -5,20 +5,35 @@ import { verifySecret } from "@/lib/webhooks/verify-secret";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendEmail } from "@/lib/email/resend-client";
 import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
+import { buildCancellationEmail } from "@/lib/email/templates/cancellation";
+import { buildRescheduleEmail } from "@/lib/email/templates/reschedule";
+import { classifyAppointmentUpdate, type AppointmentUpdateSnapshot } from "@/lib/email/classify-appointment-update";
 import { getStoreSettings } from "@/lib/store-settings";
 
 // Supabase Database Webhook 觸發端點（TASK-052：appointments INSERT → 確認信；
 // TASK-053：appointments UPDATE → 取消/改期通知信，同一支端點依 type 分派，
 // 互不干擾）。密鑰與觸發目標網址不寫死在任何 migration 檔案，改由
-// supabase/migrations/0011_appointments_insert_webhook.sql 建立的 trigger 在
-// 執行時讀取 Supabase Vault（見該檔案檔頭說明，含部署順序與 pg_net 不會重試的
-// 說明）。
+// supabase/migrations/0011_appointments_insert_webhook.sql（INSERT）／
+// 0012_appointments_update_webhook.sql（UPDATE，TASK-053 新增，沿用同一組
+// Vault 密鑰與目標網址，見該檔案檔頭說明）建立的 trigger 在執行時讀取 Supabase
+// Vault。
 //
-// 官方 payload 格式：{ type, table, schema, record, old_record }。record 只帶
-// appointment id——不信任 payload 攜帶的其他欄位內容，實際寄信所需的顧客/服務
-// 資料一律由本端點用 service role client 依 id 重新讀回資料庫最新值
-// （security-reviewer 於本卡審查提出的 MUST FIX：trigger 若把整列送出，會連帶
-// 外洩 access_token 等本卡不使用的欄位，見 0011 migration 檔頭說明）。
+// 官方 payload 格式：{ type, table, schema, record, old_record }。
+//
+// - INSERT：record 只帶 appointment id。實際寄信所需的顧客/服務資料由本端點
+//   用 service role client 依 id 重新讀回資料庫最新值（security-reviewer 於
+//   TASK-052 審查提出的 MUST FIX：trigger 若把整列送出，會連帶外洩
+//   access_token 等欄位）。
+// - UPDATE：record 帶 {id, status, start_at, end_at}，old_record 帶
+//   {status, start_at, end_at}——**兩者都必須信任 payload 內容，且必須是同一次
+//   UPDATE 語句的前後快照**，不能只送 record 的 id 再事後重讀資料庫當下值
+//   （architect 於 TASK-053 審查發現的 MUST FIX：若同一筆預約短時間內連續發生
+//   兩次真正異動，事後重讀資料庫會讓兩次 webhook 讀到同一個「當下值」而重複
+//   誤判，見 0012 migration 檔頭的完整說明）。分類（取消/改期/none）與信件內容
+//   中「原時段／新時段」皆直接使用 payload 的 record／old_record，不重讀資料庫；
+//   只有 customer_name／customer_email／service_id 這幾個不受時序問題影響的
+//   識別性欄位才依 id 重讀資料庫（同樣是為了不整列送出、避免外洩
+//   access_token 等欄位）。
 
 type WebhookPayload = {
   type: "INSERT" | "UPDATE" | "DELETE";
@@ -28,18 +43,46 @@ type WebhookPayload = {
   old_record: Record<string, unknown> | null;
 };
 
-type InsertRecord = { id: string };
+type RecordId = { id: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function isValidInsertRecord(record: Record<string, unknown> | null): record is InsertRecord {
+function isValidRecordId(record: Record<string, unknown> | null): record is RecordId {
   return !!record && typeof record.id === "string" && UUID_RE.test(record.id);
+}
+
+// start_at／end_at 額外驗證可被 Date.parse() 解析：非法值若放行到後面才由
+// formatAppointmentDateTime（TASK-051）拋出例外，會被 handleAppointmentUpdate
+// 的 try/catch 吞成 200，webhook 來源端看不出這是一筆畸形 payload；在型別守衛
+// 這層就擋下、回 400，才會在 net._http_response 留下可排查的異常訊號
+// （architect 於本卡審查提出的 NICE TO HAVE）。
+function isValidSnapshot(value: Record<string, unknown> | null): value is AppointmentUpdateSnapshot {
+  return (
+    !!value &&
+    typeof value.status === "string" &&
+    typeof value.start_at === "string" &&
+    typeof value.end_at === "string" &&
+    !Number.isNaN(Date.parse(value.start_at)) &&
+    !Number.isNaN(Date.parse(value.end_at))
+  );
+}
+
+type UpdateEventRecord = AppointmentUpdateSnapshot & { id: string };
+
+function isValidUpdateRecord(record: Record<string, unknown> | null): record is UpdateEventRecord {
+  return !!record && typeof record.id === "string" && UUID_RE.test(record.id) && isValidSnapshot(record);
 }
 
 type ClaimedAppointment = {
   customer_name: string;
   customer_email: string | null;
   start_at: string;
+  service_id: string;
+};
+
+type AppointmentIdentity = {
+  customer_name: string;
+  customer_email: string | null;
   service_id: string;
 };
 
@@ -67,14 +110,18 @@ export async function POST(req: NextRequest) {
     return handleAppointmentInsert(payload.record);
   }
 
-  // UPDATE／DELETE：TASK-053 的範圍，目前先 ack 不處理。回 200 不是為了避免觸發
-  // 重試——0011 migration 用的 pg_net 本來就不會重試（見該檔案檔頭說明），這裡
-  // 只是不想讓非 2xx 回應污染 net._http_response 的監控訊號。
+  if (payload.type === "UPDATE") {
+    return handleAppointmentUpdate(payload.record, payload.old_record);
+  }
+
+  // DELETE：本 Epic 三個 User Story 皆不涵蓋刪除事件，先 ack 不處理。回 200 不是
+  // 為了避免觸發重試——0011/0012 migration 用的 pg_net 本來就不會重試（見該檔案
+  // 檔頭說明），這裡只是不想讓非 2xx 回應污染 net._http_response 的監控訊號。
   return NextResponse.json({ ok: true, skipped: "type_not_handled" });
 }
 
 async function handleAppointmentInsert(record: Record<string, unknown> | null) {
-  if (!isValidInsertRecord(record)) {
+  if (!isValidRecordId(record)) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
@@ -163,4 +210,108 @@ async function releaseConfirmationClaim(supabase: SupabaseClient, appointmentId:
       error: error.message,
     });
   }
+}
+
+// UPDATE 事件（取消／改期）不新增去重欄位／佔位機制（不同於 INSERT 分支的
+// confirmation_sent_at）：
+// 1. pg_net 不會重試（見 0012 migration 檔頭），不存在「同一次真實異動被觸發兩次
+//    webhook」的風險。
+// 2. lib/admin/appointments.ts 的 cancelAppointment／rescheduleAppointment 本身
+//    已有狀態機／樂觀鎖保護（`.in("status", ["pending","confirmed"])`／
+//    `.eq("start_at", currentStartAt)`），同一筆預約不可能被重複觸發兩次「真正的」
+//    取消或改期 UPDATE——第二次操作會因為找不到符合條件的列而回傳空結果、不執行
+//    任何寫入，也就不會讓 trigger 再次觸發。
+// 因此不需要比照 INSERT 分支的「claim → 失敗補償釋放」設計，這是 architect／
+// security-reviewer 於本卡審查確認過的判斷。**已知殘留風險**（NICE TO HAVE，
+// 非本卡阻斷項）：端點沒有節流機制，若 SUPABASE_WEBHOOK_SECRET 外洩，攻擊者可
+// 對同一筆真實預約重放同一個 webhook payload 任意次數、每次都寄出一封通知信
+// （不同於 INSERT 分支有 confirmation_sent_at 天然擋住重放），此風險與密鑰外洩
+// 本身同源，留待未來視需要另立任務卡處理。
+async function handleAppointmentUpdate(
+  record: Record<string, unknown> | null,
+  oldRecord: Record<string, unknown> | null,
+) {
+  if (!isValidUpdateRecord(record) || !isValidSnapshot(oldRecord)) {
+    return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+  }
+
+  // 分類只用 payload 的 record／old_record（同一次 UPDATE 語句的前後快照），
+  // 不重讀資料庫——見檔頭說明的 race condition 修正。
+  const classification = classifyAppointmentUpdate(oldRecord, record);
+
+  if (classification === "none") {
+    return NextResponse.json({ ok: true, skipped: "no_notification_needed" });
+  }
+
+  const supabase = createServiceRoleClient();
+
+  // 只有識別性欄位（顧客姓名/信箱、服務 id）依 id 重讀資料庫，不信任 payload
+  // ——這幾個欄位不受「短時間內連續兩次異動」的時序問題影響（cancel／reschedule
+  // 都不會動到這些欄位），仍是為了不整列送出、避免外洩 access_token 等欄位。
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("customer_name, customer_email, service_id")
+    .eq("id", record.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("appointment-events: 讀取預約身分欄位失敗", {
+      appointmentId: record.id,
+      error: error.message,
+    });
+    return NextResponse.json({ ok: true });
+  }
+  if (!data) {
+    return NextResponse.json({ ok: true, skipped: "not_found" });
+  }
+
+  const identity = data as AppointmentIdentity;
+
+  if (!identity.customer_email) {
+    return NextResponse.json({ ok: true, skipped: "no_email" });
+  }
+
+  try {
+    const [{ data: service }, storeSettingsResult] = await Promise.all([
+      supabase.from("services").select("name").eq("id", identity.service_id).maybeSingle(),
+      getStoreSettings(supabase),
+    ]);
+    const serviceName = (service as { name: string } | null)?.name ?? "服務";
+    const storeSettings = storeSettingsResult.ok ? storeSettingsResult.data : null;
+
+    const { subject, html } =
+      classification === "cancelled"
+        ? buildCancellationEmail({
+            customerName: identity.customer_name,
+            serviceName,
+            startAt: record.start_at,
+            storeName: storeSettings?.name,
+            storePhone: storeSettings?.phone,
+          })
+        : buildRescheduleEmail({
+            customerName: identity.customer_name,
+            serviceName,
+            oldStartAt: oldRecord.start_at,
+            newStartAt: record.start_at,
+            storeName: storeSettings?.name,
+            storePhone: storeSettings?.phone,
+          });
+
+    const result = await sendEmail({ to: identity.customer_email, subject, html });
+    if (!result.ok) {
+      console.error("appointment-events: 取消/改期通知信寄送失敗", {
+        appointmentId: record.id,
+        classification,
+        code: result.error.code,
+      });
+    }
+  } catch (caught) {
+    console.error("appointment-events: 組信/寄信過程發生未預期例外", {
+      appointmentId: record.id,
+      classification,
+      error: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+
+  return NextResponse.json({ ok: true });
 }
