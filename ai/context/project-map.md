@@ -98,6 +98,78 @@
 | `app/page.tsx` | 顧客前台預約首頁 | 單頁捲動版型（S5 變體 B），見 `app/_components/booking/` |
 | `ai/` | 治理流程、任務卡、審查紀錄 | 見根目錄 `AGENTS.md` |
 | `tools/kanban/` | 治理看板 | `npm run kanban` |
+| `lib/email/` | Email 內容組成與 Resend 薄封裝（Email 通知與提醒 Epic，TASK-051） | `resend-client.ts`（`sendEmail`，`server-only`，讀 `EMAIL_API_KEY`／`EMAIL_FROM_ADDRESS`，逾時走 `Promise.race` 而非 SDK 原生 signal，見檔案註解）；`format.ts`（`escapeHtml`／`formatAppointmentDateTime`，內插使用者輸入到 HTML 前必經 `escapeHtml`）；`templates/`（`confirmation.ts`／`cancellation.ts`／`reschedule.ts`／`reminder.ts`，純函式組 subject／html，不做 I/O）；`classify-appointment-update.ts`（UPDATE 事件分類成 cancelled／rescheduled／none 的純函式，只依賴 payload 的 status／start_at／end_at，見下方架構段落的 race condition 說明） |
+| `lib/webhooks/verify-secret.ts` | webhook／cron 共用的密鑰驗證（TASK-051） | `verifySecret`（常數時間比較，先雜湊成固定長度再比較，避免長度側錄）／`verifyBearerSecret`（拆 `Bearer ` 前綴後呼叫前者，供 Vercel Cron 用） |
+| `lib/admin/appointment-reminders.ts` | 提醒信排程端點的資料存取（TASK-054） | `computeReminderWindow`（純函式，0～26 小時寬視窗，見下方架構段落的 Vercel Hobby 方案限制說明）／`claimAppointmentsForReminder`（`UPDATE ... WHERE reminder_sent_at IS NULL ... RETURNING` 原子性 claim 模式，不是先 select 再逐筆 update）／`releaseReminderClaim` |
+| `app/api/webhooks/appointment-events/route.ts` | Supabase Database Webhook 觸發端點（appointments INSERT／UPDATE，TASK-052／053） | 見下方「Email 通知與提醒架構」段落 |
+| `app/api/cron/appointment-reminders/route.ts` | Vercel Cron 觸發端點（TASK-054） | `maxDuration = 60`／`TIME_BUDGET_MS = 45000`，逼近 serverless 執行時間上限會提前中止並釋放剩餘 claim，見下方架構段落 |
+
+## Email 通知與提醒架構（TASK-051～055）
+
+顧客預約成立／取消／改期／預約前 24 小時，系統各寄一封 Email 通知信（純文字告知，不含任何操作連結）。寄信一律用 Resend（`lib/email/resend-client.ts`），失敗不影響預約本身的交易（寄信是附加動作）。兩條觸發路徑分開：
+
+- **appointments 表異動 → Database Webhook**（確認信／取消改期通知信，TASK-052／053）：
+  `supabase/migrations/0011_appointments_insert_webhook.sql`（INSERT）／
+  `0012_appointments_update_webhook.sql`（UPDATE）建立 trigger function，用
+  `pg_net.http_post` 呼叫 `app/api/webhooks/appointment-events/route.ts`（同一支端點依
+  payload 的 `type` 分派）。**INSERT** 分支用 `confirmation_sent_at` 欄位做原子性
+  claim 去重（`UPDATE ... WHERE confirmation_sent_at IS NULL ... RETURNING`），寄信
+  失敗會釋放回 `null` 供補寄；payload 只帶 appointment id，寄信所需欄位由 route 端用
+  service role client 依 id 重新讀回（不整列外送，避免外洩 `access_token`／
+  `customer_phone`）。**UPDATE** 分支不用去重欄位（pg_net 不重試，且
+  `cancelAppointment`／`rescheduleAppointment` 本身有狀態機防止重複真實異動），而是
+  直接信任 payload 的 `record`／`old_record`（同一次 UPDATE 語句的前後快照）分類成
+  取消／改期／none 三種情境（`lib/email/classify-appointment-update.ts`）——**不能改成
+  「只送 id、事後重讀資料庫當下值」**，否則同一筆預約短時間內連續兩次真實異動會被
+  誤判成重複結果，見該 migration 檔頭的完整說明。
+- **時間到了 → Vercel Cron**（預約前提醒信，TASK-054）：`vercel.json` 的 `crons`
+  設定（`0 1 * * *` UTC，每天一次）觸發 `app/api/cron/appointment-reminders/route.ts`。
+  用 `reminder_sent_at` 欄位做 claim 去重，時間窗寬度 0～26 小時（不是任務卡原本假設
+  的每小時執行、23～25 小時窄窗）——**因為本專案 Vercel 帳號是 Hobby 方案，cron
+  只能每天執行一次**，改用更寬的視窗；下界固定為 0（不能設更高，否則會有預約永遠
+  卡在兩次執行的窗縫之間、永久漏寄，見 `lib/admin/appointment-reminders.ts` 的完整
+  說明）。代價是提醒信寄送時間與「預約前 24 小時」有 0～26 小時的誤差，這是已知且
+  被接受的取捨。
+
+兩個端點的密鑰驗證共用 `lib/webhooks/verify-secret.ts`：webhook 端點比對
+`x-webhook-secret` header 與 `SUPABASE_WEBHOOK_SECRET`；cron 端點比對
+`Authorization: Bearer <token>` 與 `CRON_SECRET`。兩者都是常數時間比較，且環境變數
+未設定時一律拒絕（fail closed）。
+
+**正式環境設定步驟**（版控外、換 Supabase 專案或重建環境時需要重新執行；為何選擇這個
+設計見 `ai/context/decisions.md` 對應決策紀錄）：
+
+1. Vercel production 環境變數需要 `SUPABASE_WEBHOOK_SECRET`、`CRON_SECRET`、
+   `EMAIL_API_KEY`、`EMAIL_FROM_ADDRESS`、`SUPABASE_SERVICE_ROLE_KEY`（皆已於本專案
+   實際設定完成，`npx vercel env ls production` 可查）。
+2. 部署帶正確環境變數的應用程式（`npx vercel deploy --prod --yes`）。
+3. 依序套用 `supabase/migrations/0010`～`0012`（人工貼 Supabase SQL Editor 執行，比照
+   本專案既有 migration 慣例）。
+4. 在 Supabase SQL Editor 手動執行以下一次性指令建立 Vault 密鑰（不進版控；之後修改
+   用 `vault.update_secret` 或 Dashboard Vault UI）：
+   ```sql
+   select vault.create_secret(
+     'https://pro5-nu.vercel.app/api/webhooks/appointment-events',
+     'appointment_webhook_url'
+   );
+   select vault.create_secret(
+     '<與 Vercel SUPABASE_WEBHOOK_SECRET 完全相同的值>',
+     'appointment_webhook_secret'
+   );
+   ```
+   若這兩個 Vault 密鑰尚未設定，trigger function 會略過寄送 HTTP 請求、不阻擋
+   `appointments` 的寫入本身（見 0011 migration `notify_appointment_insert()` 的判斷）。
+5. Vercel Cron（`vercel.json` 的 `crons` 設定）只在 production deployment 才會被
+   Vercel 自動排程觸發，不需要另外在 Dashboard 手動設定；確認方式是 Vercel
+   Dashboard 專案的「Cron Jobs」頁籤出現這個排程。
+6. 人工排查工具：`select * from net._http_response order by created desc limit 20;`
+   （webhook 端 pg_net 實際送出的請求與回應狀態，pg_net 不會重試，非 2xx 也不會有
+   自動補救）；`npx vercel logs https://pro5-nu.vercel.app`（應用程式端 runtime log）。
+
+**已知限制**：`EMAIL_FROM_ADDRESS` 目前是 Resend 提供的沙盒地址
+`onboarding@resend.dev`，只能寄給 Resend 帳號本人註冊的信箱，還不能真正寄給任意顧客
+——正式上線前需要在 Resend Dashboard 完成自訂網域 DNS 驗證、換成該網域下的正式寄件
+地址並重新部署。
 
 ## 常用指令
 
@@ -116,6 +188,7 @@
 | `npm run test:booking-policy` | 預約規則與政策設定整合測試（TASK-046） | 對真實 Supabase 專案跑，涵蓋 `booking_policy` 讀寫權限邊界（anon 可讀、anon／已登入非管理員的 authenticated 使用者皆被拒寫入、designer 可寫、非管理員無法 insert 第二列、`min_lead_time_hours` 超出 720 被 constraint 擋下）。`booking_policy` 只有 1 列固定資料，測試採「記錄原始快照、測試中短暫改動、afterAll 還原」模式（同 `test:business-hours`／`test:store-settings`）。調整 `min_lead_time_hours` 後 `get_available_slots`／`create_appointment` 的實際行為改由 `test:booking` 涵蓋（見下方說明），不在本測試檔重複 |
 | `npm run test:services` | 服務項目管理整合測試 | 對真實 Supabase 專案跑，涵蓋 `services` 讀寫權限邊界（anon／已登入非管理員的 authenticated 使用者皆被拒新增/編輯/切換上下架、designer 可寫、anon 讀不到已下架項目）、下架後 `get_available_slots`（回傳空陣列）／`create_appointment`（`SERVICE_INACTIVE`，不寫入任何資料）的實際影響、重新上架後兩個 RPC 恢復正常。`services` 非固定列數，測試建立的服務項目一律加 `TEST_MARKER` 前綴並於 `afterAll` 真刪除（測試自己清理測試資料，不牴觸後台 UI 層「只做下架不支援真刪除」的產品範圍決策，兩者性質不同）。測試日期選離今天 84 天起（見下方 offset 表） |
 | `npm run test:account` | 設計師登入與帳號安全整合測試（TASK-045） | 對真實 Supabase 專案跑，涵蓋 `get_admin_profile`／`update_admin_profile` RPC 權限邊界（designer 可讀寫、非管理員回傳空結果集／`false`、anon 明確被 revoke）、`admin-assets` Storage bucket 權限邊界（同 `test:store-settings` 的驗證方式：anon／非管理員上傳被拒、designer 可上傳且公開可讀、mime type／路徑前綴限制皆由 bucket 層強制擋下）、`mfa.enroll`／`challenge`／`verify`／`unenroll` 呼叫行為（含驗證碼錯誤被拒、正確驗證碼成功並將 factor 轉為 verified、verified factor 需要 aal2 才能 unenroll 的既有 GoTrue 行為）。個人資料測試用 designer001 本人（`admins` 表快照還原模式，同 `test:store-settings`）；MFA 測試刻意改用 service role 建立的拋棄式 authenticated 使用者，不動 designer001 的真實 MFA 狀態，避免與人工手動走查（真實 Authenticator App）互相干擾；TOTP 驗證碼用 Node.js 內建 `crypto` 模組自行實作 RFC 6238，未新增任何 npm 依賴。**不要對正式環境高頻率重複執行** |
+| `npm run test:notifications` | Email 通知與提醒前後端串接整合測試（TASK-055） | 對真實 Supabase 專案跑，`sendEmail`（Resend）全程 mock（見 `tests/notifications.integration.test.ts` 頂端說明，任務卡「假設」段落明訂自動化測試不寄真實信件），驗證真正的 webhook／cron route handler 對真實資料庫的密鑰驗證、INSERT/UPDATE 事件正確分派（確認/取消/改期/標記完成四種情境）、`confirmation_sent_at` 去重、排程端點時間窗篩選與 `reminder_sent_at` 去重。**排程端點測試會呼叫真正的 GET handler，其查詢涵蓋整張 `appointments` 表（不限本檔案建立的測試資料）**，採「執行前快照當下符合條件的既有 id、執行後在 `finally` 還原回 `null`」模式，把對真實顧客資料的影響限制在測試執行的短暫期間內；若執行過程被強制中斷，需要人工檢查是否有非本檔案建立的預約被意外標記為已提醒。四種信件的真實送達驗證是**人工**步驟（見 `ai/artifacts/Email 通知與提醒/task-cards/TASK-055.md` 完成證據），不併入本指令 |
 
 各整合測試檔案的測試日期都用「離今天 N 天以上」的 offset 找不同星期幾，刻意錯開彼此的日期範圍避免互相干擾（`test:business-hours` 第一批次用 55 天起、第二批次（`closed_dates`／`buffer_minutes`，TASK-027）用 58／65 天起、`test:admin-booking` 用 40 天起、`test:booking` 用 70 天起（9 個營業日，實際涵蓋約 70～81 天）、`test:services` 用 84 天起）；同一個 offset 下也要用不同星期幾（同一天內的不同時段錯開亦可，見 `tests/business-hours.integration.test.ts` 對 `SLOTS_DATE` 的既有教訓：兩個不同 describe 共用同一天時，appointments_no_overlap 是不分服務的全域 exclusion constraint，插入的既有預約時段必須手動錯開，不能想當然爾各自用 11:00 起始）。新增下一個以真實 Supabase 資料為基礎的整合測試檔案或案例時，選 offset／時段前先看一下這幾個既有檔案目前用的範圍，避免撞期。`test:store-settings` 不涉及日期時段（`store_settings`／`store-assets` 皆與日期無關），不需要 offset。
 | `npm run seed:designer` | 建立唯一設計師帳號 | 讀 `.env.local` 的 `DESIGNER_EMAIL`／`DESIGNER_PASSWORD`，具幂等性 |

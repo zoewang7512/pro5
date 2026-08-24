@@ -18,6 +18,7 @@
     "test:booking-policy": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking-policy.config.ts",
     "test:services": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.services.config.ts",
     "test:account": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.account.config.ts",
+    "test:notifications": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.notifications.config.ts",
     "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
     "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs"
   },

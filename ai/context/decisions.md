@@ -102,6 +102,35 @@
       檢視這個 constraint 與查詢邏輯。
 ```
 
+## TASK-051～054（Email 通知與提醒）：Database Webhook 用 migration SQL + Supabase Vault 建立，不用 Dashboard 手動設定
+
+```text
+日期：2026-08-18
+決策：appointments INSERT／UPDATE 觸發 email 通知的 Supabase Database Webhook，改用
+      migration SQL（supabase/migrations/0011_appointments_insert_webhook.sql／
+      0012_appointments_update_webhook.sql）建立 trigger function + pg_net.http_post
+      呼叫，不使用 Supabase Dashboard 的「Database Webhooks」圖形化設定介面。
+      webhook 目標網址與密鑰不寫死在 migration 明文裡，改存進 Supabase Vault
+      （`vault.decrypted_secrets`，key 名稱 `appointment_webhook_url`／
+      `appointment_webhook_secret`），trigger function 執行時才讀取。
+情境：本專案所有 schema 變動都走「migration 檔案 + 人工貼 Supabase SQL Editor 執行」
+      的既有慣例（見專案地圖「重要目錄」`supabase/migrations/` 說明），Database Webhook
+      若用 Dashboard 手動設定，會變成一份版控外、換專案或重建環境時容易被遺忘的隱性
+      狀態。
+考慮過的替代方案：
+  - Supabase Dashboard 圖形化設定 Database Webhook：設定步驟不會被版控紀錄，未來
+    重新部署到新環境（例如換 Supabase 專案）時沒有任何檔案可以照著重建。
+為何選這個：trigger function 本身可重複執行（`create or replace`／
+      `drop trigger if exists`），版控內就能完整重建「觸發邏輯」這一半；真正無法版控
+      的只剩「兩個 Vault 密鑰的實際值」這個一次性人工步驟（密鑰材料本來就不該進版控），
+      已在 migration 檔頭與本檔案下方「Email 通知與提醒：正式環境設定步驟」段落完整
+      記錄需要執行的 SQL 指令。
+影響：任何人要在新的 Supabase 專案（或重建現有專案）上重新啟用這個 Email 通知功能，
+      依序執行 0010～0012 三個 migration，再依 `ai/context/project-map.md`
+      「Email 通知與提醒架構」段落記錄的步驟在 SQL Editor 建立兩個 Vault 密鑰即可，
+      不需要另外去 Dashboard 點設定。
+```
+
 ## TASK-022～027（營業時間與可預約時段管理，第二批次）：緩衝時間不做資料庫層級約束，只在 `get_available_slots`／改期表單做候選時段過濾
 
 ```text

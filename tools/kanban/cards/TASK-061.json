@@ -1,0 +1,58 @@
+{
+  "id": "TASK-061",
+  "title": "Email 通知與提醒 換用已驗證網域寄件地址（正式上線前置作業）",
+  "content": "把 EMAIL_FROM_ADDRESS 從 Resend 沙盒地址 onboarding@resend.dev 換成使用者自己在 Cloudflare 購買的網域下的正式寄件地址，讓通知信能寄給任意收件人（例如面試官）。購買網域、Cloudflare DNS 設定、Resend Dashboard 網域驗證皆為人工專屬步驟，使用者尚未購買網域，之後再回來處理，非 AI-ready。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-24",
+  "epic": "Email 通知與提醒",
+  "userStory": "全部（四種通知信共用同一個 EMAIL_FROM_ADDRESS）",
+  "track": "不適用",
+  "dependsOn": ["TASK-051", "TASK-052", "TASK-053", "TASK-054", "TASK-055"],
+  "order": 61,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": false,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/Email 通知與提醒/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Email 通知與提醒/task-cards/TASK-061.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    ".env.local",
+    ".env.example",
+    "ai/context/project-map.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-08-24",
+      "text": "要給面試官展示用的話還是需要購買已驗證網域，打算買 Cloudflare 的網域，先開一張任務卡記錄，之後再做。"
+    }
+  ]
+}

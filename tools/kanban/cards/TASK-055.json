@@ -2,16 +2,21 @@
   "id": "TASK-055",
   "title": "Email 通知與提醒 前後端串接驗證與端到端測試",
   "content": "新增 npm run test:notifications 涵蓋 webhook/排程端點密鑰驗證與查詢邏輯；重跑既有整合測試確認無回歸；至少各一次真實/測試模式 Resend API key 手動觸發四種信件確認送達；更新 project-map.md（含 Database Webhook/Vercel Cron 實際設定步驟）。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "Email 通知與提醒",
   "userStory": "全部（整合驗證）",
   "track": "integration",
-  "dependsOn": ["TASK-051", "TASK-052", "TASK-053", "TASK-054"],
+  "dependsOn": [
+    "TASK-051",
+    "TASK-052",
+    "TASK-053",
+    "TASK-054"
+  ],
   "order": 55,
   "readiness": {
     "problem_clear": true,
@@ -25,9 +30,9 @@
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -41,12 +46,28 @@
   "refs": [
     "tests/notifications.integration.test.ts",
     "vitest.notifications.config.ts",
-    "ai/context/project-map.md"
+    "package.json",
+    "ai/context/project-map.md",
+    "ai/context/decisions.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npm run test:notifications（19/19 通過）",
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npm test（461/462，1 個既有測試檔案並行逾時，單獨重跑通過，與本卡無關）",
+      "npm run test:rls／test:booking／test:admin-booking／test:business-hours／test:store-settings／test:booking-policy／test:services／test:account（全數通過，無回歸）",
+      "security-reviewer 總覽審查（2 MUST FIX 已修正，4 NICE TO HAVE 記錄為未來任務）",
+      "npx vercel deploy --prod --yes（修正 cron 路由 404 的部署缺口）",
+      "正式環境手動觸發確認/取消/改期/提醒四種信件，使用者已在收件信箱確認內容正確"
+    ],
+    "findings": [
+      "security-reviewer MUST FIX：整合測試 fixture 會經真實 Database Webhook trigger 觸發正式環境寄信，已修正（INSERT 時 customer_email 一律先 null 再獨立 UPDATE 補上）",
+      "security-reviewer MUST FIX：排程端點測試的快照/還原邏輯有時間窗漏洞，已修正為時間戳範圍還原",
+      "手動驗證發現 cron 路由先前部署缺口（CRON_SECRET 加入未觸發真正的程式碼部署），已重新部署解決"
+    ],
+    "residual": "EMAIL_FROM_ADDRESS 仍是 Resend 沙盒地址，正式上線前需換成已驗證網域；security-reviewer 提出的 4 項 migration 層級 NICE TO HAVE 留待未來任務卡（超出本卡允許變更檔案範圍）"
   },
   "comments": [
     {
