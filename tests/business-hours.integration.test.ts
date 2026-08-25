@@ -41,7 +41,7 @@ import {
   removeClosedDate,
 } from "../lib/admin/closed-dates";
 import { computeAvailableSlots, getBusinessHoursForWeekday, getOccupiedRangesForDate } from "../lib/admin/reschedule-slots";
-import { getAvailableSlots } from "../lib/booking/api";
+import { createAppointment, getAvailableSlots } from "../lib/booking/api";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -79,6 +79,14 @@ function weekdayOf(dateStr: string): number {
 
 function isoAt(dateStr: string, hh: number, mm: number): string {
   return new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00${TZ_OFFSET}`).toISOString();
+}
+
+// TEST_MARKER 本身含有 `_`（LIKE 的單一字元萬用字元），afterAll 清除 customers 時若不
+// 跳脫，`like` 比對範圍會比預期寬（比照 tests/booking.integration.test.ts 的既有寫法，
+// TASK-028 新增的 create_appointment 測試案例會透過 RPC 真的寫入 customers，需要這支
+// 清除輔助函式）。
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
 // 比照 tests/admin-booking.integration.test.ts：從遠一點的 offset 開始找目標星期幾的日期，
@@ -149,6 +157,15 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
   const CLOSED_RLS_WEEKDAY = 1; // 週一
   const AFFECTED_CLOSED_WEEKDAY = 6; // 週六
   const SLOTS_CLOSED_WEEKDAY = 3; // 週三
+  // TASK-028 新增：offset 58 這批已用掉週一／週三／週六，這裡用週二——**注意**：一開始
+  // 誤用週四（跟 AFFECTED_DATE 同一個 weekday），以為 offset 不同（55 vs 58）就不會撞期，
+  // 實測發現 nextDateForWeekday 從 minOffsetDays 起算最多再走 6 天找目標星期幾，55～61 與
+  // 58～64 這兩個範圍會重疊，兩個相近 offset 若挑同一個 weekday 極可能落在同一天（本例
+  // 兩者都算出同一個週四），導致 AFFECTED_DATE 那組測試插入的既有預約與這裡的
+  // create_appointment 呼叫在同一天同一個 11:00 時段撞上 appointments_no_overlap，
+  // 誤判成別的原因失敗。教訓：新增日期前務必實際印出計算結果比對，不能只靠「offset
+  // 不同」的直覺判斷。
+  const CREATE_APPOINTMENT_CLOSED_WEEKDAY = 2; // 週二
   const BUFFER_WEEKDAY = 1; // 週一（offset 不同於 CLOSED_RLS_WEEKDAY，仍是不同日期）
   const BUFFER_ZERO_WEEKDAY = 6; // 週六
   const CROSS_VALIDATE_WEEKDAY = 3; // 週三
@@ -156,6 +173,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
   const CLOSED_RLS_DATE = nextDateForWeekday(CLOSED_RLS_WEEKDAY, 58);
   const AFFECTED_CLOSED_DATE = nextDateForWeekday(AFFECTED_CLOSED_WEEKDAY, 58);
   const SLOTS_CLOSED_DATE = nextDateForWeekday(SLOTS_CLOSED_WEEKDAY, 58);
+  const CREATE_APPOINTMENT_CLOSED_DATE = nextDateForWeekday(CREATE_APPOINTMENT_CLOSED_WEEKDAY, 58);
   const BUFFER_DATE = nextDateForWeekday(BUFFER_WEEKDAY, 65);
   const BUFFER_ZERO_DATE = nextDateForWeekday(BUFFER_ZERO_WEEKDAY, 65);
   const CROSS_VALIDATE_DATE = nextDateForWeekday(CROSS_VALIDATE_WEEKDAY, 65);
@@ -341,6 +359,18 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
         .eq("id", bufferServiceId);
       if (deleteBufferServiceError) cleanupErrors.push(deleteBufferServiceError);
     }
+
+    // TASK-028 新增的 create_appointment 測試案例會透過真正的 RPC 呼叫，其顧客去重邏輯
+    // 會在 customers 表新建一列——不像上面兩個服務底下的 appointments 可以直接依
+    // service_id 篩選，customers 沒有 service_id 這種外鍵可用，改依 TEST_MARKER 名稱
+    // 前綴清除（比照 tests/booking.integration.test.ts 的既有寫法）。需要在上面兩個
+    // service 的 appointments 都刪除之後才執行（appointments.customer_id 參照
+    // customers，順序顛倒會被 FK constraint 擋下）。
+    const { error: deleteCustomersError } = await serviceRoleClient
+      .from("customers")
+      .delete()
+      .like("name", `${escapeLikePattern(TEST_MARKER)}%`);
+    if (deleteCustomersError) cleanupErrors.push(deleteCustomersError);
 
     // 逐一刪除本次測試新增過的 closed_dates 列（見檔頭註解：closed_dates 沒有 TEST_MARKER
     // 可掛，改用這份清單識別）；每個日期各自嘗試，即使某些已經被對應 it 自己 remove 過
@@ -774,6 +804,105 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
       expect(afterRestoreResult.ok).toBe(true);
       if (!afterRestoreResult.ok) return;
       expect(afterRestoreResult.data.length).toBeGreaterThan(0);
+    });
+  });
+
+  // TASK-028：create_appointment 是顧客端唯一的預約寫入路徑，get_available_slots 只是
+  // 「畫面上不顯示」公休日時段，顧客若繞過前端直接呼叫 create_appointment，過去仍能在
+  // 公休日訂到位——這是 TASK-024 安全性審查發現的殘留風險，本卡在 create_appointment RPC
+  // 本身補上 closed_dates 檢查。每個案例各自用 addClosedDate／removeClosedDate（皆為
+  // 冪等操作）設定前置狀態，不依賴其他 it 的執行順序或副作用。
+  describe("create_appointment RPC 對 closed_dates 的回應（TASK-028：公休日是硬規則，不能只在畫面層擋）", () => {
+    it("已標記為特殊公休日：回傳 SLOT_CONFLICT，不寫入任何 appointments／customers 資料", async () => {
+      const addResult = await addClosedDate(designerClient, CREATE_APPOINTMENT_CLOSED_DATE);
+      closedDatesToCleanup.push(CREATE_APPOINTMENT_CLOSED_DATE);
+      expect(addResult.ok).toBe(true);
+
+      const phone = testPhone();
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(CREATE_APPOINTMENT_CLOSED_DATE, 11, 0),
+        customerName: `${TEST_MARKER} closed-a`,
+        customerPhone: phone,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+
+      const { data: appointmentRows, error: appointmentError } = await serviceRoleClient
+        .from("appointments")
+        .select("id")
+        .eq("customer_phone", phone);
+      if (appointmentError) throw appointmentError;
+      expect(appointmentRows).toEqual([]);
+
+      const { data: customerRows, error: customerError } = await serviceRoleClient
+        .from("customers")
+        .select("id")
+        .eq("phone", phone);
+      if (customerError) throw customerError;
+      expect(customerRows).toEqual([]);
+    });
+
+    // architect 於本卡總覽審查提出的 NICE TO HAVE：上面的案例固定用 11:00（台北）＝
+    // 當天 03:00 UTC，若時區轉換寫錯成直接用 UTC 日期（例如誤寫成 p_start_at::date），
+    // 這個案例一樣會通過（兩個時區當下算出的日期剛好相同），測不出時區邏輯本身是否正確。
+    // 這裡改用台北時間 00:30——換算成 UTC 是「前一天」16:30，只有真的以 Asia/Taipei
+    // 轉換後取 date 才會落在 CREATE_APPOINTMENT_CLOSED_DATE 這一天，才會被公休日檢查
+    // 命中；若程式碼誤用 UTC 日期，會誤判成「前一天」（未標記公休），這個案例就會失敗。
+    it("台北時間跨 UTC 日界（00:30）：公休日判定仍以 Asia/Taipei 曆日為準，不是 UTC 曆日", async () => {
+      const addResult = await addClosedDate(designerClient, CREATE_APPOINTMENT_CLOSED_DATE);
+      closedDatesToCleanup.push(CREATE_APPOINTMENT_CLOSED_DATE);
+      expect(addResult.ok).toBe(true);
+
+      const startAt = isoAt(CREATE_APPOINTMENT_CLOSED_DATE, 0, 30);
+      // 前置假設驗證：這個時間點換算成 UTC 確實是前一天，測試本身才有意義（不是恆真）。
+      expect(startAt.slice(0, 10)).not.toBe(CREATE_APPOINTMENT_CLOSED_DATE);
+
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt,
+        customerName: `${TEST_MARKER} closed-d`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+    });
+
+    it("同一組輸入：get_available_slots 回傳空陣列、create_appointment 拒絕寫入，兩者判斷一致", async () => {
+      const addResult = await addClosedDate(designerClient, CREATE_APPOINTMENT_CLOSED_DATE);
+      closedDatesToCleanup.push(CREATE_APPOINTMENT_CLOSED_DATE);
+      expect(addResult.ok).toBe(true);
+
+      const slotsResult = await getAvailableSlots(anonClient, testServiceId, CREATE_APPOINTMENT_CLOSED_DATE);
+      expect(slotsResult.ok).toBe(true);
+      if (!slotsResult.ok) return;
+      expect(slotsResult.data).toEqual([]);
+
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(CREATE_APPOINTMENT_CLOSED_DATE, 11, 0),
+        customerName: `${TEST_MARKER} closed-b`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+    });
+
+    it("移除公休標記後，同樣輸入的 create_appointment 恢復成功（回歸安全網：未標記公休的日期行為不變）", async () => {
+      const removeResult = await removeClosedDate(designerClient, CREATE_APPOINTMENT_CLOSED_DATE);
+      expect(removeResult.ok).toBe(true);
+
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(CREATE_APPOINTMENT_CLOSED_DATE, 11, 0),
+        customerName: `${TEST_MARKER} closed-c`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(true);
     });
   });
 

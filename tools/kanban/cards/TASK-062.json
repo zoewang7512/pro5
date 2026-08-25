@@ -1,0 +1,62 @@
+{
+  "id": "TASK-062",
+  "title": "create_appointment RPC 加入 business_hours（每週固定公休／營業時間）檢查",
+  "content": "create_appointment 目前只檢查 closed_dates（TASK-028），完全不檢查 business_hours。顧客繞過前端直接呼叫 API 仍能在週固定公休日或非營業時段訂到位。architect／security-reviewer 於 TASK-028 總覽審查一致提出的殘留風險，需先走 spec-interrogation 決定檢查範圍（只擋整天公休，還是連時段對齊也擋）才算 AI-ready。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "",
+  "approvalRequired": true,
+  "createdAt": "2026-08-25",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定每週固定營業時間",
+  "track": "backend",
+  "dependsOn": ["TASK-028"],
+  "order": 62,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": false,
+    "acceptance_testable": false,
+    "files_known": false,
+    "scope_defined": false,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-062.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0004_slots_closures_buffer.sql",
+    "supabase/migrations/0013_create_appointment_closed_dates.sql"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "author": "architect (subagent, TASK-028 總覽審查)",
+      "text": "create_appointment 仍完全不檢查 business_hours（週間固定公休／營業時間外），繞過前端仍可訂到凌晨時段，屬同一類問題，建議另立卡。",
+      "date": "2026-08-25"
+    },
+    {
+      "author": "security-reviewer (subagent, TASK-028 總覽審查)",
+      "text": "殘留風險未關閉：create_appointment 仍完全不檢查 business_hours（每週固定公休、營業起訖）與 30 分鐘時段對齊。繞過前端者仍可在週休日或凌晨下訂，與本卡所修補的是同一類攻擊面，建議開後續卡。",
+      "date": "2026-08-25"
+    }
+  ]
+}

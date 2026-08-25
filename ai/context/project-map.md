@@ -16,7 +16,13 @@
   `services`（含 `buffer_minutes` 欄位，TASK-022，0～120 分鐘，預設 0）／`customers`／
   `appointments`／`admins`（TASK-003）、`business_hours`（TASK-010）、`closed_dates`
   （TASK-022，特定日期整天公休標記，`date` 為 primary key，RLS 邊界比照 `business_hours`：
-  anon／authenticated 皆可讀，只有 `is_admin()` 可寫）、`store_settings`（TASK-029，店家基本
+  anon／authenticated 皆可讀，只有 `is_admin()` 可寫；`create_appointment` 自 TASK-028
+  起也會檢查這張表，不只 `get_available_slots`（TASK-024 起）——顧客繞過前端直接呼叫
+  RPC 不再能在公休日訂到位，見 `supabase/migrations/0013_create_appointment_closed_
+  dates.sql`；**同樣不得啟用 `force row level security`**，理由與下方 `booking_policy`
+  相同：`create_appointment` 的公休日檢查靠 `select ... exists` 讀到列才會生效，force
+  RLS 會讓它讀到 0 列而靜默失效，比 `booking_policy` 的 fallback 更危險——那裡至少還有
+  提前量，這裡整個防線會直接消失）、`store_settings`（TASK-029，店家基本
   資訊與品牌圖片 URL，單例表，`id` 恆為 1，migration 內 seed 保證恆有 1 列，不需要處理零列
   情境；RLS 邊界比照 `business_hours`；後台 `/admin/store-settings`（TASK-030／031）可編輯／
   上傳，顧客前台首頁品牌顯示區塊（TASK-032）anon 讀取後同步顯示，未設定或讀取失敗時回退純

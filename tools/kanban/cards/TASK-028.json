@@ -2,16 +2,18 @@
   "id": "TASK-028",
   "title": "create_appointment RPC 加入 closed_dates 檢查（公休日硬規則不能只靠畫面層擋）",
   "content": "create_appointment 目前完全不檢查 closed_dates，唯一防線是 get_available_slots 在畫面上不顯示公休日時段，顧客繞過前端直接呼叫 API 仍能在公休日訂到位。新增 0005 migration，在服務驗證之後、寫入前新增 closed_dates 檢查，命中即回傳既有 SLOT_CONFLICT 錯誤碼（不新增錯誤碼、不改前端），比照 TASK-024 的 closed_dates 檢查與部署順序防呆既有寫法。TASK-024 安全性審查發現的殘留風險。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-07",
   "epic": "營業時間與可預約時段管理",
   "userStory": "設定公休日／特殊假期",
   "track": "backend",
-  "dependsOn": ["TASK-024"],
+  "dependsOn": [
+    "TASK-024"
+  ],
   "order": 28,
   "readiness": {
     "problem_clear": true,
@@ -20,14 +22,14 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -39,15 +41,29 @@
     "pr": ""
   },
   "refs": [
-    "supabase/migrations/0005_create_appointment_closed_dates.sql",
-    "supabase/migrations/0005_create_appointment_closed_dates_down.sql",
-    "supabase/migrations/0002_booking_flow.sql",
-    "supabase/migrations/0004_slots_closures_buffer.sql"
+    "supabase/migrations/0013_create_appointment_closed_dates.sql",
+    "supabase/migrations/0013_create_appointment_closed_dates_down.sql",
+    "tests/business-hours.integration.test.ts",
+    "ai/context/project-map.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npm run test:business-hours（22/22 通過）",
+      "npm run test:booking（23/23 通過，無回歸）",
+      "npm run test:admin-booking（13/13 通過，無回歸）",
+      "npm test（478/478 通過）",
+      "正式環境手動走查五步驟（標記公休→拒絕→get_available_slots 一致→解除→恢復成功）皆符合預期",
+      "architect 審查：Approve，無 MUST FIX",
+      "security-reviewer 審查：無 MUST FIX"
+    ],
+    "findings": [
+      "兩方審查一致提出殘留風險：create_appointment 仍未檢查 business_hours（每週固定公休），已開 TASK-062 追蹤",
+      "部署防呆補上 booking_policy 表檢查、closed_dates 補上 force RLS 警語、down migration 補上不可跨級回滾警語、新增時區邊界測試——皆已於本卡處理"
+    ],
+    "residual": "business_hours 檢查缺口見 TASK-062（草稿，待 spec-interrogation）"
   },
   "comments": [
     {
@@ -59,6 +75,11 @@
       "author": "user",
       "text": "（緩衝時間不做資料庫層約束是可接受的取捨，但「整天公休」是硬規則）幫我開一張後續任務卡處理這個",
       "date": "2026-08-07"
+    },
+    {
+      "author": "user",
+      "text": "核准修正後方案：改用 0013 編號、以目前正式跑的 0009 版本為底插入公休日檢查（原任務卡的 0005/0002 版本已過時）。",
+      "date": "2026-08-25"
     }
   ]
 }

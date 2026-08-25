@@ -8,10 +8,23 @@
 - 上層 User Story：設定公休日／特殊假期
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-024
-- 狀態：草稿（待核准後轉就緒）
+- 狀態：完成（使用者已核准，2026-08-25）
 - 風險等級：高（修改 `create_appointment`——顧客端唯一的預約寫入路徑，任何邏輯錯誤可能
   導致合法預約被誤擋，或錯誤訊息設計不當洩漏「這天是公休」以外的內部狀態；需要架構、
   安全性、測試三方審查）
+
+**實作期版本基準更正記錄（2026-08-25）**：本卡撰寫於 2026-08-07，當時 `create_appointment`
+最新版本在 `0002_booking_flow.sql`，計畫新增檔案叫 `0005_create_appointment_closed_
+dates.sql`。實際開始實作時（2026-08-25），資料庫已歷經 `0006`～`0012` 共 7 個後續
+migration，其中 `0009_booking_policy_lead_time.sql`（TASK-048）已用 `create or replace`
+重寫過 `create_appointment`（提前量檢查改讀 `booking_policy.min_lead_time_hours`），是
+當下正式環境實際跑的版本。若仍照本卡原始計畫以 0002 版本、`0005` 編號新增，會讓
+`create_appointment` 退回沒有 `booking_policy` 邏輯的舊版本（實質回歸），且編號 `0005`
+會誤導成排在 `0004`／`0006` 之間、與真實部署順序不符。**已與使用者確認並改為**：檔案
+編號 `0013_create_appointment_closed_dates.sql`（下一個真正未使用的編號，正確反映實際
+部署順序），函式內容以 `0009` 版本為底插入公休日檢查。下方「情境包」「需求」段落已
+更新反映這個修正後的基準；未特別加註的部分（檢查邏輯本身、錯誤碼重用、時區判定）與
+原始計畫完全一致，不受此修正影響。
 
 ## 目標
 
@@ -26,10 +39,12 @@
 ## 情境包（Context Pack）
 
 - 相關檔案：
-  - `supabase/migrations/0002_booking_flow.sql` 第 155-270 行：`create_appointment` 現行
-    完整定義，本卡要修改的目標函式（服務驗證、電話/信箱驗證、提前量與視野上限檢查、顧客
-    去重、寫入 `appointments`、`exception` 區塊分類 `unique_violation`／`exclusion_violation`
-    的既有寫法）。
+  - `supabase/migrations/0009_booking_policy_lead_time.sql` 第 155-271 行：
+    `create_appointment` 現行（2026-08-25 實作當下）完整定義，本卡要修改的目標函式（服務
+    驗證、電話/信箱驗證、讀取 `booking_policy.min_lead_time_hours` 的提前量與視野上限
+    檢查、顧客去重、寫入 `appointments`、`exception` 區塊分類 `unique_violation`／
+    `exclusion_violation` 的既有寫法）。**不是** `0002_booking_flow.sql` 的原始版本——見
+    上方「實作期版本基準更正記錄」。
   - `supabase/migrations/0004_slots_closures_buffer.sql`：`get_available_slots` 加入
     `closed_dates` 檢查的既有寫法（`if exists (select 1 from public.closed_dates where
     closed_dates.date = p_date) then ...`）與部署期前置檢查（`do $$ ... raise exception`
@@ -66,8 +81,14 @@
     範圍內處理。
 - 未知事項：無。
 - 允許變更的檔案：
-  - `supabase/migrations/0005_create_appointment_closed_dates.sql`（新增）
-  - `supabase/migrations/0005_create_appointment_closed_dates_down.sql`（新增）
+  - `supabase/migrations/0013_create_appointment_closed_dates.sql`（新增；編號更正見
+    上方「實作期版本基準更正記錄」）
+  - `supabase/migrations/0013_create_appointment_closed_dates_down.sql`（新增）
+  - `tests/business-hours.integration.test.ts`（新增 `create_appointment` 對
+    `closed_dates` 回應的整合測試案例；新增 `customers` 表清除步驟到既有 `afterAll`，
+    因為新測試會透過真正的 RPC 呼叫寫入該表——既有測試檔案先前沒有這個清理步驟）
+  - `ai/context/project-map.md`（`closed_dates` 說明段落更新，記錄 `create_appointment`
+    自本卡起也會檢查該表，以及對應的 force RLS 已知限制）
 - 不得觸碰：`get_available_slots` RPC（TASK-024 範圍，本卡不修改，只讀取同一張
   `closed_dates` 表）、前端任何檔案（`lib/booking/api.ts`／`app/_components/booking/`）——
   重用既有 `SLOT_CONFLICT` 錯誤碼與既有文案，前端不需要異動、也不應該異動、`services`／
@@ -140,10 +161,47 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：無（本卡是 TASK-024 安全性審查發現的殘留風險補完，不阻擋其他任務卡；
-  TASK-027 的整合驗證若尚未開始，建議一併涵蓋本卡新增的行為）。
+- 變更的檔案：
+  - `supabase/migrations/0013_create_appointment_closed_dates.sql`（新增；已人工貼
+    Supabase SQL Editor 套用到正式環境）
+  - `supabase/migrations/0013_create_appointment_closed_dates_down.sql`（新增）
+  - `tests/business-hours.integration.test.ts`（新增「create_appointment RPC 對
+    closed_dates 的回應」describe 區塊，4 個測試案例；新增 `escapeLikePattern` 輔助
+    函式與 `afterAll` 的 `customers` 表清除步驟；新增 `CREATE_APPOINTMENT_CLOSED_
+    WEEKDAY`／`_DATE` 常數）
+  - `ai/context/project-map.md`（`closed_dates` 說明段落更新）
+- 執行過的指令：
+  - `npx tsc --noEmit`／`npm run lint`／`npm run build`：皆通過。
+  - `npm run test:business-hours`：22/22 通過（含本卡新增的 4 個案例）。
+  - `npm run test:booking`：23/23 通過，無回歸（TASK-048 的 `booking_policy` 提前量
+    邏輯仍正確運作，證明本卡以 0009 版本為底、未意外退回 0002 版本）。
+  - `npm run test:admin-booking`：13/13 通過，無回歸。
+  - `npm test`（完整套件）：478/478 通過。
+  - 正式環境手動走查（比照任務卡「實作備註」要求）：標記某天公休 → 呼叫真正的
+    `create_appointment` RPC 被拒絕（`SLOT_CONFLICT`）→ 同日呼叫 `get_available_slots`
+    回傳空陣列 → 解除公休標記 → 重新呼叫 `create_appointment` 成功建立 → 清除測試資料。
+    五步皆符合預期。
+  - `architect`／`security-reviewer` 對本次變更的審查：兩者皆 **Approve／無 MUST FIX**。
+    逐行 diff 確認 0013 除新增的公休日檢查外與 0009 版本完全一致，down migration 與
+    0009 逐字相同（未誤植回 0002）。
+- MUST FIX 修正記錄：無（兩方審查皆無阻斷項）。
+- NICE TO HAVE 處理記錄（兩方審查提出，重疊部分合併列出）：
+  1. 部署順序防呆原本只檢查 `closed_dates` 表存在，遺漏本函式同時依賴的
+     `booking_policy` 表——已補上第二個 `to_regclass` 檢查（`0013:56-59`）。
+  2. `closed_dates` 若未來被誤啟用 `force row level security` 會讓公休日檢查靜默
+     fail-open——已在 migration 檔頭與 `project-map.md` 補上「不得啟用」的明確記錄，
+     比照 `booking_policy` 既有的同類警語。
+  3. down migration 補上「不可跨級回滾」警語，避免未來若有 0014+ 再次重寫
+     `create_appointment` 時，誤套用本檔案把新版本蓋回這裡寫死的舊版本。
+  4. 新增台北時間跨 UTC 日界（00:30）的測試案例，證明時區判定邏輯本身真的被測到
+     （原本三個案例都用 11:00，UTC 與台北剛好同一天，測不出時區轉換是否正確）。
+  5. 任務卡（本檔案）情境包／需求／允許變更的檔案段落原本仍寫著過時的 `0005`／0002
+     版本基準——已同步更正（見上方「實作期版本基準更正記錄」）。
+  6. `create_appointment` 仍未檢查 `business_hours`（每週固定公休／營業時間）——**不在
+     本卡範圍內修正**，已開新任務卡 TASK-062 追蹤，見「後續任務」。
+- 螢幕截圖：不適用（無 UI）。
+- 已知限制：`create_appointment` 仍未檢查 `business_hours`，繞過前端仍可能在週固定
+  公休日或非營業時段訂到位——TASK-062 追蹤。
+- 後續任務：[TASK-062](TASK-062.md)（`create_appointment` 加入 `business_hours` 檢查，
+  architect／security-reviewer 於本卡總覽審查一致提出，草稿狀態，需先走
+  spec-interrogation 決定範圍才算 AI-ready）。
