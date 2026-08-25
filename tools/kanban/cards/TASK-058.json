@@ -2,16 +2,18 @@
   "id": "TASK-058",
   "title": "設計師登入與帳號安全 忘記密碼連結改用伺服器端 verifyOtp（解決 PKCE 跨裝置失效）",
   "content": "TASK-040 的 architect 與 security-reviewer 審查都指出：@supabase/ssr 的 createBrowserClient 強制使用 PKCE flow，resetPasswordForEmail 產生的真實信件連結格式是 `?code=...&flow_id=...`，且 code_verifier 只存在『發起忘記密碼請求那一台瀏覽器』的儲存空間。若設計師在電腦上申請、在手機上開信（常見情境），連結會被誤判為『已逾時或已使用』，即使連結本身完全合法。本卡改用伺服器端 route handler（`app/auth/confirm/route.ts`）呼叫 `supabase.auth.verifyOtp({ type: 'recovery', token_hash })`，成功後導向 `/reset-password`，讓 session 建立發生在伺服器端而非依賴前端瀏覽器儲存的 PKCE code_verifier，解決跨裝置問題。注意：本卡完成後，仍需要人工到 Supabase Dashboard 把 Recovery Email Template 從預設格式改成 `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`，否則新流程不會生效（這部分是 Supabase 專案後台設定，不在本卡程式碼變更範圍內，需使用者自行操作或明確委託）。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-18",
   "epic": "設計師登入與帳號安全",
   "userStory": "忘記密碼／重設密碼",
   "track": "frontend",
-  "dependsOn": ["TASK-040"],
+  "dependsOn": [
+    "TASK-040"
+  ],
   "order": 58,
   "readiness": {
     "problem_clear": true,
@@ -19,22 +21,22 @@
     "acceptance_testable": true,
     "files_known": true,
     "scope_defined": true,
-    "verification_contract": false,
+    "verification_contract": true,
     "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
     "featureSpec": "ai/artifacts/設計師登入與帳號安全/feature-spec.md",
     "screenSpec": "ai/artifacts/設計師登入與帳號安全/screen-spec-登入與驗證流程.md",
     "mockupDecision": "ai/artifacts/設計師登入與帳號安全/mockup-decision-登入與驗證流程.md",
-    "taskCard": "",
+    "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-058.md",
     "verificationReport": "",
     "pr": ""
   },
@@ -42,12 +44,29 @@
     "app/auth/confirm/route.ts",
     "app/reset-password/reset-password-form.tsx",
     "app/login/login-form.tsx",
-    "lib/supabase/server.ts"
+    "tests/components/reset-password-form.test.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npx vitest run（reset-password-form/login-form，25/25 通過）",
+      "npm test（480/480 通過）",
+      "手動實測：真實 Supabase 專案（generateLink 產生測試連結，未寄出真實信件）驗證 amr method 實際值為 otp",
+      "瀏覽器實測：合法 recovery 連結→顯示設定新密碼畫面；一般密碼登入 session 直接造訪 /reset-password→正確被拒",
+      "architect 審查：Request Changes，2 MUST FIX 已修正",
+      "security-reviewer 審查：2 MUST FIX（含核心信任論證缺陷）已修正",
+      "npx vercel deploy --prod --yes（部署到正式環境）",
+      "使用者完成 Supabase Dashboard：設定 Resend SMTP、更新 Recovery Email Template",
+      "正式環境（https://pro5-nu.vercel.app）用 generateLink 驗證 /auth/confirm 完整流程正確"
+    ],
+    "findings": [
+      "M1（security-reviewer）：getAuthenticatorAssuranceLevel() 未搭配 getUser() 驗證，本地解碼 amr 未經驗簽——已修正",
+      "M2（architect／security-reviewer 一致）：/auth/confirm 未收斂 type 只接受 recovery，其他 OTP 類型 token 可被濫用——已修正",
+      "殘留風險：信箱即後台（收到信但未使用即等同已登入 session），已記錄，非本卡新增風險，不在本卡範圍處理"
+    ],
+    "residual": "部署後需使用者立即切換 Supabase Dashboard Recovery Email Template，兩者之間有空窗期忘記密碼功能會失效；method===otp 判斷式耦合本專案目前唯一 OTP 來源，未來新增 OTP-based 登入方式需重新檢視；DESIGNER_EMAIL 非使用者可收信地址，未走過真實寄信最後一哩路驗證，使用者已知悉並選擇跳過"
   },
   "comments": [
     {

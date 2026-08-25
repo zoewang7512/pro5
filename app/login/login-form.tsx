@@ -294,9 +294,7 @@ export function LoginForm() {
             <Box component="form" onSubmit={handleForgotSubmit}>
               <Stack spacing={2}>
                 {forgotResult === "success" && (
-                  <Alert severity="success">
-                    若此 email 對應既有帳號，重設密碼信已寄出，請至信箱查收。請在「這台裝置、這個瀏覽器」開啟信件中的連結，換裝置或換瀏覽器開啟可能會顯示連結已逾時。
-                  </Alert>
+                  <Alert severity="success">若此 email 對應既有帳號，重設密碼信已寄出，請至信箱查收。</Alert>
                 )}
                 {forgotResult === "error" && <Alert severity="error">發生未預期的錯誤，請稍後再試。</Alert>}
                 <TextField
