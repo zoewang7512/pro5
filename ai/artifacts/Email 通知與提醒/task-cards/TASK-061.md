@@ -9,10 +9,9 @@
 - 分軌：不適用（設定變更為主，僅涉及環境變數與極少量說明文件；不改動信件內容或
   程式邏輯）
 - 前置任務（dependsOn）：TASK-051～055（皆已完成）
-- 狀態：草稿（使用者於 2026-08-24 提出，打算購買 Cloudflare 網域，之後再進行；
-  **不算 AI-ready**——購買網域、在 Cloudflare 設定 DNS record、在 Resend Dashboard
-  完成網域驗證，皆是只有使用者本人能操作的步驟（購買/付款、第三方帳號操作），
-  Claude Code 不能代為執行，見「情境包」與「已知限制：人工專屬步驟」）
+- 狀態：完成（使用者已核准，2026-08-25。2026-08-24 提出，人工步驟——購買
+  `zoework.fyi`、Cloudflare DNS 設定、Resend Dashboard 網域驗證——於 2026-08-25
+  完成，Claude Code 隨即接手環境變數切換／重新部署／測試收信）
 - 風險等級：低（純環境變數與寄件地址切換，不改動任何程式邏輯、資料庫 schema
   或密鑰驗證機制；風險主要在「切換後忘記某個環境沒更新」這類設定疏漏）
 
@@ -65,16 +64,20 @@
 
 ## 需求
 
-- 待補（使用者完成網域購買＋DNS 設定＋Resend Dashboard 驗證通過後，回來這張卡
-  提供「網域已驗證」的確認與想用的寄件地址 local part，再由 Claude Code 協助
-  執行環境變數切換與重新部署、並用一個非 Resend 帳號本人的信箱重新測試收信）。
+- 已完成：使用者購買 `zoework.fyi`（Cloudflare Registrar）、在 Cloudflare DNS
+  新增 Resend 要求的三筆 record（TXT `resend._domainkey`／MX `send`／TXT
+  `send`，本次帳號的 DKIM 是 TXT 格式，非 CNAME）、Resend Dashboard 顯示 Domain
+  Verified 後，提供寄件地址 local part（`noreply`），由 Claude Code 接手切換
+  `EMAIL_FROM_ADDRESS`、重新部署、用非帳號本人信箱測試收信。
 
 ## 驗收標準
 
-- 待補（初步預期：`.env.local`／Vercel production 的 `EMAIL_FROM_ADDRESS` 皆已
-  換成新網域下的正式地址；重新部署後，用一個不是 Resend 帳號本人的信箱觸發任一
-  種通知信，確認能正常收到且沒有沙盒限制的錯誤；`project-map.md` 已知限制段落
-  更新反映正式網域已啟用）。
+- `.env.local`／Vercel production 的 `EMAIL_FROM_ADDRESS` 皆已換成
+  `noreply@zoework.fyi`。
+- 重新部署後，用一個不是 Resend 帳號本人的信箱（`sarawang945@gmail.com`）觸發
+  確認信，確認能正常收到且寄件人正確顯示為 `noreply@zoework.fyi`，沒有沙盒限制
+  的錯誤。
+- `project-map.md`「Email 通知與提醒架構」段落已更新反映正式網域已啟用。
 
 ## 實作備註
 
@@ -101,9 +104,25 @@
 
 ## 完成證據
 
-- 變更的檔案：待實作後填寫。
-- 執行過的指令：待實作後填寫。
-- 測試輸出：待實作後填寫。
-- 螢幕截圖：待實作後填寫。
-- 已知限制：待實作後填寫。
-- 後續任務：待補。
+- 變更的檔案：
+  - `.env.local`（`EMAIL_FROM_ADDRESS` 改為 `noreply@zoework.fyi`）
+  - Vercel production 環境變數 `EMAIL_FROM_ADDRESS`（同上，透過 `npx vercel env
+    rm`／`add` 切換，非檔案異動）
+  - `ai/context/project-map.md`（「Email 通知與提醒架構」段落的已知限制文字，改
+    記錄正式網域切換完成的事實）
+- 執行過的指令：
+  - `npx vercel env rm EMAIL_FROM_ADDRESS production --yes`
+  - `npx vercel env add EMAIL_FROM_ADDRESS production`（新值
+    `noreply@zoework.fyi`）
+  - `npx vercel deploy --prod --yes`（讓新環境變數生效）
+  - 手動觸發驗證：用 service role 建立一筆真實測試預約
+    （`customer_email=sarawang945@gmail.com`，非 Resend 帳號本人信箱），觸發正式
+    環境的 Database Webhook → 確認信寄送鏈路，`confirmation_sent_at` 成功設定
+    （無錯誤 log）；驗證完成後已刪除測試資料。
+- 測試輸出：不適用（無自動化測試變更，見「驗證契約」）。
+- 螢幕截圖：不適用；使用者已於對話中口頭確認 `sarawang945@gmail.com`
+  （非帳號本人信箱）收到確認信，寄件人正確顯示 `noreply@zoework.fyi`。
+- 已知限制：無新增（`EMAIL_FROM_ADDRESS` 沙盒限制已解除，`project_email_from_
+  address_sandbox` 這類「上線前必須換網域」的待辦提醒已一併從記憶中移除）。
+- 後續任務：無。Email 通知與提醒 Epic（TASK-051～055、060、061）至此全數完成，
+  已無沙盒模式限制，可正式對外寄送四種通知信。

@@ -166,10 +166,12 @@
    （webhook 端 pg_net 實際送出的請求與回應狀態，pg_net 不會重試，非 2xx 也不會有
    自動補救）；`npx vercel logs https://pro5-nu.vercel.app`（應用程式端 runtime log）。
 
-**已知限制**：`EMAIL_FROM_ADDRESS` 目前是 Resend 提供的沙盒地址
-`onboarding@resend.dev`，只能寄給 Resend 帳號本人註冊的信箱，還不能真正寄給任意顧客
-——正式上線前需要在 Resend Dashboard 完成自訂網域 DNS 驗證、換成該網域下的正式寄件
-地址並重新部署。
+`EMAIL_FROM_ADDRESS` 已於 TASK-061（2026-08-25）從 Resend 沙盒地址
+`onboarding@resend.dev` 換成正式網域 `zoework.fyi`（Cloudflare 購買並代管 DNS）下的
+`noreply@zoework.fyi`：於 Cloudflare DNS 新增 Resend 要求的 DKIM（TXT，
+`resend._domainkey`）／SPF（MX＋TXT，皆為 `send` 子網域）三筆 record 後，Resend
+Dashboard 顯示 Domain Verified；已用非 Resend 帳號本人的信箱（顧客情境）實際收到
+確認信驗證過，寄件人正確顯示為 `noreply@zoework.fyi`，不再受沙盒模式限制。
 
 ## 常用指令
 
