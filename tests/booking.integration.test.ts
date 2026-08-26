@@ -485,8 +485,19 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
   });
 
   describe("提前量／視野上限", () => {
+    // TASK-062 修正：create_appointment 新增 business_hours 檢查後插在提前量檢查之前，
+    // 原本用「現在 + 30 分」動態推算的時間點，只要算出的當地時刻落在營業時間外或當天
+    // 公休，就會被新檢查搶先攔截成 SLOT_CONFLICT 而非預期的 VALIDATION_ERROR，導致本案例
+    // 在特定時段執行時不穩定失敗。改用「昨天（若為週日則往前一天，確保落在營業
+    // weekday）11:00」：固定落在營業時間內（business_hours 檢查通過），但因為是過去
+    // 時刻，必然早於「現在 + 1 小時」門檻，穩定觸發提前量檢查回傳 VALIDATION_ERROR，
+    // 不再依賴測試執行當下的牆鐘時間。
     it("時段早於「現在＋1 小時」應回傳 VALIDATION_ERROR", async () => {
-      const startAt = new Date(Date.now() + 30 * 60_000).toISOString();
+      let pastDate = addDays(taipeiToday(), -1);
+      while (weekdayOf(pastDate) === 0) {
+        pastDate = addDays(pastDate, -1);
+      }
+      const startAt = isoAt(pastDate, 11, 0);
       const envelope = await callCreateAppointment(anonClient, {
         serviceId: testServiceId,
         startAt,
@@ -498,8 +509,12 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       expect(envelope.error_code).toBe("VALIDATION_ERROR");
     });
 
+    // TASK-062 修正：原本用「現在 + 91 天」動態推算，91 天 = 13 週整，weekday 與時分秒
+    // 皆等同「現在」，同樣可能落在營業時間外或公休日而被 business_hours 檢查搶先攔截。
+    // 改用「+91～95 天內第一個非週日 11:00」，維持「超過 90 天視野上限」的語意但避開
+    // weekday／公休不確定性。
     it("時段晚於「現在＋90 天」應回傳 VALIDATION_ERROR", async () => {
-      const startAt = new Date(Date.now() + 91 * 86_400_000).toISOString();
+      const startAt = isoAt(generateOpenWeekdays(1, 91)[0], 11, 0);
       const envelope = await callCreateAppointment(anonClient, {
         serviceId: testServiceId,
         startAt,
@@ -732,12 +747,24 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       expect(envelope).toEqual({ ok: true, data: [] });
     });
 
-    it("min_lead_time_hours 設為非預設值（3 小時）時，create_appointment 以新門檻判斷提前量：差 10 分鐘未達門檻應拒絕，超過門檻應成功", async () => {
-      const { error: setLeadError } = await serviceRoleClient
+    // TASK-062 修正：本案例原本用「現在 + 2h50m／+3h10m」動態算出 startAt，只要算出的
+    // 當地時刻落在營業時間外或公休日，就會被 business_hours 檢查搶先攔截成
+    // SLOT_CONFLICT，而不是預期的 VALIDATION_ERROR／成功。改為「先釘死一個未來營業日
+    // 11:00 的固定目標時段，再反過來調整 min_lead_time_hours」：min_lead_time_hours 上限
+    // 720 小時（30 天，見 0008_booking_policy.sql check constraint），目標選在 +20 天
+    // 左右（約 480 小時），兩側各留 24 小時邊界，仍在合法範圍內，且不再依賴牆鐘時間與
+    // 營業時間的相對關係。
+    it("min_lead_time_hours 設為非預設值時，create_appointment 以新門檻判斷提前量：門檻高於目標距離應拒絕，低於目標距離應成功", async () => {
+      const targetDate = generateOpenWeekdays(1, 20)[0];
+      const targetStartAt = isoAt(targetDate, 11, 0);
+      const hoursUntilTarget = Math.round((epoch(targetStartAt) - Date.now()) / 3_600_000);
+
+      const tooSoonLeadHours = hoursUntilTarget + 24;
+      const { error: setTooSoonLeadError } = await serviceRoleClient
         .from("booking_policy")
-        .update({ min_lead_time_hours: 3 })
+        .update({ min_lead_time_hours: tooSoonLeadHours })
         .eq("id", 1);
-      if (setLeadError) throw setLeadError;
+      if (setTooSoonLeadError) throw setTooSoonLeadError;
 
       // 姓名長度必須留在 create_appointment 的 50 字元上限內（見 0002_booking_flow.sql
       // 第 183-186 行），加上 TEST_MARKER 前綴後預算有限——這裡刻意用短字尾，避免像
@@ -746,7 +773,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       // 卻沒測到真正的行為（test-engineer 於 TASK-048 審查後的實測發現）。
       const tooSoon = await callCreateAppointment(anonClient, {
         serviceId: testServiceId,
-        startAt: new Date(Date.now() + (2 * 60 + 50) * 60_000).toISOString(),
+        startAt: targetStartAt,
         customerName: `${TEST_MARKER} too-soon`,
         customerPhone: testPhone(),
       });
@@ -755,9 +782,16 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       expect(tooSoon.error_code).toBe("VALIDATION_ERROR");
       expect(tooSoon.message).toBe("start_at out of allowed range");
 
+      const farEnoughLeadHours = hoursUntilTarget - 24;
+      const { error: setFarEnoughLeadError } = await serviceRoleClient
+        .from("booking_policy")
+        .update({ min_lead_time_hours: farEnoughLeadHours })
+        .eq("id", 1);
+      if (setFarEnoughLeadError) throw setFarEnoughLeadError;
+
       const farEnough = await callCreateAppointment(anonClient, {
         serviceId: testServiceId,
-        startAt: new Date(Date.now() + (3 * 60 + 10) * 60_000).toISOString(),
+        startAt: targetStartAt,
         customerName: `${TEST_MARKER} far-enough`,
         customerPhone: testPhone(),
       });

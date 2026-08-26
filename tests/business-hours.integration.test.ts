@@ -906,6 +906,319 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
     });
   });
 
+  // TASK-062：create_appointment 目前只檢查 closed_dates（TASK-028，特殊公休日），完全
+  // 不檢查 business_hours（每週固定公休、每天營業起訖時間）——顧客繞過前端直接呼叫 API，
+  // 理論上仍能在週固定公休日或非營業時段成功建立預約。這是 architect／security-reviewer
+  // 於 TASK-028 總覽審查一致提出的殘留風險，本卡在 create_appointment RPC 本身補上
+  // business_hours 檢查（整天公休 + 時段落在 open_time～close_time 之外都擋，含服務時長
+  // 跨過打烊時間的情況）。
+  //
+  // 本批次 offset 74／81 是全新範圍，緊接在既有最後一批（65-71，BUFFER／CROSS_VALIDATE）
+  // 之後，不與既有批次重疊；實際印出的日期見下方 console.log。
+  describe("create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋）", () => {
+    // 只讀取現行 open_time／close_time 快照、不 mutate business_hours，可安全重用任何
+    // 既有 weekday（不會與其他 it 的 mutate-then-restore 產生狀態競爭）。
+    const BUSINESS_HOURS_WEEKDAY = 4; // 週四
+    const BUSINESS_HOURS_DATE = nextDateForWeekday(BUSINESS_HOURS_WEEKDAY, 74);
+    // closed_dates 優先性組合案例用的獨立日期（同一個 weekday，不同 offset，避免與上面
+    // 案例在同一天寫入的預約互相撞上 appointments_no_overlap）。
+    const CLOSED_COMBO_DATE = nextDateForWeekday(BUSINESS_HOURS_WEEKDAY, 81);
+    // 案例 7（跨 UTC 日界的 weekday 判斷）需要暫時把週一改成整天營業（00:00-23:00），
+    // 見下方案例本體的說明；本檔案既有測試已用週一兩次（CLOSED_RLS_WEEKDAY／
+    // BUFFER_WEEKDAY，皆為「單一 it 內短暫改動並立即還原」模式），vitest 依宣告順序
+    // 循序執行 it，本案例的 afterEach 會在下一個用到週一的既有案例執行前把週一還原，
+    // 不會產生跨案例的狀態污染。
+    const CROSS_UTC_WEEKDAY = 1; // 週一
+    // 案例 8（fail-closed 分支）需要暫時刪除某個營業中 weekday 的列，選用週五（與
+    // SLOTS_WEEKDAY 相同，該既有案例也是「單一 it 內短暫改動並立即還原」模式，序執行下
+    // 不會互相干擾）。
+    const MISSING_ROW_WEEKDAY = 5; // 週五
+    const MISSING_ROW_DATE = nextDateForWeekday(MISSING_ROW_WEEKDAY, 74);
+    // 案例 1（整天公休）直接使用種子資料中已經是公休的週日，本檔案目前沒有其他案例用過
+    // weekday 0，不需要額外 mutate／restore。
+    const SUNDAY_DATE = nextDateForWeekday(0, 74);
+
+    console.log(
+      `[business-hours.integration.test][TASK-062] 本次執行使用的日期：` +
+        JSON.stringify({ BUSINESS_HOURS_DATE, CLOSED_COMBO_DATE, MISSING_ROW_DATE, SUNDAY_DATE }),
+    );
+
+    let businessHoursOpen: string;
+    let businessHoursClose: string;
+
+    beforeAll(async () => {
+      const row = await fetchRow(BUSINESS_HOURS_WEEKDAY);
+      // 前置假設：BUSINESS_HOURS_WEEKDAY 目前是正常營業日，下面的邊界時間推導才有意義。
+      expect(row.is_closed).toBe(false);
+      expect(row.open_time).not.toBeNull();
+      expect(row.close_time).not.toBeNull();
+      businessHoursOpen = row.open_time!.slice(0, 5);
+      businessHoursClose = row.close_time!.slice(0, 5);
+    });
+
+    it("整天公休（週日，種子資料既有設定）：回傳 SLOT_CONFLICT，不寫入任何 appointments／customers 資料", async () => {
+      const phone = testPhone();
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(SUNDAY_DATE, 11, 0),
+        customerName: `${TEST_MARKER} bh-closed-day`,
+        customerPhone: phone,
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+
+      const { data: appointmentRows, error: appointmentError } = await serviceRoleClient
+        .from("appointments")
+        .select("id")
+        .eq("customer_phone", phone);
+      if (appointmentError) throw appointmentError;
+      expect(appointmentRows).toEqual([]);
+    });
+
+    // 姓名長度必須留在 create_appointment 的 50 字元上限內（見 0002_booking_flow.sql
+    // 第 183-186 行），加上 TEST_MARKER 前綴後預算有限——比照 TASK-028 既有案例的作法，
+    // 下方全部改用短字尾（本檔案原始草稿曾誤用較長字尾導致姓名驗證搶先失敗，回傳的其實是
+    // VALIDATION_ERROR "invalid name"，跟真正要測的 business_hours 判斷混在一起、
+    // 掩蓋了真正的測試結果，已修正）。
+    it("非公休 weekday、時段早於 open_time：回傳 SLOT_CONFLICT", async () => {
+      const [openH, openM] = businessHoursOpen.split(":").map(Number);
+      const beforeOpenMinutes = openH * 60 + openM - 30;
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(BUSINESS_HOURS_DATE, Math.floor(beforeOpenMinutes / 60), beforeOpenMinutes % 60),
+        customerName: `${TEST_MARKER} bh-bef-open`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+    });
+
+    it("非公休 weekday、時段（含服務時長）晚於 close_time：回傳 SLOT_CONFLICT", async () => {
+      const [closeH, closeM] = businessHoursClose.split(":").map(Number);
+      // testServiceId 的 duration_minutes 為 30（beforeAll 建立時設定），從「close_time
+      // 前 10 分鐘」起訂會讓服務結束時間晚於 close_time 20 分鐘。
+      const startMinutes = closeH * 60 + closeM - 10;
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(BUSINESS_HOURS_DATE, Math.floor(startMinutes / 60), startMinutes % 60),
+        customerName: `${TEST_MARKER} bh-aft-close`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+    });
+
+    it("非公休 weekday、時段完整落在營業時間內：成功建立（回歸安全網）", async () => {
+      const [openH, openM] = businessHoursOpen.split(":").map(Number);
+      const startMinutes = openH * 60 + openM + 60; // 開店後 1 小時，確定落在營業時間內
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(BUSINESS_HOURS_DATE, Math.floor(startMinutes / 60), startMinutes % 60),
+        customerName: `${TEST_MARKER} bh-ok`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it("邊界相等值：起點恰好等於 open_time 應成功，終點恰好等於 close_time 應成功", async () => {
+      const [openH, openM] = businessHoursOpen.split(":").map(Number);
+      const atOpen = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(BUSINESS_HOURS_DATE, openH, openM),
+        customerName: `${TEST_MARKER} bh-at-open`,
+        customerPhone: testPhone(),
+      });
+      expect(atOpen.ok).toBe(true);
+
+      const [closeH, closeM] = businessHoursClose.split(":").map(Number);
+      // testServiceId duration_minutes=30：從「close_time 前 30 分鐘」起訂，服務結束時間
+      // 恰好等於 close_time。
+      const startMinutes = closeH * 60 + closeM - 30;
+      const atClose = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(BUSINESS_HOURS_DATE, Math.floor(startMinutes / 60), startMinutes % 60),
+        customerName: `${TEST_MARKER} bh-at-close`,
+        customerPhone: testPhone(),
+      });
+      expect(atClose.ok).toBe(true);
+    });
+
+    it("服務時段跨越台北時間午夜：即使當天有營業時間設定，仍必須被拒絕（核心回歸測試，證明 ::time 跨午夜 fail-open 漏洞已修正）", async () => {
+      // 用 BUSINESS_HOURS_DATE 的「前一天」23:45 起訂 30 分鐘服務，結束時間落在
+      // BUSINESS_HOURS_DATE 00:15——若檢查邏輯用 ::time 只比較時分秒會誤判放行，用
+      // timestamptz 區間比較則會被 v_end_at > v_day_end 擋下。
+      const previousDay = addDays(BUSINESS_HOURS_DATE, -1);
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(previousDay, 23, 45),
+        customerName: `${TEST_MARKER} bh-midnight`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+    });
+
+    it("台北時間跨 UTC 日界的 weekday 判斷：暫時把週一設為整天營業（00:00-23:00），台北週一 00:30 起訂應成功；若誤用 UTC 日期（此時仍是週日、is_closed）則會被誤拒", async () => {
+      const original = originalSnapshot.find((row) => row.weekday === CROSS_UTC_WEEKDAY)!;
+      const originalInput = toInput(original);
+
+      const writeResult = await updateBusinessHours(designerClient, [
+        { weekday: CROSS_UTC_WEEKDAY, open_time: "00:00", close_time: "23:00", is_closed: false },
+      ]);
+      expect(writeResult.ok).toBe(true);
+
+      try {
+        const crossUtcDate = nextDateForWeekday(CROSS_UTC_WEEKDAY, 74);
+        const startAt = isoAt(crossUtcDate, 0, 30);
+        // 前置假設驗證：這個時間點換算成 UTC 確實是前一天（週日），測試本身才有意義。
+        expect(startAt.slice(0, 10)).not.toBe(crossUtcDate);
+
+        const result = await createAppointment(anonClient, {
+          serviceId: testServiceId,
+          startAt,
+          customerName: `${TEST_MARKER} bh-utc-wd`,
+          customerPhone: testPhone(),
+        });
+        expect(result.ok).toBe(true);
+      } finally {
+        const restoreResult = await updateBusinessHours(designerClient, [originalInput]);
+        expect(restoreResult.ok).toBe(true);
+      }
+    });
+
+    it("查無該 weekday 設定列的 fail-closed 分支：先確認正常可預約（positive control），刪除該 weekday 列後應被拒絕，插回後恢復可預約", async () => {
+      const original = originalSnapshot.find((row) => row.weekday === MISSING_ROW_WEEKDAY)!;
+      expect(original.is_closed).toBe(false);
+
+      const phoneBefore = testPhone();
+      const beforeDelete = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(MISSING_ROW_DATE, 11, 0),
+        customerName: `${TEST_MARKER} bh-miss-ctl`,
+        customerPhone: phoneBefore,
+      });
+      // positive control：刪除前必須先確認這組輸入本來就會成功，證明等一下的拒絕不是巧合。
+      expect(beforeDelete.ok).toBe(true);
+
+      const { error: deleteError } = await serviceRoleClient
+        .from("business_hours")
+        .delete()
+        .eq("weekday", MISSING_ROW_WEEKDAY);
+      if (deleteError) throw deleteError;
+
+      try {
+        const afterDelete = await createAppointment(anonClient, {
+          serviceId: testServiceId,
+          startAt: isoAt(MISSING_ROW_DATE, 13, 0),
+          customerName: `${TEST_MARKER} bh-miss`,
+          customerPhone: testPhone(),
+        });
+        expect(afterDelete.ok).toBe(false);
+        if (!afterDelete.ok) {
+          expect(afterDelete.error.code).toBe("SLOT_CONFLICT");
+        }
+      } finally {
+        const { error: restoreError } = await serviceRoleClient.from("business_hours").insert(original);
+        if (restoreError) throw restoreError;
+      }
+
+      const afterRestore = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(MISSING_ROW_DATE, 15, 0),
+        customerName: `${TEST_MARKER} bh-miss-rst`,
+        customerPhone: testPhone(),
+      });
+      expect(afterRestore.ok).toBe(true);
+    });
+
+    it("非有限 p_start_at（infinity／null）：回傳 VALIDATION_ERROR，不寫入任何資料列", async () => {
+      const phoneInfinity = testPhone();
+      const infinityResult = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: "infinity",
+        customerName: `${TEST_MARKER} bh-infinity`,
+        customerPhone: phoneInfinity,
+      });
+      expect(infinityResult.ok).toBe(false);
+      if (!infinityResult.ok) {
+        expect(infinityResult.error.code).toBe("VALIDATION_ERROR");
+      }
+
+      const phoneNull = testPhone();
+      const nullResult = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        // @ts-expect-error 刻意傳入 null 測試後端防護，前端型別本來就不允許
+        startAt: null,
+        customerName: `${TEST_MARKER} bh-null`,
+        customerPhone: phoneNull,
+      });
+      expect(nullResult.ok).toBe(false);
+      if (!nullResult.ok) {
+        expect(nullResult.error.code).toBe("VALIDATION_ERROR");
+      }
+
+      const { data: appointmentRows, error: appointmentError } = await serviceRoleClient
+        .from("appointments")
+        .select("id")
+        .in("customer_phone", [phoneInfinity, phoneNull]);
+      if (appointmentError) throw appointmentError;
+      expect(appointmentRows).toEqual([]);
+    });
+
+    it("closed_dates 優先性組合案例：同一天同時符合正常營業時間、但被標記為特殊公休，closed_dates 檢查仍正確優先拒絕", async () => {
+      const addResult = await addClosedDate(designerClient, CLOSED_COMBO_DATE);
+      closedDatesToCleanup.push(CLOSED_COMBO_DATE);
+      expect(addResult.ok).toBe(true);
+
+      const [openH, openM] = businessHoursOpen.split(":").map(Number);
+      const startMinutes = openH * 60 + openM + 60;
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(CLOSED_COMBO_DATE, Math.floor(startMinutes / 60), startMinutes % 60),
+        customerName: `${TEST_MARKER} bh-cd-pri`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+
+      const removeResult = await removeClosedDate(designerClient, CLOSED_COMBO_DATE);
+      expect(removeResult.ok).toBe(true);
+    });
+
+    it("同一組輸入（限 business_hours 判斷維度）：get_available_slots 回傳空陣列的情況，create_appointment 一律拒絕寫入，兩者判斷一致", async () => {
+      const [closeH, closeM] = businessHoursClose.split(":").map(Number);
+      const afterCloseMinutes = closeH * 60 + closeM + 30;
+      const afterCloseHour = Math.floor(afterCloseMinutes / 60);
+      const afterCloseMinute = afterCloseMinutes % 60;
+
+      // afterCloseHour 可能超過 23（跨日），isoAt 只接受單日內的 hh/mm，這裡限制在同一天
+      // 內測試（打烊後 30 分鐘仍在同一天）以維持案例單純，避免額外處理跨日建構。
+      if (afterCloseHour > 23) return;
+
+      const slotsResult = await getAvailableSlots(anonClient, testServiceId, BUSINESS_HOURS_DATE);
+      expect(slotsResult.ok).toBe(true);
+      if (!slotsResult.ok) return;
+      const slotsStartTimes = slotsResult.data.map((slot) => new Date(slot.start_at).getTime());
+      const probeTime = new Date(isoAt(BUSINESS_HOURS_DATE, afterCloseHour, afterCloseMinute)).getTime();
+      expect(slotsStartTimes).not.toContain(probeTime);
+
+      const result = await createAppointment(anonClient, {
+        serviceId: testServiceId,
+        startAt: isoAt(BUSINESS_HOURS_DATE, afterCloseHour, afterCloseMinute),
+        customerName: `${TEST_MARKER} bh-consis`,
+        customerPhone: testPhone(),
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("SLOT_CONFLICT");
+    });
+  });
+
   describe("get_available_slots RPC 對 services.buffer_minutes 的回應", () => {
     it("buffer_minutes=30 的服務，緊接既有預約結束後 30 分鐘內的候選時段不可預約，30 分鐘後恢復正常", async () => {
       await insertAppointment({

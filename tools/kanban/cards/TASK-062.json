@@ -1,11 +1,11 @@
 {
   "id": "TASK-062",
   "title": "create_appointment RPC 加入 business_hours（每週固定公休／營業時間）檢查",
-  "content": "create_appointment 目前只檢查 closed_dates（TASK-028），完全不檢查 business_hours。顧客繞過前端直接呼叫 API 仍能在週固定公休日或非營業時段訂到位。architect／security-reviewer 於 TASK-028 總覽審查一致提出的殘留風險，需先走 spec-interrogation 決定檢查範圍（只擋整天公休，還是連時段對齊也擋）才算 AI-ready。",
-  "stage": "backlog",
+  "content": "create_appointment 目前只檢查 closed_dates（TASK-028），完全不檢查 business_hours。顧客繞過前端直接呼叫 API 仍能在週固定公休日或非營業時段訂到位。architect／security-reviewer 於 TASK-028 總覽審查一致提出的殘留風險。新增 0014 migration，在 closed_dates 檢查之後、寫入前新增 business_hours 檢查（整天公休 + 時段落在 open_time～close_time 之外都擋），改用 timestamptz 區間比較避免跨午夜 fail-open，查無該 weekday 設定列時 fail-closed 拒絕。",
+  "stage": "done",
   "risk": "high",
   "owner": "",
-  "agent": "",
+  "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-08-25",
   "epic": "營業時間與可預約時段管理",
@@ -15,19 +15,19 @@
   "order": 62,
   "readiness": {
     "problem_clear": true,
-    "non_goals_clear": false,
-    "acceptance_testable": false,
-    "files_known": false,
-    "scope_defined": false,
-    "verification_contract": false,
-    "human_approval_recorded": false
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "links": {
@@ -39,13 +39,35 @@
     "pr": ""
   },
   "refs": [
-    "supabase/migrations/0004_slots_closures_buffer.sql",
-    "supabase/migrations/0013_create_appointment_closed_dates.sql"
+    "supabase/migrations/0014_create_appointment_business_hours.sql",
+    "supabase/migrations/0014_create_appointment_business_hours_down.sql",
+    "tests/business-hours.integration.test.ts",
+    "tests/booking.integration.test.ts",
+    "ai/context/project-map.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（通過）",
+      "npm run build（通過）",
+      "npm run test:business-hours（33/33 通過，含本卡新增 11 個案例）",
+      "npm run test:booking（23/23 通過，無回歸，含修正 4 處受影響的既有案例）",
+      "npm run test:admin-booking（13/13 通過，無回歸）",
+      "npm test（480/481，唯一失敗為與本卡無關的 account-settings-view.test.tsx 既有間歇性逾時，單獨執行穩定 33/33 通過）",
+      "版本基準核對：無 pg_get_functiondef 直連管道，改用無副作用行為探測（'週日+100天'／'infinity' 兩組探測），套用前後行為差異確認 0014 已正確生效",
+      "architect 兩輪審查：第一輪 Request Changes，第二輪 Request Changes（僅測試範圍與文件敘述層級），核心 SQL 邏輯確認正確",
+      "security-reviewer 兩輪審查：第一輪 Request Changes，第二輪 Request Changes（僅測試範圍與文件敘述層級），核心 SQL 邏輯確認正確",
+      "test-engineer 第一輪審查：Request Changes，MUST FIX 已修正",
+      "使用者已檢視 diff 與完成證據並確認驗收"
+    ],
+    "findings": [
+      "第一輪審查三方一致發現核心邏輯漏洞：原始 SQL 用 ::time 比較會在服務時段跨越台北時間午夜時回捲失效（fail-open），已改用 timestamptz 區間比較（v_day_start／v_day_end）修正",
+      "第二輪審查發現並修正：tests/booking.integration.test.ts 受影響案例不只原計畫的 1 處而是 4 處；驗證契約案例 7（跨 UTC 日界 weekday 判斷）原設計在 seed 資料下是零鑑別力空測試，已重新設計；案例 8（fail-closed 分支）原指示會選到已公休的 weekday 導致假通過，已改為指定營業中 weekday 並加 positive control",
+      "實作階段發現測試自身 bug：新增案例的 customerName 字尾過長，加總 TEST_MARKER 前綴後超過 50 字元姓名上限，姓名驗證搶先失敗掩蓋真正測試結果，已修正為短字尾",
+      "已知限制：get_available_slots 與 create_appointment 在 30 分鐘刻度對齊／buffer_minutes 兩項仍不一致（非本卡範圍）；資料庫寫入層永久排除跨午夜營業設定；force row level security 對本函式是否生效尚未查證（postgres 角色通常具 BYPASSRLS），主要 fail-closed 觸發原因已確認為「weekday 列被誤刪」",
+      "後續任務：closed_dates 補 revoke truncate；lib/admin/business-hours.ts 的 isAppointmentOutsideHours 有同類跨午夜 bug；評估抽 business_day_window(p_date) 共用函式；查證 BYPASSRLS；調查 account-settings-view.test.tsx 間歇性逾時問題"
+    ],
+    "residual": "已知限制與後續任務見上；無阻斷本卡驗收的殘留風險"
   },
   "comments": [
     {
@@ -57,6 +79,36 @@
       "author": "security-reviewer (subagent, TASK-028 總覽審查)",
       "text": "殘留風險未關閉：create_appointment 仍完全不檢查 business_hours（每週固定公休、營業起訖）與 30 分鐘時段對齊。繞過前端者仍可在週休日或凌晨下訂，與本卡所修補的是同一類攻擊面，建議開後續卡。",
       "date": "2026-08-25"
+    },
+    {
+      "author": "user",
+      "text": "檢查範圍：整天公休 + 時段落在營業時間外都擋（含服務時長跨過打烊時間）；不檢查 30 分鐘時段對齊，維持現狀。",
+      "date": "2026-08-26"
+    },
+    {
+      "author": "architect／security-reviewer／test-engineer (subagent, 第一輪審查)",
+      "text": "Request Changes：原始 SQL 用 ::time 比較在服務時段跨越台北時間午夜時會 fail-open，三方獨立發現同一漏洞，需改用 timestamptz 區間比較。",
+      "date": "2026-08-26"
+    },
+    {
+      "author": "architect／security-reviewer (subagent, 第二輪審查)",
+      "text": "Request Changes（範圍縮小）：核心 SQL 邏輯已確認正確，剩餘問題為 tests/booking.integration.test.ts 受影響範圍不足、驗證契約案例 7／8 設計有零鑑別力／假通過風險，皆已修正。",
+      "date": "2026-08-26"
+    },
+    {
+      "author": "user",
+      "text": "核准，進入 Agent 執行中。",
+      "date": "2026-08-26"
+    },
+    {
+      "author": "user",
+      "text": "0014 migration 已人工貼 Supabase SQL Editor 套用完成。",
+      "date": "2026-08-26"
+    },
+    {
+      "author": "user",
+      "text": "完成（驗收確認）。",
+      "date": "2026-08-26"
     }
   ]
 }

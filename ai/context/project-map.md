@@ -14,7 +14,21 @@
 - 後端：Next.js Server Components／Server Actions + Supabase（BaaS）
 - 資料庫：Supabase Postgres，啟用 RLS；schema 定義於 `supabase/migrations/`。核心表：
   `services`（含 `buffer_minutes` 欄位，TASK-022，0～120 分鐘，預設 0）／`customers`／
-  `appointments`／`admins`（TASK-003）、`business_hours`（TASK-010）、`closed_dates`
+  `appointments`／`admins`（TASK-003）、`business_hours`（TASK-010，每週固定營業時間／
+  固定公休；`create_appointment` 自 TASK-062 起也會檢查這張表，不只 `get_available_
+  slots`（TASK-024 起）——顧客繞過前端直接呼叫 RPC 不再能在週固定公休日或非營業時段
+  訂到位，見 `supabase/migrations/0014_create_appointment_business_hours.sql`；查無
+  該 weekday 的設定列時一律拒絕（fail-closed），已確認的主要觸發原因是該 weekday 列被
+  誤刪或後台 upsert 部分失敗——`0002_booking_flow.sql:37-43` 的 admin policy 是
+  `for all`（含 DELETE），設計師身分本來就能刪除某個 weekday 的列，與 RLS 完全無關、
+  且已確認可真實發生；`force row level security` 誤啟用只是次要、**未經查證**的理論
+  前提（Supabase 的 `postgres` 角色通常具有 `BYPASSRLS`，若函式擁有者是 `postgres`，
+  force RLS 對 `security definer` 函式可能根本不生效），不是主要敘事。**故障徵狀**：
+  這個分支觸發時，全站該 weekday 的預約 100% 被拒、訊息一律是 `SLOT_CONFLICT`，
+  `get_available_slots` 同時對該 weekday 全部日期回傳空陣列，錯誤碼本身看不出根因；
+  Postgres log 有 `raise log 'create_appointment: business_hours missing row for
+  weekday %'` 記錄可查——這是判斷「單純該 weekday 公休」與「設定列意外消失」的入口）、
+  `closed_dates`
   （TASK-022，特定日期整天公休標記，`date` 為 primary key，RLS 邊界比照 `business_hours`：
   anon／authenticated 皆可讀，只有 `is_admin()` 可寫；`create_appointment` 自 TASK-028
   起也會檢查這張表，不只 `get_available_slots`（TASK-024 起）——顧客繞過前端直接呼叫
