@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sidebar 導覽圖示化 Variant B · 整列圓角底色</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --l-grey-100:#F6F3EE; --l-grey-200:#EFEAE2; --l-grey-300:#E4DDD1; --l-grey-500:#A79E92; --l-grey-700:#6B6259; --l-grey-900:#2B2622;
+    --l-primary-50:#FBF4E2; --l-primary-300:#DDB55A; --l-primary-500:#A9812F; --l-primary-700:#6F531E;
+    --l-surface:#FFFFFF; --l-shadow: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --d-grey-100:#201C18; --d-grey-200:#241F1B; --d-grey-300:#423A31; --d-grey-500:#8A8074; --d-grey-700:#C9BFB1; --d-grey-900:#F3EEE6;
+    --d-primary-50:#3A2E1A; --d-primary-light:#E4C177; --d-primary-main:#D4A84B; --d-primary-dark:#A9812F;
+    --d-bg:#201C18; --d-paper:#2A241F; --d-shadow: 0 8px 24px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
+    --radius-sm:8px; --radius-md:12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: #2B2622; margin: 0 0 4px; }
+  p.desc { font-size: 13px; color: #6B6259; margin: 0 0 24px; max-width: 640px; line-height: 1.7; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .swatch .label { font-size: 12px; font-weight: 600; color: #6B6259; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+
+  .sidebar-frame { width: 220px; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--l-shadow); }
+  .sidebar-frame.light { background: var(--l-surface); }
+  .sidebar-frame.dark { background: var(--d-paper); box-shadow: var(--d-shadow); }
+  .sb-title { padding: 0 20px 20px; font-size: 13px; font-weight: 700; }
+  .light .sb-title { color: var(--l-grey-900); }
+  .dark .sb-title { color: var(--d-grey-900); }
+  .sb-body { padding: 0 12px 20px; display: flex; flex-direction: column; gap: 4px; }
+
+  /* nav item：整列圓角底色（比照 shadcn-admin/TailAdmin 常見 active 樣式），不再用右側 border */
+  .sb-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-size: 16px; font-weight: 500; border-radius: var(--radius-sm); cursor: pointer; }
+  .sb-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; }
+  .light .sb-nav-item { color: var(--l-grey-700); }
+  .dark .sb-nav-item { color: var(--d-grey-700); }
+
+  .light .sb-nav-item.hover { background: var(--l-grey-200); }
+  .dark .sb-nav-item.hover { background: var(--d-grey-200); }
+
+  .light .sb-nav-item.active { color: var(--l-primary-700); background: var(--l-primary-50); font-weight: 600; }
+  .dark .sb-nav-item.active { color: var(--d-primary-light); background: var(--d-primary-50); font-weight: 600; }
+
+  .light .sb-nav-item.disabled { color: var(--l-grey-500); cursor: default; }
+  .dark .sb-nav-item.disabled { color: var(--d-grey-500); cursor: default; }
+
+  .light .sb-nav-item.focus { box-shadow: inset 0 0 0 2px var(--l-primary-300); }
+  .dark .sb-nav-item.focus { box-shadow: inset 0 0 0 2px var(--d-primary-main); }
+
+  .state-tag { font-size: 11px; font-weight: 600; opacity: .6; margin-left: auto; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">Sidebar 導覽圖示化 · Variant B：整列圓角底色</h1>
+  <p class="desc">比照 shadcn-admin／TailAdmin 常見的 admin sidebar 慣例：拿掉現行右側 3px border，改成使用中項目「整列」套用 <code>primary.50</code>（暗色對應淺色調底）圓角背景，圖示＋文字皆轉 <code>primary.700</code>／<code>primary.light</code>。視覺上更像現代 dashboard，辨識度比 Variant A 高，但改變了 Nav.tsx／既有 Sidebar 沿用多次的「右側邊框＝使用中」語言，兩處會不一致，且底色新增了 <code>primary.50</code> 這個目前 Sidebar 未用過的色階（design-system.md 已有此 token，屬於既有色板內選用，非新增）。</p>
+
+  <div class="row">
+    <div class="swatch">
+      <div class="label">亮色模式</div>
+      <div class="sidebar-frame light">
+        <div class="sb-title serif">理髮廳後台</div>
+        <div class="sb-body">
+          <div class="sb-nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+            預約
+          </div>
+          <div class="sb-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><path d="M7.8 7.8L20 20M20 4L7.8 16.2"/></svg>
+            服務設定
+          </div>
+          <div class="sb-nav-item hover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            營業時間
+            <span class="state-tag">hover</span>
+          </div>
+          <div class="sb-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.5h6a1 1 0 011 1V6H8V4.5a1 1 0 011-1z"/><path d="M9 13l2 2 4-4"/></svg>
+            預約規則
+          </div>
+          <div class="sb-nav-item disabled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1-5h14l1 5"/><path d="M4 9a2 2 0 004 0 2 2 0 004 0 2 2 0 004 0 2 2 0 004 0"/><path d="M5 9v11h14V9"/><path d="M10 20v-6h4v6"/></svg>
+            商店設定
+            <span class="state-tag">disabled</span>
+          </div>
+          <div class="sb-nav-item focus">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 19a6 6 0 0111 0"/></svg>
+            帳號設定
+            <span class="state-tag">focus</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="label">暗色模式</div>
+      <div class="sidebar-frame dark">
+        <div class="sb-title serif">理髮廳後台</div>
+        <div class="sb-body">
+          <div class="sb-nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+            預約
+          </div>
+          <div class="sb-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><path d="M7.8 7.8L20 20M20 4L7.8 16.2"/></svg>
+            服務設定
+          </div>
+          <div class="sb-nav-item hover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            營業時間
+            <span class="state-tag">hover</span>
+          </div>
+          <div class="sb-nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.5h6a1 1 0 011 1V6H8V4.5a1 1 0 011-1z"/><path d="M9 13l2 2 4-4"/></svg>
+            預約規則
+          </div>
+          <div class="sb-nav-item disabled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1-5h14l1 5"/><path d="M4 9a2 2 0 004 0 2 2 0 004 0 2 2 0 004 0 2 2 0 004 0"/><path d="M5 9v11h14V9"/><path d="M10 20v-6h4v6"/></svg>
+            商店設定
+            <span class="state-tag">disabled</span>
+          </div>
+          <div class="sb-nav-item focus">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 19a6 6 0 0111 0"/></svg>
+            帳號設定
+            <span class="state-tag">focus</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

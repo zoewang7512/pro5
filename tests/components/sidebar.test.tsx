@@ -46,4 +46,35 @@ describe("Sidebar", () => {
     );
     expect(screen.queryByRole("button", { name: /切換為(亮|暗)色模式/ })).not.toBeInTheDocument();
   });
+
+  it("導覽項目傳入 icon 時會渲染該圖示（TASK-064）", () => {
+    mockMatchMedia();
+    const { container } = render(
+      <Sidebar
+        title="理髮廳後台"
+        items={[
+          {
+            label: "預約",
+            href: "/admin",
+            active: true,
+            icon: (
+              <svg data-testid="nav-icon-booking" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="16" />
+              </svg>
+            ),
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByTestId("nav-icon-booking")).toBeInTheDocument();
+    expect(container.querySelectorAll("svg")).toHaveLength(1);
+  });
+
+  it("導覽項目未傳入 icon 時仍正常渲染文字，不報錯", () => {
+    mockMatchMedia();
+    render(
+      <Sidebar title="理髮廳後台" items={[{ label: "服務設定", href: "/admin/services" }]} />,
+    );
+    expect(screen.getByText("服務設定")).toBeInTheDocument();
+  });
 });

@@ -1,0 +1,114 @@
+{
+  "id": "TASK-064",
+  "title": "UI 設計系統 Sidebar 導覽圖示化（icon＋文字並排、字級加大、明暗模式自動切換）",
+  "content": "後台 Sidebar 6 個導覽項目改為圖示＋文字並排；套用已核准 Variant A（延續現況＋前綴圖示）。v1 尺寸（文字18/圖示22/py16/標題20）人工驗收後覺得偏大，v2 修訂縮小為文字16px、圖示20px、項目垂直間距12px、標題18px（先出對照圖核准才動工）。圖示比照 ColorModeToggle.tsx 手繪 SVG 慣例，不安裝 @mui/icons-material；圖示與文字共用同一個顏色來源（繼承 ListItemButton color），自動隨明暗模式切換。完成後登記回 design-system.md S4 inventory。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-09-05",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-014", "TASK-063"],
+  "order": 64,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-sidebar導覽圖示化.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-sidebar導覽圖示化.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-064.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "components/ui/Sidebar.tsx",
+    "app/admin/_components/AdminShell.tsx",
+    "components/ui/ColorModeToggle.tsx",
+    "lib/theme/tokens.ts",
+    "ai/context/design-system.md",
+    "tests/components/sidebar.test.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（0 problems）",
+      "npm run build（成功）",
+      "npx vitest run tests/components/sidebar.test.tsx（4/4 通過）",
+      "npx vitest run tests/components（13 個測試檔、108/108 全數通過）",
+      "Browser 工具實際登入 /admin（沿用既有 session）驗證亮色／暗色模式渲染正確",
+      "v2 修訂：npx tsc --noEmit／npm run lint／npm run build 皆再次通過，npx vitest run tests/components/sidebar.test.tsx 4/4 通過，Browser 工具重新登入 /admin 確認縮小後尺寸正確渲染"
+    ],
+    "findings": [],
+    "residual": "無"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "Sidebar 目前只有文字，想改為 icon+文字、字級加大、且顏色隨 dark mode 變化。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "屬既有 Sidebar 元件（TASK-014）樣式調整，掛在既有 Epic「專案設置」→ User Story「UI 設計系統」下，不需新增 Epic。已完成 3 個 mockup 變體比較，供人工選擇。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "選 Variant A（延續現況＋前綴圖示），並要求：文字 18px、圖示 22px、項目間距加大、Sidebar 標題加大且粗體。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "已依核准的尺寸調整更新 mockup-decision 為已核准，建立本卡，轉 ready 準備實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "實作完成：Sidebar.tsx 新增 icon 選填欄位並調整字級／間距，AdminShell.tsx 補上 6 個手繪圖示；tsc/lint/build 皆通過，元件測試 108/108 通過，並用瀏覽器實際登入 /admin 確認亮暗色模式渲染正確。design-system.md S4 inventory 已更新。轉 verify，待人工驗收轉 Done（比照看板規則，agent 自我驗證不等同人工核准）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "看過 /admin 後覺得文字/圖示偏大：要求文字改 16px、圖示改 20px、項目間距縮小、標題縮小一點。並要求先出圖確認再寫程式碼。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "已產出現況 vs 調整後對照 mockup（sidebar-nav-variant-a-v2.html）並傳送給使用者確認。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "沒問題，請實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "v2 尺寸調整實作完成：文字16px／圖示20px／項目py 12px／標題18px；順帶把 icon-文字間距從 12px 修正為 8px 以符合 4 的倍數間距規則（原提案 10px 不在 scale 內）。tsc/lint/build 通過，sidebar 測試 4/4 通過，瀏覽器重新登入 /admin 確認亮暗色模式皆正確。design-system.md 與 mockup-decision 已同步更新。仍在 verify，待使用者最終驗收轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "確認 OK，轉 Done。"
+    }
+  ]
+}

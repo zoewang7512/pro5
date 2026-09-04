@@ -17,6 +17,9 @@ export type SidebarItem = {
   href: string;
   active?: boolean;
   disabled?: boolean;
+  // 圖示由呼叫端傳入（例如 AdminShell.tsx 的 NAV_ITEMS）——Sidebar 是跨頁共用的通用
+  // 元件，不假設「哪個導覽項目該用哪個圖示」這種業務對應（TASK-064）。
+  icon?: React.ReactNode;
 };
 
 export function Sidebar({
@@ -50,17 +53,24 @@ export function Sidebar({
         height: "100%",
       }}
     >
-      <Typography variant="subtitle2" sx={{ px: 2.5, mb: 2.5, fontWeight: 700 }}>
+      <Typography variant="subtitle2" sx={{ px: 2.5, mb: 2.5, fontWeight: 700, fontSize: 18 }}>
         {title}
       </Typography>
 
       <List sx={{ py: 0 }}>
         {items.map((item) =>
           item.disabled ? (
-            <ListItemButton key={item.href} disabled sx={{ px: 2.5, py: 1.25 }}>
-              <Typography variant="subtitle2" sx={{ color: "text.disabled" }}>
-                {item.label}
-              </Typography>
+            <ListItemButton
+              key={item.href}
+              disabled
+              sx={{ px: 2.5, py: 3, display: "flex", alignItems: "center", gap: 2 }}
+            >
+              {item.icon && (
+                <Box sx={{ width: 20, height: 20, flexShrink: 0, "& svg": { width: 20, height: 20 } }}>
+                  {item.icon}
+                </Box>
+              )}
+              <Typography sx={{ fontSize: 16, color: "text.disabled" }}>{item.label}</Typography>
             </ListItemButton>
           ) : (
             <ListItemButton
@@ -70,20 +80,23 @@ export function Sidebar({
               selected={item.active}
               sx={{
                 px: 2.5,
-                py: 1.25,
+                py: 3,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
                 borderRight: "3px solid",
                 borderColor: item.active ? "primary.main" : "transparent",
+                color: item.active ? "primary.dark" : "text.secondary",
                 "&.Mui-selected": { bgcolor: "grey.200" },
                 "&.Mui-selected:hover": { bgcolor: "grey.200" },
               }}
             >
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: item.active ? "primary.dark" : "text.secondary",
-                  fontWeight: item.active ? 600 : 500,
-                }}
-              >
+              {item.icon && (
+                <Box sx={{ width: 20, height: 20, flexShrink: 0, "& svg": { width: 20, height: 20 } }}>
+                  {item.icon}
+                </Box>
+              )}
+              <Typography sx={{ fontSize: 16, fontWeight: item.active ? 600 : 500, color: "inherit" }}>
                 {item.label}
               </Typography>
             </ListItemButton>
