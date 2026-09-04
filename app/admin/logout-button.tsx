@@ -13,5 +13,9 @@ export function LogoutButton() {
     router.refresh();
   }
 
-  return <button onClick={handleLogout}>登出</button>;
+  return (
+    <button onClick={handleLogout} style={{ width: "100%" }}>
+      登出
+    </button>
+  );
 }

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>明暗模式切換 Variant A · 純圖示按鈕（單一 icon 依當下模式切換）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* 亮色 token（design-system.md S3 / lib/theme/tokens.ts） */
+    --l-grey-100:#F6F3EE; --l-grey-200:#EFEAE2; --l-grey-300:#E4DDD1; --l-grey-500:#A79E92; --l-grey-700:#6B6259; --l-grey-900:#2B2622;
+    --l-primary-300:#DDB55A; --l-primary-500:#A9812F; --l-primary-700:#6F531E;
+    --l-surface:#FFFFFF; --l-shadow: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    /* 暗色 token（lib/theme/index.ts dark colorScheme） */
+    --d-grey-100:#201C18; --d-grey-200:#241F1B; --d-grey-300:#423A31; --d-grey-500:#8A8074; --d-grey-700:#C9BFB1; --d-grey-900:#F3EEE6;
+    --d-primary-light:#E4C177; --d-primary-main:#D4A84B; --d-primary-dark:#A9812F;
+    --d-bg:#201C18; --d-paper:#2A241F; --d-shadow: 0 8px 24px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
+    --radius-sm:8px; --radius-md:12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; color: #2B2622; margin: 0 0 4px; }
+  p.desc { font-size: 13px; color: #6B6259; margin: 0 0 24px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 32px; }
+  .swatch { flex: 0 0 auto; }
+  .swatch .label { font-size: 12px; font-weight: 600; color: #6B6259; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+
+  /* ---- icon button ---- */
+  .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* ---- Sidebar 底部個人資料區塊（比照 components/ui/Sidebar.tsx） ---- */
+  .sidebar-frame { width: 220px; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--l-shadow); }
+  .sidebar-frame.light { background: var(--l-surface); }
+  .sidebar-frame.dark { background: var(--d-paper); box-shadow: var(--d-shadow); }
+  .sb-body { padding: 20px 0; }
+  .sb-nav-item { padding: 10px 20px; font-size: 13px; font-weight: 500; }
+  .light .sb-nav-item { color: var(--l-grey-700); }
+  .dark .sb-nav-item { color: var(--d-grey-700); }
+  .light .sb-nav-item.active { color: var(--l-primary-700); background: var(--l-grey-200); border-right: 3px solid var(--l-primary-500); font-weight: 600; }
+  .dark .sb-nav-item.active { color: var(--d-primary-light); background: var(--d-grey-200); border-right: 3px solid var(--d-primary-main); font-weight: 600; }
+  .profile-block { margin-top: 40px; padding: 16px 20px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid; }
+  .light .profile-block { border-color: var(--l-grey-300); }
+  .dark .profile-block { border-color: var(--d-grey-300); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex: 0 0 auto; }
+  .light .avatar { background: var(--l-primary-300); color: var(--l-primary-700); }
+  .dark .avatar { background: var(--d-primary-dark); color: var(--d-primary-light); }
+  .profile-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+  .light .profile-name { color: var(--l-grey-900); }
+  .dark .profile-name { color: var(--d-grey-900); }
+  .light .icon-btn { color: var(--l-grey-700); }
+  .light .icon-btn:hover { background: var(--l-grey-200); }
+  .dark .icon-btn { color: var(--d-grey-700); }
+  .dark .icon-btn:hover { background: var(--d-grey-200); }
+  .logout-row { padding: 12px 20px 4px; font-size: 12px; }
+  .light .logout-row { color: var(--l-grey-500); }
+  .dark .logout-row { color: var(--d-grey-500); }
+
+  /* ---- 顧客前台 BrandHeaderSection（比照 app/_components/booking/BrandHeaderSection.tsx） ---- */
+  .header-frame { width: 380px; border-radius: var(--radius-md); padding: 16px; }
+  .header-frame.light { background: var(--l-grey-100); }
+  .header-frame.dark { background: var(--d-bg); }
+  .brand-row { display: flex; align-items: center; gap: 12px; }
+  .brand-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex: 0 0 auto; }
+  .light .brand-avatar { background: var(--l-primary-300); color: var(--l-primary-700); }
+  .dark .brand-avatar { background: var(--d-primary-dark); color: var(--d-primary-light); }
+  .brand-text { flex: 1; min-width: 0; }
+  .brand-text h1 { font-size: 18px; margin: 0; line-height: 1.2; }
+  .light .brand-text h1 { color: var(--l-grey-900); }
+  .dark .brand-text h1 { color: var(--d-grey-900); }
+  .brand-text .sub { font-size: 11px; }
+  .light .brand-text .sub { color: var(--l-grey-700); }
+  .dark .brand-text .sub { color: var(--d-grey-700); }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">明暗模式切換圖示 · Variant A：純圖示按鈕</h1>
+  <p class="desc">32×32 icon button，圖示依「目前模式」顯示對應圖示（亮色時顯示月亮＝點擊可切到暗色；暗色時顯示太陽＝點擊可切回亮色）。狀態單一、不佔版面，缺點是不點擊看不出目前是「使用者手動選的」還是「跟系統」。</p>
+
+  <div class="row">
+    <div class="swatch">
+      <div class="label">Sidebar 底部（亮色，顯示月亮＝可切暗）</div>
+      <div class="sidebar-frame light">
+        <div class="sb-body">
+          <div class="sb-nav-item active">預約</div>
+          <div class="sb-nav-item">服務設定</div>
+          <div class="sb-nav-item">營業時間</div>
+          <div class="profile-block">
+            <div class="avatar">王</div>
+            <div class="profile-name">王設計師</div>
+            <div class="icon-btn" title="切換為暗色模式">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            </div>
+          </div>
+          <div class="logout-row">登出</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="label">Sidebar 底部（暗色，顯示太陽＝可切亮）</div>
+      <div class="sidebar-frame dark">
+        <div class="sb-body">
+          <div class="sb-nav-item active">預約</div>
+          <div class="sb-nav-item">服務設定</div>
+          <div class="sb-nav-item">營業時間</div>
+          <div class="profile-block">
+            <div class="avatar">王</div>
+            <div class="profile-name">王設計師</div>
+            <div class="icon-btn" title="切換為亮色模式">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            </div>
+          </div>
+          <div class="logout-row">登出</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="label">顧客前台品牌列（亮色）</div>
+      <div class="header-frame light">
+        <div class="brand-row">
+          <div class="brand-avatar">理</div>
+          <div class="brand-text">
+            <h1 class="serif">理髮廳</h1>
+            <div class="sub">質感沉靜・預約體驗</div>
+          </div>
+          <div class="icon-btn" title="切換為暗色模式">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="label">顧客前台品牌列（暗色）</div>
+      <div class="header-frame dark">
+        <div class="brand-row">
+          <div class="brand-avatar">理</div>
+          <div class="brand-text">
+            <h1 class="serif">理髮廳</h1>
+            <div class="sub">質感沉靜・預約體驗</div>
+          </div>
+          <div class="icon-btn" title="切換為亮色模式">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

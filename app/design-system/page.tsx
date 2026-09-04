@@ -30,6 +30,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { OtpInput } from "@/components/ui/OtpInput";
+import { ColorModeToggle } from "@/components/ui/ColorModeToggle";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -232,6 +233,10 @@ export default function DesignSystemShowcase() {
             <OtpInput value="481" onChange={() => {}} error />
             <OtpInput value="481212" onChange={() => {}} disabled />
           </Stack>
+        </Section>
+
+        <Section title="ColorModeToggle">
+          <ColorModeToggle />
         </Section>
 
         <Section title="Toast / Alert">

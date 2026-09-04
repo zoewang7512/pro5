@@ -7,6 +7,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Link from "next/link";
+import { ColorModeToggle } from "./ColorModeToggle";
 
 // MUI 沒有對應單一 Sidebar 元件，比照 components/ui/Nav.tsx 的做法，
 // 用 MUI Box／List／ListItemButton 拼出，樣式對照 mockup 的 .sidebar／.nav-item class。
@@ -107,9 +108,10 @@ export function Sidebar({
           <Avatar src={profileAvatarUrl ?? undefined} sx={{ width: 28, height: 28, fontSize: 13 }}>
             {[...profileName][0]}
           </Avatar>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }}>
             {profileName}
           </Typography>
+          <ColorModeToggle />
         </Box>
       )}
 

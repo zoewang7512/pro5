@@ -1,0 +1,98 @@
+{
+  "id": "TASK-063",
+  "title": "UI 設計系統 明暗模式手動切換（ColorMode 機制＋切換圖示元件＋套用至 Sidebar／顧客前台品牌列）",
+  "content": "全站可手動切換亮／暗色模式並記住選擇，不再只跟系統設定。套用已核准 Variant A（純圖示按鈕）：改用 MUI useColorScheme() 內建機制（class-based colorSchemeSelector＋自動 localStorage 持久化），不自刻 Context。新做 ColorModeToggle 元件，分別放入 Sidebar 底部個人資料區塊與 BrandHeaderSection 品牌列右側，完成後登記回 design-system.md S4 inventory。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-09-05",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": ["TASK-006", "TASK-014", "TASK-032"],
+  "order": 63,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-明暗模式切換.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-明暗模式切換.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-063.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/theme/index.ts",
+    "lib/theme/ThemeRegistry.tsx",
+    "app/layout.tsx",
+    "components/ui/Sidebar.tsx",
+    "app/_components/booking/BrandHeaderSection.tsx",
+    "components/ui/ColorModeToggle.tsx",
+    "ai/context/design-system.md",
+    "app/admin/logout-button.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit（通過）",
+      "npm run lint（0 problems；修正 react-hooks/set-state-in-effect：mounted-guard 改用 useSyncExternalStore）",
+      "npm run build（成功）",
+      "npx vitest run tests/components/color-mode-toggle.test.tsx tests/components/sidebar.test.tsx tests/components/brand-header-section.test.tsx（8/8 通過）",
+      "npm test（481/488、478/485 兩次，皆僅既有已知間歇性逾時測試檔於全量平行執行時逾時，單獨執行 100% 通過，非本卡回歸）",
+      "Browser 工具手動驗證顧客前台首頁：預設跟系統偏好、手動切換即時生效、重新整理後 localStorage 偏好持續套用（無 FOUC）"
+    ],
+    "findings": [
+      "InitColorSchemeScript 會在 hydrate 前直接改寫 <html> 的 class，若沒加 suppressHydrationWarning 會被 React 誤判為 hydration mismatch，已於 app/layout.tsx 修正",
+      "mounted-guard 若用 useEffect+setState 會違反新版 react-hooks/set-state-in-effect lint 規則，改用 useSyncExternalStore"
+    ],
+    "residual": "無。/admin Sidebar 版面已由使用者人工登入目視確認正常"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "看板上原本沒有明暗模式切換相關卡片；已確認色彩 token（S2/S3）已完成可直接沿用，缺的是手動切換機制與圖示。決策：手動切換為主（存 localStorage）、後台放 Sidebar 底部個人資料區塊、顧客前台放品牌列右側、全站皆可切換。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "已完成 3 個 mockup 變體比較，使用者核准 Variant A（純圖示按鈕）。建立本卡。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "核准，開始實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "實作完成，型別/lint/build/測試皆通過，顧客前台已用瀏覽器實際驗證亮暗切換與持久化。/admin Sidebar 因無登入帳密未能截圖，改用元件測試覆蓋，卡片轉 verify，待人工登入確認後驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-09-05",
+      "text": "登入 /admin 確認 Sidebar 排版正常，驗收通過轉 Done。另外要求登出按鈕寬度改為 100%（跟 Sidebar 同寬）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-09-05",
+      "text": "app/admin/logout-button.tsx 的 <button> 加上 style={{ width: \"100%\" }}，在 Sidebar 既有 px:2.5 內距下會撐滿至與其他導覽項目對齊的寬度；tsc/lint 皆通過。這個小調整不屬於 TASK-063 原始範圍，但沿用同一張卡片記錄，未另開新卡。轉 Done。"
+    }
+  ]
+}

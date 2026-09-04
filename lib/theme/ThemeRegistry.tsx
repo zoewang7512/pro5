@@ -8,7 +8,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 export function ThemeRegistry({ children }: { children: React.ReactNode }) {
   return (
     <AppRouterCacheProvider>
-      <ThemeProvider theme={theme} defaultMode="light">
+      <ThemeProvider theme={theme} defaultMode="system">
         <CssBaseline />
         <ToastProvider>{children}</ToastProvider>
       </ThemeProvider>

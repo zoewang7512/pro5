@@ -7,6 +7,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { StoreDisplayInfo } from "@/lib/store-settings";
+import { ColorModeToggle } from "@/components/ui/ColorModeToggle";
 
 // mockup 變體 B（精簡頁首列＋矮版封面圖）：見
 // ai/artifacts/商店基本資料設定/mockups/customer-brand-variant-b.html。
@@ -56,7 +57,7 @@ export function BrandHeaderSection({ display }: { display: StoreDisplayInfo }) {
         >
           {[...display.name][0]}
         </Avatar>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography
             component="h1"
             variant="h6"
@@ -74,6 +75,7 @@ export function BrandHeaderSection({ display }: { display: StoreDisplayInfo }) {
             </Typography>
           )}
         </Box>
+        <ColorModeToggle />
       </Stack>
 
       {display.coverImageUrl && <CoverImage src={display.coverImageUrl} alt={`${display.name} 封面圖`} />}

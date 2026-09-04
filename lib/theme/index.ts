@@ -7,7 +7,9 @@ const fontFamilySerif =
   'var(--font-noto-serif), "PingFang TC", "Microsoft JhengHei", serif';
 
 export const theme = createTheme({
-  cssVariables: { colorSchemeSelector: "media" },
+  // "class"：讓 useColorScheme().setMode() 手動切換生效（TASK-063）；首次造訪的預設值
+  // 由 ThemeRegistry 的 defaultMode="system" 決定，行為與原本的 "media" 一致。
+  cssVariables: { colorSchemeSelector: "class" },
   spacing: spacingScale[0], // spacingScale[0] = 4 → theme.spacing(1) = 4px，對齊 4 的倍數間距 scale
   shape: { borderRadius: radius.sm },
   colorSchemes: {
