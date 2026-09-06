@@ -213,6 +213,10 @@ tools/kanban/       本機治理看板（視覺化 ai/ 底下的任務卡）
 
 這個專案完整走過一套「AI 輔助、人工把關」的開發流程（見 [`AGENTS.md`](AGENTS.md) 與 `ai/process/workflow.md`）：每個功能先寫規格書、UI 變更先產出多個 mockup 變體交由人工選擇，再拆成範圍受限、附驗證契約的任務卡逐一實作；高風險或安全性相關的變更（例如修改顧客端唯一的預約寫入路徑）額外通過 architect／security-reviewer／test-engineer 三方審查關卡；每張任務卡完成後都附上測試指令、輸出與已知限制等驗證證據，最終才由人工核准。完整的規格書、任務卡與審查紀錄保留在 [`ai/artifacts/`](ai/artifacts/)，治理看板見 [`tools/kanban/README.md`](tools/kanban/README.md)。
 
+## 部署
+
+正式環境託管於 Vercel（[https://pro5-nu.vercel.app](https://pro5-nu.vercel.app)），已連接本 GitHub repo：push 到 `master` 會自動觸發正式環境部署，PR 則會產生獨立的 Preview 部署網址。
+
 ## 授權
 
 本專案採用 [MIT License](LICENSE)。
