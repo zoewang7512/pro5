@@ -10,13 +10,11 @@
   [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e.svg)](https://supabase.com)
   [![Deployed on Vercel](https://img.shields.io/badge/deployed-Vercel-000000.svg)](https://vercel.com)
 
-  [線上體驗](https://pro5-nu.vercel.app) · [回報問題](https://github.com/<owner>/<repo>/issues)
+  [線上體驗](https://pro5-nu.vercel.app) · [回報問題](https://github.com/zoewang7512/pro5/issues)
 
 </div>
 
 ---
-
-<!-- TODO：repo 推上 GitHub 後，把上面「回報問題」連結與下面 clone 指令的 <owner>/<repo> 換成實際網址。 -->
 
 ## 這是什麼
 
@@ -32,12 +30,24 @@
 
 <!-- TODO：截圖存到 docs/screenshots/ 對應檔名後會自動顯示，尺寸不拘、PNG／JPG 皆可。 -->
 
-| 顧客前台：瀏覽服務與預約 | 設計師後台：預約管理 |
+**顧客前台**
+
+| 選擇服務與時段 | 預約成功 |
 |---|---|
-| ![顧客前台：瀏覽服務與預約](docs/screenshots/customer-booking.png) | ![設計師後台：預約管理週曆](docs/screenshots/admin-dashboard.png) |
+| ![顧客前台：選擇服務與時段](docs/screenshots/customer-booking.png) | ![顧客前台：預約成功頁](docs/screenshots/booking-success.png) |
+
+**設計師後台**
+
+| 預約管理週曆 | 營業時間設定 |
+|---|---|
+| ![設計師後台：預約管理週曆](docs/screenshots/admin-dashboard.png) | ![設計師後台：營業時間設定](docs/screenshots/business-hours.png) |
 
 <p align="center">
   <img src="docs/screenshots/sidebar-light-dark.png" alt="後台 Sidebar：圖示化導覽 + 明暗模式對照" width="80%" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/email-confirmation.png" alt="預約成立後的 Email 確認信" width="60%" />
 </p>
 
 ## 功能特色
@@ -120,7 +130,7 @@
 ### 安裝與啟動
 
 ```bash
-git clone https://github.com/<owner>/<repo>.git
+git clone https://github.com/zoewang7512/pro5.git
 cd pro5
 npm install
 cp .env.example .env.local
