@@ -1,16 +1,16 @@
 <div align="center">
 
-  # 理髮廳線上預約系統
+# 理髮廳線上預約系統
 
-  從瀏覽服務、挑時段到自動寄出確認信與提醒信，顧客自助完成預約；設計師在後台一站管理預約、營業時間與店家資訊。
+從瀏覽服務、挑時段到自動寄出確認信與提醒信，顧客自助完成預約；設計師在後台一站管理預約、營業時間與店家資訊。
 
-  [![License: MIT](https://img.shields.io/badge/license-MIT-c17a3d.svg)](LICENSE)
-  [![Built with Next.js](https://img.shields.io/badge/Next.js-16-000000.svg)](https://nextjs.org)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](https://www.typescriptlang.org/)
-  [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e.svg)](https://supabase.com)
-  [![Deployed on Vercel](https://img.shields.io/badge/deployed-Vercel-000000.svg)](https://vercel.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-c17a3d.svg)](LICENSE)
+[![Built with Next.js](https://img.shields.io/badge/Next.js-16-000000.svg)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e.svg)](https://supabase.com)
+[![Deployed on Vercel](https://img.shields.io/badge/deployed-Vercel-000000.svg)](https://vercel.com)
 
-  [線上體驗](https://pro5-nu.vercel.app) · [回報問題](https://github.com/zoewang7512/pro5/issues)
+[線上體驗](https://pro5-nu.vercel.app) · [回報問題](https://github.com/zoewang7512/pro5/issues)
 
 </div>
 
@@ -32,23 +32,31 @@
 
 **顧客前台**
 
-| 選擇服務與時段 | 預約成功 |
-|---|---|
-| ![顧客前台：選擇服務與時段](docs/screenshots/customer-booking.png) | ![顧客前台：預約成功頁](docs/screenshots/booking-success.png) |
+| 選擇服務與時段                                                                     | 預約成功                                                                      |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| <img src="docs/screenshots/customer-booking.png" alt="顧客前台：選擇服務與時段" /> | <img src="docs/screenshots/booking-success.png" alt="顧客前台：預約成功頁" /> |
+
+| 預約成立後的 Email 確認信                                                                    |
+| -------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/email-confirmation.png" alt="顧客前台：預約成功信" width="50%" /> |
 
 **設計師後台**
 
-| 預約管理週曆 | 營業時間設定 |
-|---|---|
-| ![設計師後台：預約管理週曆](docs/screenshots/admin-dashboard.png) | ![設計師後台：營業時間設定](docs/screenshots/business-hours.png) |
+| 預約管理週曆                                                      | 服務項目設定                                                       |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ![設計師後台：預約管理週曆](docs/screenshots/admin-dashboard.png) | ![設計師後台：服務項目設定](docs/screenshots/service-settings.png) |
 
-<p align="center">
-  <img src="docs/screenshots/sidebar-light-dark.png" alt="後台 Sidebar：圖示化導覽 + 明暗模式對照" width="80%" />
-</p>
+| 營業時間設定                                                     | 預約規則設定                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![設計師後台：營業時間設定](docs/screenshots/business-hours.png) | ![設計師後台：預約規則設定](docs/screenshots/booking-rules.png) |
 
-<p align="center">
-  <img src="docs/screenshots/email-confirmation.png" alt="預約成立後的 Email 確認信" width="60%" />
-</p>
+| 商店設定                                                     | 帳戶設定                                                       |
+| ------------------------------------------------------------ | -------------------------------------------------------------- |
+| ![設計師後台：商店設定](docs/screenshots/store-settings.png) | ![設計師後台：帳戶設定](docs/screenshots/account-settings.png) |
+
+| dark mode                                                | light mode                                                 |
+| -------------------------------------------------------- | ---------------------------------------------------------- |
+| ![設計師後台：dark mode](docs/screenshots/dark-mode.png) | ![設計師後台：light mode](docs/screenshots/light-mode.png) |
 
 ## 功能特色
 
@@ -109,15 +117,15 @@
 
 ## 技術棧
 
-| 分類 | 技術 |
-| --- | --- |
+| 分類       | 技術                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------ |
 | 前端／後端 | Next.js 16（App Router + TypeScript，strict）、React 19、Server Components／Server Actions |
-| UI | Material UI（MUI） |
-| 資料庫 | Supabase Postgres，啟用 RLS，schema 見 `supabase/migrations/` |
-| Email | [Resend](https://resend.com/)（確認信、通知信、提醒信） |
-| 排程 | Vercel Cron（預約前 24 小時提醒信） |
-| 測試 | Vitest、Testing Library（單元測試 + 對真實 Supabase 專案的整合測試） |
-| 部署 | Vercel |
+| UI         | Material UI（MUI）                                                                         |
+| 資料庫     | Supabase Postgres，啟用 RLS，schema 見 `supabase/migrations/`                              |
+| Email      | [Resend](https://resend.com/)（確認信、通知信、提醒信）                                    |
+| 排程       | Vercel Cron（預約前 24 小時提醒信）                                                        |
+| 測試       | Vitest、Testing Library（單元測試 + 對真實 Supabase 專案的整合測試）                       |
+| 部署       | Vercel                                                                                     |
 
 ## 本機開發
 
@@ -157,32 +165,32 @@ npm run dev
 
 `.env.local` 已加入 `.gitignore`；**真實金鑰只存放在 Vercel 專案的環境變數設定，絕不提交進版控**。
 
-| 變數 | 用途 | 是否可暴露於前端 |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 專案網址 | 是 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名金鑰，受 RLS 規則限制 | 是 |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 具完整權限的服務金鑰，僅限伺服器端程式碼使用 | **否，絕不可** |
-| `EMAIL_API_KEY` | Resend 私密金鑰，用於寄送確認信／取消改期通知信／提醒信 | 否 |
-| `EMAIL_FROM_ADDRESS` | 通知信寄件人地址，須為 Resend 已驗證網域下的地址 | 否 |
-| `NEXT_PUBLIC_SITE_URL` | 對外基底網址，用於組出 email 中的預約連結 | 是 |
-| `SUPABASE_WEBHOOK_SECRET` | 驗證 Supabase Database Webhook 呼叫通知信 API 路由的共用密鑰 | 否 |
-| `CRON_SECRET` | 驗證 Vercel Cron 呼叫預約提醒信 API 路由的共用密鑰 | 否 |
-| `DESIGNER_EMAIL`／`DESIGNER_PASSWORD` | 本機 seed script／整合測試用的設計師帳號，非 app 執行期讀取的變數 | 否 |
+| 變數                                  | 用途                                                              | 是否可暴露於前端 |
+| ------------------------------------- | ----------------------------------------------------------------- | ---------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`            | Supabase 專案網址                                                 | 是               |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | Supabase 匿名金鑰，受 RLS 規則限制                                | 是               |
+| `SUPABASE_SERVICE_ROLE_KEY`           | Supabase 具完整權限的服務金鑰，僅限伺服器端程式碼使用             | **否，絕不可**   |
+| `EMAIL_API_KEY`                       | Resend 私密金鑰，用於寄送確認信／取消改期通知信／提醒信           | 否               |
+| `EMAIL_FROM_ADDRESS`                  | 通知信寄件人地址，須為 Resend 已驗證網域下的地址                  | 否               |
+| `NEXT_PUBLIC_SITE_URL`                | 對外基底網址，用於組出 email 中的預約連結                         | 是               |
+| `SUPABASE_WEBHOOK_SECRET`             | 驗證 Supabase Database Webhook 呼叫通知信 API 路由的共用密鑰      | 否               |
+| `CRON_SECRET`                         | 驗證 Vercel Cron 呼叫預約提醒信 API 路由的共用密鑰                | 否               |
+| `DESIGNER_EMAIL`／`DESIGNER_PASSWORD` | 本機 seed script／整合測試用的設計師帳號，非 app 執行期讀取的變數 | 否               |
 
 ## 可用指令
 
-| 指令 | 用途 |
-| --- | --- |
-| `npm install` | 安裝相依套件 |
-| `npm run dev` | 啟動本機開發伺服器（<http://localhost:3000>） |
-| `npm run build` | 建置正式環境版本 |
-| `npm start` | 啟動已建置版本 |
-| `npm run lint` | 執行 ESLint |
-| `npx tsc --noEmit` | TypeScript 型別檢查 |
-| `npm test` | 執行單元測試（Vitest） |
+| 指令                      | 用途                                                                      |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `npm install`             | 安裝相依套件                                                              |
+| `npm run dev`             | 啟動本機開發伺服器（<http://localhost:3000>）                             |
+| `npm run build`           | 建置正式環境版本                                                          |
+| `npm start`               | 啟動已建置版本                                                            |
+| `npm run lint`            | 執行 ESLint                                                               |
+| `npx tsc --noEmit`        | TypeScript 型別檢查                                                       |
+| `npm test`                | 執行單元測試（Vitest）                                                    |
 | `npm run test:booking` 等 | 對真實 Supabase 專案執行的整合測試，完整清單見 `package.json` 的 `test:*` |
-| `npm run seed:booking` | 種入服務項目／營業時間最小可行資料（冪等） |
-| `npm run kanban` | 啟動本機治理看板（<http://127.0.0.1:4420>） |
+| `npm run seed:booking`    | 種入服務項目／營業時間最小可行資料（冪等）                                |
+| `npm run kanban`          | 啟動本機治理看板（<http://127.0.0.1:4420>）                               |
 
 ## 專案架構
 
