@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>前台選擇設計師 Variant B · 橫向頭像列＋全頁 IG 風個人頁</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-50:#FBF4E2; --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+  p.page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 24px; max-width: 900px; line-height: 1.7; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; }
+  .frame { flex: 0 0 auto; width: 375px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .04em; margin-bottom: 8px; }
+  .screen { width: 375px; height: 720px; background: var(--grey-100); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; flex-direction: column; position: relative; }
+  .screen.white { background: var(--surface); }
+  .scroll { overflow-y: auto; flex: 1; padding: 20px; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-head .t { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; }
+  .step { width: 24px; height: 24px; border-radius: 50%; background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .step.done { background: var(--success); }
+  .edit { font-size: 13px; color: var(--primary-700); font-weight: 500; }
+  .summary { background: var(--surface); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 24px; box-shadow: var(--shadow-1); }
+  .summary .p { font-size: 14px; font-weight: 600; }
+  .summary .s { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+
+  .avatar { border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; }
+  .avatar.any { background: var(--grey-200); color: var(--grey-700); }
+  .av1 { background: linear-gradient(135deg,#C9A36A,#7D5A3A); }
+  .av2 { background: linear-gradient(135deg,#8E9C88,#4F5E4A); }
+  .av3 { background: linear-gradient(135deg,#B78C7A,#6E4536); }
+  .av4 { background: linear-gradient(135deg,#A79E92,#6B6259); }
+
+  .rail { display: flex; gap: 16px; overflow-x: auto; margin: 0 -20px; padding: 4px 20px 12px; }
+  .pick { width: 72px; flex-shrink: 0; text-align: center; }
+  .pick .ring { width: 72px; height: 72px; border-radius: 50%; padding: 3px; border: 2px solid transparent; }
+  .pick.on .ring { border-color: var(--primary-500); }
+  .pick .ring .avatar { width: 100%; height: 100%; font-size: 22px; }
+  .pick .n { font-size: 12px; margin-top: 6px; color: var(--grey-700); white-space: nowrap; }
+  .pick.on .n { color: var(--grey-900); font-weight: 600; }
+
+  .preview { background: var(--surface); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-1); }
+  .preview .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .preview .nm { font-size: 16px; font-weight: 600; }
+  .preview .link { font-size: 13px; color: var(--primary-700); font-weight: 600; }
+  .preview .bio { font-size: 13px; color: var(--grey-700); line-height: 1.6; margin: 6px 0 8px; }
+  .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 12px; }
+  .thumbs div { aspect-ratio: 1; border-radius: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--grey-300); color: var(--grey-700); background: var(--surface); }
+
+  .sk { background: var(--grey-200); border-radius: var(--radius-md); }
+  .alert { border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; line-height: 1.6; }
+  .alert.error { background: var(--danger-light); color: var(--danger); }
+  .alert.info { background: var(--info-light); color: var(--info); }
+
+  /* full page profile */
+  .appbar { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--grey-200); background: var(--surface); flex-shrink: 0; }
+  .appbar .back { font-size: 22px; width: 32px; text-align: center; color: var(--grey-900); }
+  .appbar .ttl { font-size: 16px; font-weight: 700; }
+  .ig-head { padding: 16px 16px 0; }
+  .ig-row { display: flex; align-items: center; gap: 24px; }
+  .ig-row .avatar { width: 84px; height: 84px; font-size: 30px; }
+  .stats { display: flex; flex: 1; justify-content: space-around; text-align: center; }
+  .stats b { display: block; font-size: 16px; }
+  .stats span { font-size: 12px; color: var(--grey-700); }
+  .ig-name { font-size: 14px; font-weight: 700; margin-top: 12px; }
+  .ig-bio { font-size: 13px; line-height: 1.6; margin: 4px 0 8px; }
+  .ig-btns { display: flex; gap: 8px; margin: 12px 0; }
+  .ig-btn { flex: 1; height: 32px; border-radius: var(--radius-sm); background: var(--grey-200); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .tabbar { display: flex; border-top: 1px solid var(--grey-300); }
+  .tabbar span { flex: 1; text-align: center; padding: 10px 0; font-size: 12px; font-weight: 600; border-top: 2px solid var(--grey-900); margin-top: -1px; }
+  .ig-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .ig-grid div { aspect-ratio: 1; }
+  .p1 { background: linear-gradient(160deg,#3B2B22,#A47148 60%,#E4C9A6); }
+  .p2 { background: linear-gradient(200deg,#2F2A26,#6B5B4E 50%,#C9B8A3); }
+  .p3 { background: linear-gradient(140deg,#5A3E36,#C08B6F 55%,#F1D9C4); }
+  .p4 { background: linear-gradient(180deg,#1F1C1A,#7A6A5A 70%,#D9C7B0); }
+  .p5 { background: linear-gradient(120deg,#6F531E,#DDB55A 60%,#FBF4E2); }
+  .p6 { background: linear-gradient(210deg,#2B2622,#8E7A69 50%,#E4DDD1); }
+  .p7 { background: linear-gradient(150deg,#4F5E4A,#8E9C88 55%,#E4EBE1); }
+  .p8 { background: linear-gradient(170deg,#3E2A20,#B78C7A 60%,#F3DEDA); }
+  .p9 { background: linear-gradient(130deg,#2B2622,#A9812F 55%,#EFEAE2); }
+  .sticky-cta { padding: 12px 16px 20px; background: var(--surface); box-shadow: 0 -4px 16px rgba(43,38,34,.08); }
+  .btn { height: 44px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .empty { text-align: center; padding: 48px 20px; color: var(--grey-700); font-size: 13px; }
+  .empty .t { font-size: 16px; font-weight: 600; color: var(--grey-900); margin-bottom: 4px; }
+  .lightbox { position: absolute; inset: 0; background: rgba(23,20,15,.94); display: flex; flex-direction: column; }
+  .lb-top { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; color: #fff; font-size: 13px; }
+  .lb-img { flex: 1; display: flex; align-items: center; }
+  .lb-img div { width: 100%; aspect-ratio: 1; }
+  .dots { display: flex; gap: 6px; justify-content: center; padding: 16px 0 40px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.35); }
+  .dots i.on { background: #fff; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">前台選擇設計師 · Variant B：橫向頭像列＋全頁 IG 風個人頁</h1>
+  <p class="page-note">「選擇設計師」區塊改成像 IG 限時動態的橫向圓形頭像列，點頭像會在下方顯示預覽卡（專長、簡介、前 4 張作品）。「看完整作品集」進到全頁的個人頁，版型更貼近 IG（頭像＋數字列＋簡介＋滿版九宮格），底部固定「選擇這位設計師」。視覺比較像 IG，但一次只能看一位設計師的專長，而且需要處理頁面返回的狀態。</p>
+  <div class="strip">
+
+    <div class="frame">
+      <div class="label">1 · 預設（頭像列，預選「不指定」）</div>
+      <div class="screen"><div class="scroll">
+        <div class="section-head"><div class="t"><span class="step done">✓</span>服務</div><span class="edit">修改</span></div>
+        <div class="summary"><div class="p">韓系剪髮 · 60 分鐘</div><div class="s">NT$ 800</div></div>
+        <div class="section-head"><div class="t"><span class="step">2</span>選擇設計師</div></div>
+        <div class="rail">
+          <div class="pick on"><div class="ring"><div class="avatar any">✦</div></div><div class="n">不指定</div></div>
+          <div class="pick"><div class="ring"><div class="avatar av1">林</div></div><div class="n">林小美</div></div>
+          <div class="pick"><div class="ring"><div class="avatar av2">陳</div></div><div class="n">陳阿傑</div></div>
+          <div class="pick"><div class="ring"><div class="avatar av3">王</div></div><div class="n">王大明</div></div>
+          <div class="pick"><div class="ring"><div class="avatar av4">張</div></div><div class="n">張小芸</div></div>
+        </div>
+        <div class="preview">
+          <div class="nm">不指定設計師</div>
+          <div class="bio">會顯示所有設計師的空檔，送出預約後由系統安排一位有空的設計師。</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 點選某位設計師（預覽卡）</div>
+      <div class="screen"><div class="scroll">
+        <div class="summary"><div class="p">韓系剪髮 · 60 分鐘</div><div class="s">NT$ 800</div></div>
+        <div class="section-head"><div class="t"><span class="step">2</span>選擇設計師</div></div>
+        <div class="rail">
+          <div class="pick"><div class="ring"><div class="avatar any">✦</div></div><div class="n">不指定</div></div>
+          <div class="pick on"><div class="ring"><div class="avatar av1">林</div></div><div class="n">林小美</div></div>
+          <div class="pick"><div class="ring"><div class="avatar av2">陳</div></div><div class="n">陳阿傑</div></div>
+          <div class="pick"><div class="ring"><div class="avatar av3">王</div></div><div class="n">王大明</div></div>
+        </div>
+        <div class="preview">
+          <div class="top"><div class="nm">林小美</div><div class="link">看完整作品集 ›</div></div>
+          <div class="bio">入行 8 年，擅長依臉型調整的韓系剪裁與低調漸層染。</div>
+          <div class="chips"><span class="chip">韓系剪髮</span><span class="chip">漸層染</span><span class="chip">空氣感燙</span></div>
+          <div class="thumbs"><div class="p1"></div><div class="p2"></div><div class="p3"></div><div class="p4"></div></div>
+        </div>
+        <div class="section-head" style="margin-top:24px"><div class="t"><span class="step">3</span>選擇時段</div></div>
+        <div class="sk" style="height:56px;margin-bottom:12px"></div><div class="sk" style="height:96px"></div>
+      </div></div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 全頁個人頁（仿 IG）</div>
+      <div class="screen white">
+        <div class="appbar"><span class="back">‹</span><span class="ttl">mei.hair.studio</span></div>
+        <div style="overflow-y:auto;flex:1">
+          <div class="ig-head">
+            <div class="ig-row"><div class="avatar av1">林</div>
+              <div class="stats"><div><b>9</b><span>作品</span></div><div><b>3</b><span>專長</span></div></div>
+            </div>
+            <div class="ig-name">林小美</div>
+            <div class="ig-bio">入行 8 年，擅長依臉型調整的韓系剪裁與低調漸層染，喜歡和客人一起討論日常好整理的髮型。</div>
+            <div class="chips"><span class="chip">韓系剪髮</span><span class="chip">漸層染</span><span class="chip">空氣感燙</span></div>
+            <div class="ig-btns"><div class="ig-btn">前往 Instagram ↗</div></div>
+          </div>
+          <div class="tabbar"><span>▦</span></div>
+          <div class="ig-grid"><div class="p1"></div><div class="p2"></div><div class="p3"></div><div class="p4"></div><div class="p5"></div><div class="p6"></div><div class="p7"></div><div class="p8"></div><div class="p9"></div></div>
+        </div>
+        <div class="sticky-cta"><div class="btn">選擇林小美</div></div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 放大檢視（左右滑動）</div>
+      <div class="screen">
+        <div class="lightbox">
+          <div class="lb-top"><span>林小美 · 作品</span><span style="font-size:20px">×</span></div>
+          <div class="lb-img"><div class="p5"></div></div>
+          <div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">5 · 個人頁：無 IG、作品集空狀態</div>
+      <div class="screen white">
+        <div class="appbar"><span class="back">‹</span><span class="ttl">王大明</span></div>
+        <div style="overflow-y:auto;flex:1">
+          <div class="ig-head">
+            <div class="ig-row"><div class="avatar av3">王</div>
+              <div class="stats"><div><b>0</b><span>作品</span></div><div><b>2</b><span>專長</span></div></div>
+            </div>
+            <div class="ig-name">王大明</div>
+            <div class="ig-bio">日系短髮與頭皮護理。</div>
+            <div class="chips" style="margin-bottom:16px"><span class="chip">日系短髮</span><span class="chip">護髮</span></div>
+          </div>
+          <div class="tabbar"><span>▦</span></div>
+          <div class="empty"><div class="t">尚無作品</div>這位設計師還沒有上傳作品</div>
+        </div>
+        <div class="sticky-cta"><div class="btn">選擇王大明</div></div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">6 · 載入中 ／ 錯誤</div>
+      <div class="screen"><div class="scroll">
+        <div class="summary"><div class="p">韓系剪髮 · 60 分鐘</div></div>
+        <div class="section-head"><div class="t"><span class="step">2</span>選擇設計師</div></div>
+        <div class="rail">
+          <div class="pick"><div class="sk" style="width:72px;height:72px;border-radius:50%"></div></div>
+          <div class="pick"><div class="sk" style="width:72px;height:72px;border-radius:50%"></div></div>
+          <div class="pick"><div class="sk" style="width:72px;height:72px;border-radius:50%"></div></div>
+          <div class="pick"><div class="sk" style="width:72px;height:72px;border-radius:50%"></div></div>
+        </div>
+        <div class="sk" style="height:120px"></div>
+        <div style="border-top:1px dashed var(--grey-500); margin:24px 0"></div>
+        <div class="section-head"><div class="t"><span class="step">2</span>選擇設計師</div></div>
+        <div class="alert error">無法載入設計師名單，請重新整理頁面再試一次。</div>
+      </div></div>
+    </div>
+
+  </div>
+  <p class="page-note" style="margin-top:16px">已選定（2026-10-21）：數字列只保留「作品／專長」兩格，維持已核准的資料模型，不新增「年資」欄位。</p>
+</body>
+</html>

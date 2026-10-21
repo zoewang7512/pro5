@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>後台設計師管理 Variant B · 卡片牆列表＋單頁捲動編輯頁</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-50:#FBF4E2; --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+  p.page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 24px; max-width: 1000px; line-height: 1.7; }
+  .stack { display: flex; flex-direction: column; gap: 32px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .04em; margin-bottom: 8px; }
+  .screen { width: 1100px; height: 640px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 220px; background: var(--surface); padding: 24px 0; flex-shrink: 0; box-shadow: 1px 0 0 var(--grey-300); }
+  .sidebar .logo { font-size: 18px; font-weight: 700; padding: 0 24px 24px; }
+  .nav-item { padding: 12px 24px; font-size: 16px; color: var(--grey-700); display: flex; gap: 12px; align-items: center; }
+  .nav-item i { width: 20px; height: 20px; border-radius: 6px; background: var(--grey-300); }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); font-weight: 600; }
+  .nav-item.active i { background: var(--primary-500); }
+  .nav-item .new { font-size: 11px; color: var(--primary-700); background: var(--primary-50); padding: 1px 6px; border-radius: 999px; margin-left: auto; }
+
+  .main { flex: 1; padding: 32px 40px; overflow: hidden; display: flex; flex-direction: column; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+  .head h2 { font-size: 24px; margin: 0; }
+  .head .sub { font-size: 14px; color: var(--grey-700); margin-top: 4px; }
+  .crumb { font-size: 13px; color: var(--grey-700); margin-bottom: 8px; }
+  .btn { height: 40px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: none; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); font-weight: 600; }
+  .btn.danger { background: var(--danger); }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; padding: 0 12px; }
+  .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  .panel { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--grey-700); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--grey-300); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--grey-200); vertical-align: middle; }
+  tr.off td { color: var(--grey-500); }
+  tr.off .avatar { opacity: .5; }
+  .who { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; flex-shrink: 0; }
+  .av1 { background: linear-gradient(135deg,#C9A36A,#7D5A3A); }
+  .av2 { background: linear-gradient(135deg,#8E9C88,#4F5E4A); }
+  .av3 { background: linear-gradient(135deg,#B78C7A,#6E4536); }
+  .av4 { background: linear-gradient(135deg,#A79E92,#6B6259); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--grey-300); color: var(--grey-700); }
+  .status { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+  .status.on { background: var(--success-light); color: #57644F; }
+  .status.off { background: var(--grey-200); color: var(--grey-700); }
+  .order { display: flex; flex-direction: column; gap: 2px; color: var(--grey-500); font-size: 10px; line-height: 1; }
+  .actions { display: flex; gap: 4px; justify-content: flex-end; }
+  .link { color: var(--primary-700); font-weight: 600; font-size: 13px; padding: 6px 8px; }
+  .link.muted { color: var(--grey-700); }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--grey-300); margin-bottom: 24px; }
+  .tabs span { padding: 12px 16px; font-size: 14px; color: var(--grey-700); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs span.on { color: var(--grey-900); font-weight: 600; border-bottom-color: var(--primary-500); }
+  .tabs .count { font-size: 12px; color: var(--grey-500); margin-left: 4px; }
+
+  .form { padding: 24px; display: grid; grid-template-columns: 200px 1fr; gap: 32px; }
+  .upload { width: 120px; height: 120px; border-radius: 50%; border: 2px dashed var(--grey-300); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--grey-700); position: relative; }
+  .upload .avatar { width: 116px; height: 116px; font-size: 40px; }
+  .upload-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--grey-700); margin-bottom: 6px; }
+  .input { height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 14px; display: flex; align-items: center; }
+  .input.area { height: 72px; align-items: flex-start; padding-top: 10px; line-height: 1.6; }
+  .input.err { border-color: var(--danger); }
+  .input .pre { color: var(--grey-500); margin-right: 2px; }
+  .helper { font-size: 12px; color: var(--grey-700); margin-top: 4px; display: flex; justify-content: space-between; }
+  .helper.err { color: var(--danger); }
+  .tag-input { min-height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag { font-size: 13px; padding: 4px 8px 4px 10px; border-radius: 999px; background: var(--grey-200); display: inline-flex; gap: 6px; align-items: center; }
+  .tag b { color: var(--grey-500); font-weight: 400; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--grey-200); }
+  .notice { font-size: 12px; color: var(--info); background: var(--info-light); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 20px; }
+
+  .svc { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--grey-200); }
+  .svc .n { font-size: 14px; font-weight: 600; }
+  .svc .m { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+  .switch { width: 40px; height: 22px; border-radius: 999px; background: var(--grey-300); position: relative; }
+  .switch::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch.on { background: var(--primary-500); }
+  .switch.on::after { left: 20px; }
+  .svc.off .n { color: var(--grey-500); }
+
+  .pf-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; }
+  .pf-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding: 0 24px 24px; }
+  .pf-grid > div { aspect-ratio: 1; border-radius: var(--radius-sm); position: relative; }
+  .pf-grid .add { border: 2px dashed var(--grey-300); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: var(--grey-700); gap: 4px; }
+  .pf-grid .add b { font-size: 24px; font-weight: 400; color: var(--grey-500); }
+  .pf-grid .del { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(43,38,34,.7); color: #fff; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .pf-grid .loading { background: var(--grey-200); display: flex; align-items: center; justify-content: center; }
+  .spinner { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--grey-300); border-top-color: var(--primary-500); }
+  .p1 { background: linear-gradient(160deg,#3B2B22,#A47148 60%,#E4C9A6); }
+  .p2 { background: linear-gradient(200deg,#2F2A26,#6B5B4E 50%,#C9B8A3); }
+  .p3 { background: linear-gradient(140deg,#5A3E36,#C08B6F 55%,#F1D9C4); }
+  .p4 { background: linear-gradient(180deg,#1F1C1A,#7A6A5A 70%,#D9C7B0); }
+  .p5 { background: linear-gradient(120deg,#6F531E,#DDB55A 60%,#FBF4E2); }
+  .p6 { background: linear-gradient(210deg,#2B2622,#8E7A69 50%,#E4DDD1); }
+  .p7 { background: linear-gradient(150deg,#4F5E4A,#8E9C88 55%,#E4EBE1); }
+  .p8 { background: linear-gradient(170deg,#3E2A20,#B78C7A 60%,#F3DEDA); }
+
+  .leave { display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 24px; }
+  .month-h { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 13px; }
+  .month .w { font-size: 11px; color: var(--grey-700); padding: 4px 0; }
+  .month .d { height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .month .past { color: var(--grey-500); }
+  .month .today { outline: 2px solid var(--primary-500); }
+  .month .leave-d { background: var(--warning-light); color: var(--warning); font-weight: 700; }
+  .month .shop { background: var(--grey-200); color: var(--grey-500); text-decoration: line-through; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--grey-700); margin-top: 12px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .leave-list h4 { font-size: 14px; margin: 0 0 12px; }
+  .leave-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--grey-200); font-size: 14px; }
+
+  .overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .dialog { width: 440px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .dialog h3 { font-size: 18px; margin: 0 0 8px; }
+  .dialog p { font-size: 14px; color: var(--grey-700); line-height: 1.7; margin: 0 0 16px; }
+  .dialog .list { background: var(--warning-light); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; line-height: 1.8; margin-bottom: 16px; }
+  .dialog .foot { display: flex; justify-content: flex-end; gap: 8px; }
+  .sk { background: var(--grey-200); border-radius: var(--radius-sm); }
+</style>
+<style>
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .dcard { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 24px 16px 16px; text-align: center; position: relative; }
+  .dcard .avatar { width: 72px; height: 72px; font-size: 26px; margin: 0 auto 12px; }
+  .dcard .nm { font-size: 16px; font-weight: 600; }
+  .dcard .meta { font-size: 12px; color: var(--grey-700); margin: 4px 0 12px; }
+  .dcard .chips { justify-content: center; min-height: 48px; align-content: flex-start; }
+  .dcard .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 12px 0; }
+  .dcard .thumbs div { aspect-ratio: 1; border-radius: 4px; }
+  .dcard .foot { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--grey-200); padding-top: 12px; }
+  .dcard.off { opacity: .6; }
+  .dcard .status { position: absolute; top: 12px; right: 12px; }
+  .dcard .drag { position: absolute; top: 12px; left: 12px; color: var(--grey-500); font-size: 14px; letter-spacing: -2px; }
+  .dcard.new { box-shadow: none; border: 2px dashed var(--grey-300); background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--grey-700); font-size: 14px; gap: 8px; }
+  .dcard.new b { font-size: 32px; font-weight: 400; color: var(--grey-500); }
+  .col { max-width: 760px; }
+  .scard { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); margin-bottom: 24px; }
+  .scard .h { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 0; }
+  .scard .h h3 { font-size: 18px; margin: 0; }
+  .scard .h .d { font-size: 13px; color: var(--grey-700); margin-top: 2px; }
+  .scard .b { padding: 20px 24px 24px; }
+  .svc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+  .svc-grid .svc { padding: 12px 0; }
+  .anchor { position: absolute; right: 40px; top: 120px; width: 160px; font-size: 13px; }
+  .anchor div { padding: 8px 12px; color: var(--grey-700); border-left: 2px solid var(--grey-300); }
+  .anchor div.on { color: var(--grey-900); font-weight: 600; border-left-color: var(--primary-500); }
+  .mini-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 13px; width: 320px; }
+  .mini-month .d { height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .mini-month .w { font-size: 11px; color: var(--grey-700); }
+  .mini-month .past { color: var(--grey-500); } .mini-month .today { outline: 2px solid var(--primary-500); }
+  .mini-month .leave-d { background: var(--warning-light); color: var(--warning); font-weight: 700; } .mini-month .shop { background: var(--grey-200); color: var(--grey-500); text-decoration: line-through; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">後台設計師管理 · Variant B：卡片牆列表＋單頁捲動編輯頁</h1>
+  <p class="page-note">列表改成卡片牆，每張卡片直接預覽頭像、專長和前 3 張作品，比較接近顧客在前台看到的樣子；拖曳卡片左上角的把手調整順序。編輯頁比照已核准的「帳號設定頁」：單頁往下捲，分成四張卡片，各自獨立儲存，右側有錨點導覽。新增設計師時先跳出小 Modal 只填名稱，建立後再進編輯頁補其他資料。</p>
+  <div class="stack">
+
+    <div class="frame">
+      <div class="label">1 · 設計師卡片牆（含停用中、新增卡片）</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div>
+          <div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>設計師<span class="new">新</span></div><div class="nav-item"><i></i>服務項目</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div></div>
+        <div class="main" style="overflow-y:auto">
+          <div class="head"><div><h2 class="serif">設計師</h2><div class="sub">拖曳 ⋮⋮ 調整預約頁的顯示順序。名字、頭像、專長、IG 和作品集會公開顯示。</div></div></div>
+          <div class="cards">
+            <div class="dcard"><span class="drag">⋮⋮</span><span class="status on">啟用中</span><div class="avatar av1">林</div><div class="nm">林小美</div><div class="meta">5 項服務 · 8 張作品</div><div class="chips"><span class="chip">韓系剪髮</span><span class="chip">漸層染</span><span class="chip">空氣感燙</span></div><div class="thumbs"><div class="p1"></div><div class="p2"></div><div class="p3"></div></div><div class="foot"><span class="link muted">停用</span><span class="btn outline sm">編輯</span></div></div>
+            <div class="dcard"><span class="drag">⋮⋮</span><span class="status on">啟用中</span><div class="avatar av2">陳</div><div class="nm">陳阿傑</div><div class="meta">3 項服務 · 6 張作品</div><div class="chips"><span class="chip">男士油頭</span><span class="chip">漸層推剪</span></div><div class="thumbs"><div class="p4"></div><div class="p6"></div><div class="p7"></div></div><div class="foot"><span class="link muted">停用</span><span class="btn outline sm">編輯</span></div></div>
+            <div class="dcard"><span class="drag">⋮⋮</span><span class="status on">啟用中</span><div class="avatar av3">王</div><div class="nm">王大明</div><div class="meta">4 項服務 · 0 張作品</div><div class="chips"><span class="chip">日系短髮</span><span class="chip">護髮</span></div><div class="thumbs"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><div class="foot"><span class="link muted">停用</span><span class="btn outline sm">編輯</span></div></div>
+            <div class="dcard off"><span class="drag">⋮⋮</span><span class="status off">已停用</span><div class="avatar av4">張</div><div class="nm">張小芸</div><div class="meta">2 項服務 · 4 張作品</div><div class="chips"><span class="chip">新娘造型</span></div><div class="thumbs"><div class="p8"></div><div class="p5"></div><div class="p2"></div></div><div class="foot"><span class="link">重新啟用</span><span class="btn outline sm">編輯</span></div></div>
+            <div class="dcard new" style="min-height:320px"><b>＋</b>新增設計師</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 新增設計師 Modal（只填名稱，建立後進編輯頁）</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div></div>
+        <div class="main"><div class="head"><h2 class="serif">設計師</h2></div><div class="cards"><div class="dcard" style="height:300px"></div><div class="dcard" style="height:300px"></div></div></div>
+        <div class="overlay"><div class="dialog">
+          <h3>新增設計師</h3>
+          <p>先輸入名稱建立設計師，接著可以設定頭像、專長、提供的服務與作品集。新設計師預設不提供任何服務，設定好服務後才會出現在預約頁。</p>
+          <div class="field"><label>名稱 *</label><div class="input">張小芸</div></div>
+          <div class="foot"><div class="btn text">取消</div><div class="btn">建立並繼續設定</div></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 編輯頁上半：基本資料卡＋提供服務卡</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div></div>
+        <div class="main" style="overflow-y:auto;position:relative">
+          <div class="crumb">設計師 ／ 林小美</div>
+          <div class="head" style="margin-bottom:16px"><h2 class="serif">林小美</h2></div>
+          <div class="anchor"><div class="on">基本資料</div><div>提供服務</div><div>作品集</div><div>請假</div><div style="margin-top:16px;border:none;color:var(--danger)">停用設計師</div></div>
+          <div class="col">
+            <div class="scard"><div class="h"><div><h3>基本資料</h3><div class="d">會公開顯示在顧客預約頁</div></div></div>
+              <div class="b" style="display:grid;grid-template-columns:140px 1fr;gap:24px">
+                <div><div class="upload" style="width:120px;height:120px"><div class="avatar av1">林</div></div><div class="upload-actions"><span class="btn outline sm">更換</span></div></div>
+                <div>
+                  <div class="row-2"><div class="field"><label>名稱 *</label><div class="input">林小美</div></div><div class="field"><label>Instagram 帳號</label><div class="input"><span class="pre">@</span>mei.hair.studio</div></div></div>
+                  <div class="field"><label>專長標籤（最多 5 個）</label><div class="tag-input"><span class="tag">韓系剪髮 <b>×</b></span><span class="tag">漸層染 <b>×</b></span><span class="tag">空氣感燙 <b>×</b></span></div></div>
+                  <div class="field" style="margin-bottom:0"><label>簡介</label><div class="input area">入行 8 年，擅長依臉型調整的韓系剪裁與低調漸層染。</div></div>
+                </div>
+              </div>
+              <div class="form-foot"><div class="btn">儲存基本資料</div></div>
+            </div>
+            <div class="scard"><div class="h"><div><h3>提供服務</h3><div class="d">開關即時儲存；關閉不影響已成立的預約</div></div><span style="font-size:13px;color:var(--grey-700)">5 / 6 項</span></div>
+              <div class="b svc-grid">
+                <div class="svc"><div><div class="n">韓系剪髮</div><div class="m">60 分鐘</div></div><div class="switch on"></div></div>
+                <div class="svc"><div><div class="n">洗剪吹</div><div class="m">45 分鐘</div></div><div class="switch on"></div></div>
+                <div class="svc"><div><div class="n">漸層染髮</div><div class="m">150 分鐘</div></div><div class="switch on"></div></div>
+                <div class="svc off"><div><div class="n">男士油頭造型</div><div class="m">30 分鐘</div></div><div class="switch"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 編輯頁下半：作品集卡＋請假卡</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div></div>
+        <div class="main" style="overflow-y:auto;position:relative">
+          <div class="anchor" style="top:32px"><div>基本資料</div><div>提供服務</div><div class="on">作品集</div><div>請假</div></div>
+          <div class="col">
+            <div class="scard"><div class="h"><div><h3>作品集</h3><div class="d">jpg／png／webp，單張 5MB 以內，最新的排最前面</div></div><span style="font-size:13px;color:var(--grey-700)">8 / 12 張</span></div>
+              <div class="b"><div class="pf-grid" style="padding:0;grid-template-columns:repeat(5,1fr)"><div class="add"><b>＋</b>上傳作品</div><div class="p1"><span class="del">×</span></div><div class="p2"></div><div class="p3"></div><div class="p4"></div><div class="p5"></div><div class="p6"></div><div class="p7"></div><div class="p8"></div></div></div>
+            </div>
+            <div class="scard"><div class="h"><div><h3>請假</h3><div class="d">點日期標記或取消整天請假；全店公休日不能在這裡修改</div></div></div>
+              <div class="b" style="display:flex;gap:32px">
+                <div class="mini-month">
+                  <div class="w">日</div><div class="w">一</div><div class="w">二</div><div class="w">三</div><div class="w">四</div><div class="w">五</div><div class="w">六</div>
+                  <div class="d past">19</div><div class="d shop">20</div><div class="d today">21</div><div class="d">22</div><div class="d leave-d">23</div><div class="d">24</div><div class="d">25</div>
+                  <div class="d">26</div><div class="d shop">27</div><div class="d">28</div><div class="d leave-d">29</div><div class="d">30</div><div class="d">31</div><div class="d"></div>
+                </div>
+                <div style="flex:1"><div class="leave-row"><span>10/23（四）</span><span class="link muted">移除</span></div><div class="leave-row"><span>10/29（三）</span><span class="link muted">移除</span></div><div class="legend"><span><i style="background:var(--warning-light)"></i>個人請假</span><span><i style="background:var(--grey-200)"></i>全店公休</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">5 · 載入中 ／ 讀取錯誤</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div></div>
+        <div class="main">
+          <div class="head"><h2 class="serif">設計師</h2></div>
+          <div class="cards"><div class="sk" style="height:300px"></div><div class="sk" style="height:300px"></div><div class="sk" style="height:300px"></div></div>
+          <div style="margin-top:24px;background:var(--danger-light);color:var(--danger);padding:12px 16px;border-radius:var(--radius-sm);font-size:14px">無法載入設計師資料，請重新整理頁面再試一次。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="page-note" style="margin-top:16px">停用確認、請假日受影響預約警告的對話框文案與 Variant A 相同，這裡不重複畫。</p>
+</body>
+</html>

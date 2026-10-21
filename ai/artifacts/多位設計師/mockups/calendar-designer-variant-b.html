@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>預約週曆設計師篩選 Variant B · 設計師色彩編碼＋多選圖例</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-50:#FBF4E2; --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+  p.page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 24px; max-width: 1000px; line-height: 1.7; }
+  .stack { display: flex; flex-direction: column; gap: 32px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .04em; margin-bottom: 8px; }
+  .screen { width: 1100px; height: 640px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 220px; background: var(--surface); padding: 24px 0; flex-shrink: 0; box-shadow: 1px 0 0 var(--grey-300); }
+  .sidebar .logo { font-size: 18px; font-weight: 700; padding: 0 24px 24px; }
+  .nav-item { padding: 12px 24px; font-size: 16px; color: var(--grey-700); display: flex; gap: 12px; align-items: center; }
+  .nav-item i { width: 20px; height: 20px; border-radius: 6px; background: var(--grey-300); }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); font-weight: 600; }
+  .nav-item.active i { background: var(--primary-500); }
+  .nav-item .new { font-size: 11px; color: var(--primary-700); background: var(--primary-50); padding: 1px 6px; border-radius: 999px; margin-left: auto; }
+
+  .main { flex: 1; padding: 32px 40px; overflow: hidden; display: flex; flex-direction: column; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+  .head h2 { font-size: 24px; margin: 0; }
+  .head .sub { font-size: 14px; color: var(--grey-700); margin-top: 4px; }
+  .crumb { font-size: 13px; color: var(--grey-700); margin-bottom: 8px; }
+  .btn { height: 40px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: none; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); font-weight: 600; }
+  .btn.danger { background: var(--danger); }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; padding: 0 12px; }
+  .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  .panel { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--grey-700); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--grey-300); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--grey-200); vertical-align: middle; }
+  tr.off td { color: var(--grey-500); }
+  tr.off .avatar { opacity: .5; }
+  .who { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; flex-shrink: 0; }
+  .av1 { background: linear-gradient(135deg,#C9A36A,#7D5A3A); }
+  .av2 { background: linear-gradient(135deg,#8E9C88,#4F5E4A); }
+  .av3 { background: linear-gradient(135deg,#B78C7A,#6E4536); }
+  .av4 { background: linear-gradient(135deg,#A79E92,#6B6259); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--grey-300); color: var(--grey-700); }
+  .status { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+  .status.on { background: var(--success-light); color: #57644F; }
+  .status.off { background: var(--grey-200); color: var(--grey-700); }
+  .order { display: flex; flex-direction: column; gap: 2px; color: var(--grey-500); font-size: 10px; line-height: 1; }
+  .actions { display: flex; gap: 4px; justify-content: flex-end; }
+  .link { color: var(--primary-700); font-weight: 600; font-size: 13px; padding: 6px 8px; }
+  .link.muted { color: var(--grey-700); }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--grey-300); margin-bottom: 24px; }
+  .tabs span { padding: 12px 16px; font-size: 14px; color: var(--grey-700); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs span.on { color: var(--grey-900); font-weight: 600; border-bottom-color: var(--primary-500); }
+  .tabs .count { font-size: 12px; color: var(--grey-500); margin-left: 4px; }
+
+  .form { padding: 24px; display: grid; grid-template-columns: 200px 1fr; gap: 32px; }
+  .upload { width: 120px; height: 120px; border-radius: 50%; border: 2px dashed var(--grey-300); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--grey-700); position: relative; }
+  .upload .avatar { width: 116px; height: 116px; font-size: 40px; }
+  .upload-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--grey-700); margin-bottom: 6px; }
+  .input { height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 14px; display: flex; align-items: center; }
+  .input.area { height: 72px; align-items: flex-start; padding-top: 10px; line-height: 1.6; }
+  .input.err { border-color: var(--danger); }
+  .input .pre { color: var(--grey-500); margin-right: 2px; }
+  .helper { font-size: 12px; color: var(--grey-700); margin-top: 4px; display: flex; justify-content: space-between; }
+  .helper.err { color: var(--danger); }
+  .tag-input { min-height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag { font-size: 13px; padding: 4px 8px 4px 10px; border-radius: 999px; background: var(--grey-200); display: inline-flex; gap: 6px; align-items: center; }
+  .tag b { color: var(--grey-500); font-weight: 400; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--grey-200); }
+  .notice { font-size: 12px; color: var(--info); background: var(--info-light); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 20px; }
+
+  .svc { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--grey-200); }
+  .svc .n { font-size: 14px; font-weight: 600; }
+  .svc .m { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+  .switch { width: 40px; height: 22px; border-radius: 999px; background: var(--grey-300); position: relative; }
+  .switch::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch.on { background: var(--primary-500); }
+  .switch.on::after { left: 20px; }
+  .svc.off .n { color: var(--grey-500); }
+
+  .pf-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; }
+  .pf-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding: 0 24px 24px; }
+  .pf-grid > div { aspect-ratio: 1; border-radius: var(--radius-sm); position: relative; }
+  .pf-grid .add { border: 2px dashed var(--grey-300); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: var(--grey-700); gap: 4px; }
+  .pf-grid .add b { font-size: 24px; font-weight: 400; color: var(--grey-500); }
+  .pf-grid .del { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(43,38,34,.7); color: #fff; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .pf-grid .loading { background: var(--grey-200); display: flex; align-items: center; justify-content: center; }
+  .spinner { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--grey-300); border-top-color: var(--primary-500); }
+  .p1 { background: linear-gradient(160deg,#3B2B22,#A47148 60%,#E4C9A6); }
+  .p2 { background: linear-gradient(200deg,#2F2A26,#6B5B4E 50%,#C9B8A3); }
+  .p3 { background: linear-gradient(140deg,#5A3E36,#C08B6F 55%,#F1D9C4); }
+  .p4 { background: linear-gradient(180deg,#1F1C1A,#7A6A5A 70%,#D9C7B0); }
+  .p5 { background: linear-gradient(120deg,#6F531E,#DDB55A 60%,#FBF4E2); }
+  .p6 { background: linear-gradient(210deg,#2B2622,#8E7A69 50%,#E4DDD1); }
+  .p7 { background: linear-gradient(150deg,#4F5E4A,#8E9C88 55%,#E4EBE1); }
+  .p8 { background: linear-gradient(170deg,#3E2A20,#B78C7A 60%,#F3DEDA); }
+
+  .leave { display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 24px; }
+  .month-h { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 13px; }
+  .month .w { font-size: 11px; color: var(--grey-700); padding: 4px 0; }
+  .month .d { height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .month .past { color: var(--grey-500); }
+  .month .today { outline: 2px solid var(--primary-500); }
+  .month .leave-d { background: var(--warning-light); color: var(--warning); font-weight: 700; }
+  .month .shop { background: var(--grey-200); color: var(--grey-500); text-decoration: line-through; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--grey-700); margin-top: 12px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .leave-list h4 { font-size: 14px; margin: 0 0 12px; }
+  .leave-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--grey-200); font-size: 14px; }
+
+  .overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .dialog { width: 440px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .dialog h3 { font-size: 18px; margin: 0 0 8px; }
+  .dialog p { font-size: 14px; color: var(--grey-700); line-height: 1.7; margin: 0 0 16px; }
+  .dialog .list { background: var(--warning-light); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; line-height: 1.8; margin-bottom: 16px; }
+  .dialog .foot { display: flex; justify-content: flex-end; gap: 8px; }
+  .sk { background: var(--grey-200); border-radius: var(--radius-sm); }
+</style>
+<style>
+  :root { --d1:#B5774F; --d2:#6F8F7A; --d3:#5E7A96; --d4:#8A6A8C; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .week-nav { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; }
+  .week-nav .arrow { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-1); display: flex; align-items: center; justify-content: center; }
+  .view-toggle { display: flex; gap: 4px; background: var(--grey-200); border-radius: var(--radius-sm); padding: 2px; }
+  .view-toggle span { font-size: 13px; padding: 6px 12px; border-radius: 6px; color: var(--grey-700); }
+  .view-toggle span.active { background: var(--surface); color: var(--grey-900); font-weight: 600; box-shadow: var(--shadow-1); }
+  .layout { display: flex; gap: 16px; flex: 1; min-height: 0; }
+  .legend-panel { width: 180px; flex-shrink: 0; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 16px; align-self: flex-start; }
+  .legend-panel h4 { font-size: 13px; margin: 0 0 12px; color: var(--grey-700); }
+  .lg { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 6px 0; }
+  .cb { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .cb.off { background: transparent !important; border: 2px solid var(--grey-300); }
+  .lg .c { margin-left: auto; font-size: 12px; color: var(--grey-500); }
+  .lg.dim { color: var(--grey-500); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; flex: 1; }
+  .day { background: var(--surface); border-radius: var(--radius-sm); padding: 8px; box-shadow: var(--shadow-1); }
+  .day.today { outline: 2px solid var(--primary-500); }
+  .day.closed { background: var(--grey-200); box-shadow: none; }
+  .day .d { font-size: 12px; font-weight: 700; color: var(--grey-700); margin-bottom: 8px; }
+  .ev { border-radius: 6px; padding: 6px 8px 6px 10px; margin-bottom: 6px; background: var(--grey-100); border-left: 4px solid; }
+  .ev .t { font-size: 11px; color: var(--grey-700); font-weight: 600; }
+  .ev .n { font-size: 13px; font-weight: 700; margin: 1px 0; }
+  .ev .s { font-size: 11px; color: var(--grey-700); }
+  .ev.done { opacity: .7; }
+  .ev .st { font-size: 10px; color: #57644F; font-weight: 700; }
+  .leave-dot { font-size: 11px; display: flex; align-items: center; gap: 4px; color: var(--grey-700); margin-bottom: 6px; }
+  .leave-dot i { width: 8px; height: 8px; border-radius: 50%; }
+  .tokens { display: flex; gap: 12px; margin-top: 12px; }
+  .tokens div { font-size: 12px; color: var(--grey-700); display: flex; align-items: center; gap: 6px; }
+  .tokens i { width: 20px; height: 20px; border-radius: 6px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">預約週曆設計師篩選 · Variant B：設計師色彩編碼＋左側多選圖例</h1>
+  <p class="page-note">每位設計師配一個識別色，事件卡左側用 4px 色條標示；週曆左邊多一個圖例面板，可以<b>多選</b>要顯示的設計師（例如只比較兩位的排程）。整週掃一眼就能看出每個人的忙碌程度。<b>代價：需要擴充設計系統</b>，新增一組「設計師識別色」categorical token（亮／暗模式各一套），而且設計師超過色票數量時要循環使用。依 ui-mockup-gate 規則，擴充設計系統需要你另外同意。</p>
+  <div class="stack">
+
+    <div class="frame">
+      <div class="label">1 · 全部顯示（色條標示設計師）</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div><div class="nav-item"><i></i>營業時間</div></div>
+        <div class="main">
+          <div class="toolbar"><div class="week-nav"><span class="arrow">‹</span>10/19 – 10/25<span class="arrow">›</span></div><div class="view-toggle"><span class="active">週曆</span><span>列表</span></div></div>
+          <div class="layout">
+            <div class="legend-panel"><h4>顯示設計師</h4>
+              <div class="lg"><span class="cb" style="background:var(--d1)">✓</span>林小美<span class="c">6</span></div>
+              <div class="lg"><span class="cb" style="background:var(--d2)">✓</span>陳阿傑<span class="c">5</span></div>
+              <div class="lg"><span class="cb" style="background:var(--d3)">✓</span>王大明<span class="c">3</span></div>
+              <div style="border-top:1px solid var(--grey-200);margin:8px 0;padding-top:8px;font-size:13px;color:var(--primary-700);font-weight:600">只顯示一位…</div>
+            </div>
+            <div class="cal">
+              <div class="day"><div class="d">日 10/19</div><div class="ev done" style="border-color:var(--d1)"><div class="t">10:00</div><div class="n">周小姐</div><div class="s">韓系剪髮</div><div class="st">已完成</div></div></div>
+              <div class="day closed"><div class="d">一 10/20</div></div>
+              <div class="day today"><div class="d">二 10/21</div>
+                <div class="ev" style="border-color:var(--d1)"><div class="t">11:00</div><div class="n">王小姐</div><div class="s">韓系剪髮</div></div>
+                <div class="ev" style="border-color:var(--d2)"><div class="t">11:00</div><div class="n">李先生</div><div class="s">男士油頭</div></div>
+                <div class="ev" style="border-color:var(--d3)"><div class="t">14:30</div><div class="n">黃小姐</div><div class="s">護髮</div></div>
+              </div>
+              <div class="day"><div class="d">三 10/22</div><div class="ev" style="border-color:var(--d2)"><div class="t">13:00</div><div class="n">吳先生</div><div class="s">洗剪吹</div></div></div>
+              <div class="day"><div class="d">四 10/23</div><div class="leave-dot"><i style="background:var(--d1)"></i>林小美請假</div><div class="ev" style="border-color:var(--d3)"><div class="t">10:30</div><div class="n">陳小姐</div><div class="s">漸層染</div></div></div>
+              <div class="day"><div class="d">五 10/24</div><div class="ev" style="border-color:var(--d1)"><div class="t">15:00</div><div class="n">林先生</div><div class="s">洗剪吹</div></div></div>
+              <div class="day"><div class="d">六 10/25</div><div class="ev" style="border-color:var(--d1)"><div class="t">10:00</div><div class="n">鄭小姐</div><div class="s">空氣感燙</div></div><div class="ev" style="border-color:var(--d2)"><div class="t">14:00</div><div class="n">許先生</div><div class="s">漸層推剪</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 多選：只比較兩位設計師</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div></div>
+        <div class="main">
+          <div class="toolbar"><div class="week-nav"><span class="arrow">‹</span>10/19 – 10/25<span class="arrow">›</span></div><div class="view-toggle"><span class="active">週曆</span><span>列表</span></div></div>
+          <div class="layout">
+            <div class="legend-panel"><h4>顯示設計師</h4>
+              <div class="lg"><span class="cb" style="background:var(--d1)">✓</span>林小美<span class="c">6</span></div>
+              <div class="lg"><span class="cb" style="background:var(--d2)">✓</span>陳阿傑<span class="c">5</span></div>
+              <div class="lg dim"><span class="cb off"></span>王大明<span class="c">3</span></div>
+              <div style="border-top:1px solid var(--grey-200);margin:8px 0;padding-top:8px;font-size:13px;color:var(--primary-700);font-weight:600">全部顯示</div>
+            </div>
+            <div class="cal">
+              <div class="day"><div class="d">日 10/19</div><div class="ev done" style="border-color:var(--d1)"><div class="t">10:00</div><div class="n">周小姐</div><div class="s">韓系剪髮</div><div class="st">已完成</div></div></div>
+              <div class="day closed"><div class="d">一 10/20</div></div>
+              <div class="day today"><div class="d">二 10/21</div><div class="ev" style="border-color:var(--d1)"><div class="t">11:00</div><div class="n">王小姐</div><div class="s">韓系剪髮</div></div><div class="ev" style="border-color:var(--d2)"><div class="t">11:00</div><div class="n">李先生</div><div class="s">男士油頭</div></div></div>
+              <div class="day"><div class="d">三 10/22</div><div class="ev" style="border-color:var(--d2)"><div class="t">13:00</div><div class="n">吳先生</div><div class="s">洗剪吹</div></div></div>
+              <div class="day"><div class="d">四 10/23</div><div class="leave-dot"><i style="background:var(--d1)"></i>林小美請假</div></div>
+              <div class="day"><div class="d">五 10/24</div><div class="ev" style="border-color:var(--d1)"><div class="t">15:00</div><div class="n">林先生</div><div class="s">洗剪吹</div></div></div>
+              <div class="day"><div class="d">六 10/25</div><div class="ev" style="border-color:var(--d1)"><div class="t">10:00</div><div class="n">鄭小姐</div><div class="s">空氣感燙</div></div><div class="ev" style="border-color:var(--d2)"><div class="t">14:00</div><div class="n">許先生</div><div class="s">漸層推剪</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 需要新增的「設計師識別色」token（提案，需另外核准）</div>
+      <div class="panel" style="width:1100px;padding:24px">
+        <div style="font-size:14px;line-height:1.7;color:var(--grey-700)">依暖色大地色系挑選、避開既有 primary 金色與 success／warning／danger 狀態色的色相，避免和狀態徽章混淆。設計師數量超過色票時循環使用；暗色模式需要另外提亮一套，並量測與 grey.100 背景的對比。</div>
+        <div class="tokens"><div><i style="background:var(--d1)"></i>designer.1 陶土 #B5774F</div><div><i style="background:var(--d2)"></i>designer.2 鼠尾草 #6F8F7A</div><div><i style="background:var(--d3)"></i>designer.3 石板藍 #5E7A96</div><div><i style="background:var(--d4)"></i>designer.4 灰紫 #8A6A8C</div><div style="color:var(--grey-500)">…designer.5、designer.6 待定</div></div>
+        <div style="font-size:13px;color:var(--grey-700);margin-top:16px">另外要決定顏色怎麼分配給設計師：依 sort_order 自動分配（調整順序顏色會變），或在設計師資料多存一個顏色欄位（需要改資料模型）。</div>
+      </div>
+    </div>
+
+  </div>
+  <p class="page-note" style="margin-top:16px">預約詳情 Modal、改期表單（設計師固定）、列表檢視的設計師欄與 Variant A 相同，這裡不重複畫。</p>
+</body>
+</html>
