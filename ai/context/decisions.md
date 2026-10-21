@@ -258,3 +258,41 @@
   - anon 對 appointments／customers／closed_dates／admins 的查詢，現在在授權層就回
     42501，不再是 RLS 回空陣列；測試斷言要比對錯誤代碼。
 ```
+
+## TASK-079：`is_admin()` 對已啟用 MFA 的帳號要求 aal2（0016），資料庫層強制
+
+```text
+日期：2026-10-21
+決策：is_admin() 改為「在 admins 表」且（JWT aal = 'aal2'，或該帳號在 auth.mfa_factors
+      沒有 status = 'verified' 的 factor）。簽名不變（create or replace），所有 RLS policy、
+      Storage policy、SECURITY DEFINER RPC 自動套用，多位設計師 Epic 新增的表也自動受保護。
+情境：TASK-059 的 aal2 檢查只在 Next.js 三個入口點生效；已啟用 MFA 但只有 aal1 的 session
+      直接打 Supabase REST／RPC／Storage 仍可讀寫全部後台資料（TASK-059 [High] 殘留風險，
+      合併 TASK-043 H1）。
+考慮過的替代方案：
+  - 逐一修改每個 RLS policy 加 aal 檢查：改動面大、日後新增的 policy 容易漏。
+  - 只信任 JWT 的 aal（RESTRICTIVE policy）：無法區分「沒啟用 MFA 的帳號」與「啟用但沒驗證」，
+    會把未啟用 MFA 的店長鎖在外面。
+為何選這個：改一處全部生效；「是否啟用 MFA」以 auth.mfa_factors（伺服器端權威資料）為準，
+      與 lib/auth/aal.ts 不信任本地 cookie 快取的原則一致；aal 取自 PostgREST 已驗簽的 JWT。
+影響：
+  - 註冊中（unverified）的 factor 不算已啟用，MFA 註冊流程不受影響。
+  - 店長若處於「已啟用 MFA 但只是 aal1」的 session，套用後立即失去後台權限，需重新登入並
+    完成 TOTP（預期行為）。
+  - get_admin_profile／update_admin_profile（0007）原本直接查 admins 表、不呼叫 is_admin()，
+    只改 is_admin() 管不到它們（整合測試發現）；0016 一併改為 and public.is_admin()。日後
+    新增的 SECURITY DEFINER 後台函式一律要透過 is_admin() 判斷身分，不可直接查 admins 表。
+  - 前提：資料庫層保證依賴 Supabase Auth 在 aal1 時拒絕 mfa.enroll（否則只有密碼的人可自行
+    註冊 TOTP 升到 aal2）。tests/mfa-rls.integration.test.ts 有測試把關這個前提。
+  - 若日後啟用 Custom Access Token Hook，hook 不得改寫 JWT 的 aal 或 sub claim，否則
+    is_admin() 的判斷基礎會被破壞。
+  - 遺失 TOTP 裝置的復原（Supabase 沒有復原碼）：由有 Dashboard 權限的人到 Authentication →
+    Users → 該使用者 → MFA 刪除 factor，或 SQL
+    `delete from auth.mfa_factors where user_id = '<id>'`。刪除後沒有 verified factor，
+    aal1 即可恢復登入。最後手段是執行 0016_is_admin_require_aal2_down.sql（會讓所有已啟用
+    MFA 的帳號在資料庫層回到 aal1 全權限，屬安全降級）。
+  - 應用層三個入口點（lib/auth/aal.ts 等）維持不動，作為縱深防禦。
+  - 測試用 tests/mfa-rls.integration.test.ts（npm run test:mfa-rls），以拋棄式帳號暫時加入
+    admins，不使用 designer001。
+  - 多位設計師 Epic 的 migration 順延為 0017／0018。
+```

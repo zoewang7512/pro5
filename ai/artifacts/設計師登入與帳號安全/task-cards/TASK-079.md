@@ -115,8 +115,63 @@
 ## 完成證據
 
 - 變更的檔案：
+  - 新增 `supabase/migrations/0016_is_admin_require_aal2.sql`、`0016_is_admin_require_aal2_down.sql`
+    （已由人工於 2026-10-21 貼入 Supabase SQL Editor 套用到正式資料庫，兩次：第二次是補上
+    get_admin_profile／update_admin_profile）
+  - 新增 `tests/mfa-rls.integration.test.ts`、`vitest.mfa-rls.config.ts`；`package.json` 新增 `test:mfa-rls`
+  - 更新 `ai/context/decisions.md`（TASK-079 決策）、`ai/context/project-map.md`（`is_admin()` 說明）、
+    本卡 TASK-059.md「後續任務」註記
+- 事前查核：designer001 未啟用 MFA（人工確認），所以套用後既有整合測試的管理員案例不受影響，
+  不需要任務卡「未知事項」的 (a)(b)(c) 方案。
 - 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
+  - `npx tsc --noEmit` → 通過
+  - `npm run lint` → 通過
+  - `npm run build` → 通過
+  - `npm test` → 44 檔 496 項通過
+  - `npm run test:mfa-rls` → 20 項通過
+  - 回歸：`test:rls` 18、`test:admin-booking` 13、`test:business-hours` 33、`test:store-settings` 11、
+    `test:booking-policy` 7、`test:services` 17、`test:account` 17、`test:booking` 23，全數通過
+  - 套用後在 SQL Editor 以 `pg_get_functiondef` 確認正式資料庫的 is_admin() 為新版；以 pg_proc.proacl 確認
+    get_admin_profile／update_admin_profile 的 ACL 沒有 anon（人工查詢）；Dashboard 沒有 Database Webhook
+    （人工確認）
+  - 跑完測試後查 admins 表只剩 1 列（designer001），確認拋棄式測試管理員已清除
+- 測試輸出：`test:mfa-rls` 20 項涵蓋——情境 1（無 verified factor 的管理員 aal1 為 true、可讀寫個人資料、
+  unverified factor 不算啟用）；情境 2（有 verified factor 且 aal1：is_admin() 為 false、無法自行註冊第二個
+  factor、PostgREST 更新 services 0 列且資料未變、update_admin_profile 回 false 且維持原值、get_admin_profile
+  回空、上傳與刪除 admin-assets 被拒且物件狀態不變、查不到 appointments）；情境 3（aal2：is_admin() 為 true、
+  更新 services 資料確實改變、個人資料寫入可讀回、admin-assets 上傳與刪除成功、可讀 appointments、session
+  refresh 後仍是 aal2）；情境 4（非管理員 aal1／aal2／anon 皆為 false）。每條 aal1 的拒絕路徑都有 aal2
+  的同路徑成功當對照組，避免假陽性。
+- 螢幕截圖：不適用（無 UI 變更）。真實瀏覽器 MFA 走查**以整合測試取代**（人工決定；原因：designer001 未
+  啟用 MFA，且應用層 `lib/auth/aal.ts` 與三個入口點未變更）。
+- 審查結果（agent 意見，不代表人工核准）：
+  - security-reviewer：無 Critical／High；全面掃描確認除 0007 兩支 RPC 外沒有其他不經 is_admin() 的管理員判斷
+    路徑；down 正確還原。Medium：保護依賴「aal1 不能註冊第二個 factor」→ 已補測試。Low 項已處理：0016
+    檔頭敘述、測試檔頭清除說明補 Storage、decisions.md 補 Access Token Hook 前提與 TOTP 遺失復原步驟。
+  - test-engineer：H1（down／重複套用未執行）→ 列為殘留風險；H2（get_admin_profile 與無 MFA 管理員行為不變）
+    → 已補測試；M1（TOTP 額度）→ 已重構為共用 session 與絕對 counter；M3（refresh）→ 已補測試；
+    M5／M6／L1（斷言偏鬆）→ 已收緊；讀取路徑與 Storage 刪除 → 已補；補跑 `npm test`、`test:booking`。
 - 已知限制：
-- 後續任務：
+  - **範圍擴大**：任務卡原定只改 `is_admin()`，實測發現 0007 的 `get_admin_profile`／`update_admin_profile`
+    直接查 admins 表而繞過 is_admin()，驗收標準要求 update_admin_profile 被拒，故 0016 一併修正。已 grep
+    確認目前 migrations 只有這兩支有此寫法；日後新增的 SECURITY DEFINER 後台函式必須透過 is_admin()。
+  - `_down` 與 up 重複套用**未實際在資料庫執行**，只做靜態逐行比對（up 套用過兩次，第二次為 create or
+    replace 覆蓋，等同驗證了重複套用）；down 的授權保留僅為推論，未以 proacl 驗證。down 會造成安全降級。
+  - 真實瀏覽器走查未做（見上）；aal2 的 session refresh 以整合測試驗證。
+  - 只驗證 TOTP 類型 factor；phone／webauthn 理論上同樣適用（status = 'verified'），未測。
+  - `is_admin()` 依賴 Supabase 內部 `auth.mfa_factors` 的 schema；Supabase 若改動，所有後台寫入會 fail closed。
+  - 測試期間正式資料庫短暫存在拋棄式管理員（含一個無 MFA 的 plain-admin）；afterAll 會清除，強制中斷時
+    下一次執行的 beforeAll 會自動掃除殘留，檔頭另有手動清除步驟。
+  - 測試對 TOTP 時間窗與 Supabase 限流有 flaky 風險；連續重跑失敗時等 30 秒再試。
+  - 每次 RLS 判斷多一次 `auth.mfa_factors` 查詢（security definer 函式不會被 inline）。
+  - 套用當下已啟用 MFA 但只是 aal1 的 session 立即失去後台權限（預期行為）。
+- 後續任務（建議另開任務卡）：
+  - 【中】改密碼／改 Email 後 `reauthenticateAdmin` 把 session 降成 aal1：對已啟用 MFA 的帳號，Sidebar
+    名稱與大頭貼會立刻變空白、同頁後續存檔顯示「操作失敗」，需重新登入加 TOTP。應改為成功後 signOut 導向
+    `/login`，或重新驗證後補做 challenge／verify 回到 aal2（TASK-045 留下的項目）。
+  - 【中】designer001 日後啟用 MFA 會讓所有 `test:*` 的管理員案例全部失敗：需要專用的不啟用 MFA 測試管理員，
+    或測試端 TOTP 升級機制。
+  - 【低】`lib/auth/aal.ts` 只把 TOTP 類型 factor 算進「已啟用 MFA」，與資料庫層（任何 verified factor）不一致；
+    目前 app 只會註冊 TOTP，影響很低。
+  - 【低】多位設計師 Epic 的 0017／0018 新增 policy 時改用 `using ((select public.is_admin()))` 以利 planner 快取。
+  - 【低】designer001 啟用 MFA 後補做一次真實 Authenticator App 走查並更新本卡證據。
