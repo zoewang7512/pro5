@@ -442,7 +442,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
     });
   });
 
-  describe("寫入權限邊界：designer 可直接寫入 business_hours，anon／非管理員 authenticated 皆被 RLS 拒絕（本 Epic 第一次開放 authenticated 直接寫入，需重新確認邊界未被意外放寬）", () => {
+  describe("寫入權限邊界：designer 可直接寫入 business_hours，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic 第一次開放 authenticated 直接寫入，需重新確認邊界未被意外放寬）", () => {
     it("designer 寫入成功，重新查詢確認資料確實生效，並還原為原始值", async () => {
       const original = originalSnapshot.find((row) => row.weekday === WRITE_WEEKDAY)!;
       const originalInput = toInput(original);
@@ -634,7 +634,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
     });
   });
 
-  describe("closed_dates 讀寫權限邊界：designer 可直接讀寫，anon／非管理員 authenticated 皆被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界）", () => {
+  describe("closed_dates 讀寫權限邊界：designer 可直接讀寫，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界）", () => {
     it("designer 新增後查詢確認生效，移除後查詢確認已刪除", async () => {
       const addResult = await addClosedDate(designerClient, CLOSED_RLS_DATE);
       closedDatesToCleanup.push(CLOSED_RLS_DATE);
@@ -699,7 +699,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
     // 也需要真的被 RLS 擋下的情境才測得到，不能只在單元測試裡 mock。這裡先用 service role
     // 建立一筆既有資料（模擬「設計師已經設定過」的狀態），再用 anon／nonAdmin 嘗試刪除，
     // 確認 USING 子句真的擋下、資料不受影響。
-    it("anon 呼叫 removeClosedDate 被 RLS 的 USING 子句拒絕，既有列不受影響（上面三個案例只驗證了 WITH CHECK／INSERT 路徑，這裡補上 DELETE 路徑）", async () => {
+    it("anon 呼叫 removeClosedDate 被拒（TASK-066 起在權限層就擋下），既有列不受影響（上面三個案例只驗證了 WITH CHECK／INSERT 路徑，這裡補上 DELETE 路徑）", async () => {
       const { error: seedError } = await serviceRoleClient.from("closed_dates").upsert({ date: CLOSED_RLS_DATE });
       if (seedError) throw seedError;
       closedDatesToCleanup.push(CLOSED_RLS_DATE);

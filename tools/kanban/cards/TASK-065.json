@@ -1,0 +1,86 @@
+{
+  "stage": "done",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "專案設置",
+  "userStory": "核心資料模型與認證框架基礎",
+  "id": "TASK-065",
+  "title": "規則：新建資料表的 migration 必須附上明確且最小權限的 GRANT",
+  "content": "因應 Supabase 通知：2026-10-30 起，既有專案在 public schema 新建的資料表不再自動授權給 Data API 角色（anon/authenticated/service_role），沒寫 GRANT 時 supabase-js 會回 permission denied。本卡只改文件：decisions.md 新增決策、security-checklist.md 新增檢查項、project-map.md 的 supabase/migrations 說明補一句。規則是依用途給最小權限，不照抄通知信範例（範例對每張表都開 anon select）。不改任何 SQL，補既有表的 grant 屬於 TASK-066。",
+  "risk": "low",
+  "track": "n/a",
+  "dependsOn": [],
+  "order": 65,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-065.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/context/decisions.md",
+    "ai/checklists/security-checklist.md",
+    "ai/context/project-map.md"
+  ],
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "收到 Supabase 通知信（10/30 起 public schema 新表不再自動授權 Data API），請開任務卡處理。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "已確認既有 8 張表不受影響，函式本來就有明確 grant execute。建立本卡，把「新表必附最小權限 GRANT」寫成規則。放在 backlog，等人工核准。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "開始做 TASK-065。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "人工核准已記錄，轉 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "實作完成：decisions.md 新增 TASK-065 決策，security-checklist.md 新增檢查項，project-map.md 的 supabase/migrations 列補一句，三處互相指回同一筆決策。純文件變更。轉 verify，待人工驗收轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "沒問題，轉 Done。"
+    }
+  ],
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [
+      "git diff --stat（只有 decisions.md／security-checklist.md／project-map.md 三個檔案，+43／-1）",
+      "git diff --name-only -- supabase app lib components（無輸出，未動到 SQL 或程式碼）"
+    ],
+    "findings": [],
+    "residual": "規則只約束之後的新表，既有 8 張表要等 TASK-066；規則靠審查關卡執行，沒有自動化檢查。"
+  }
+}

@@ -228,8 +228,12 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       expect(epoch(found!.end_at)).toBe(epoch(endAt));
     });
 
-    it("anon 查詢同樣範圍的 appointments 被 RLS 拒絕，回傳空陣列（重新確認邊界未被意外放寬）", async () => {
-      // 先用 service role 確認底下確實有資料，anon 讀到空陣列才有意義，避免恆真斷言。
+    it("anon 查詢同樣範圍的 appointments 在權限層就被拒絕（重新確認邊界未被意外放寬）", async () => {
+      // 先用 service role 確認底下確實有資料，anon 被拒才有意義，避免恆真斷言。
+      // TASK-066（0015_explicit_table_grants.sql）起，anon 對 appointments 沒有 select
+      // 授權，查詢直接回 42501，getAppointmentsForWeek 收到 error 會回傳 ok: false
+      // （以前是 RLS 擋：ok: true、空陣列）。這裡直接查表比對錯誤代碼，再確認封裝函式
+      // 也回報失敗，而不是把錯誤吞成空陣列。
       const { count, error: countError } = await serviceRoleClient
         .from("appointments")
         .select("id", { count: "exact", head: true })
@@ -237,11 +241,15 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       if (countError) throw countError;
       expect(count ?? 0).toBeGreaterThan(0);
 
+      const { error: directError } = await anonClient
+        .from("appointments")
+        .select("id")
+        .eq("service_id", testServiceId);
+      expect(directError?.code).toBe("42501");
+
       const { weekStart, weekEnd } = getWeekRange(READ_DATE);
       const result = await getAppointmentsForWeek(anonClient, weekStart, weekEnd);
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      expect(result.data.filter((row) => row.customer_name.startsWith(TEST_MARKER))).toEqual([]);
+      expect(result.ok).toBe(false);
     });
   });
 
@@ -414,10 +422,11 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
         endAt: isoAt(RLS_WRITE_DATE, 11, 30),
       });
 
-      // RLS 阻擋 DELETE 的既有已知行為：回傳成功（error 為 null）但實際沒有列被刪除，
-      // 不是拋錯，所以這裡驗證 error 為 null 的同時，仍要用下面的 refetch 確認資料還在。
+      // TASK-066（0015_explicit_table_grants.sql）起，anon 對 appointments 在權限層就沒有
+      // delete 授權，直接回 42501（以前是 RLS 擋：回傳成功但沒有列被刪除）。仍保留下面的
+      // refetch，確認資料真的還在。
       const { error: anonDeleteError } = await anonClient.from("appointments").delete().eq("id", appointmentId);
-      expect(anonDeleteError).toBeNull();
+      expect(anonDeleteError?.code).toBe("42501");
 
       const { data: stillThere, error: refetchError } = await serviceRoleClient
         .from("appointments")
@@ -429,9 +438,10 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
     });
 
     it("anon 讀不到本測試建立的任何 appointments（重新確認整個 Epic 沒有意外開放更寬的存取）", async () => {
-      // 先用 service role 確認底下確實有資料，anon 讀到空陣列才有意義，避免恆真斷言
+      // 先用 service role 確認底下確實有資料，anon 被拒才有意義，避免恆真斷言
       // （前面幾個 describe 已經建立不少 fixture，這裡只是重新確認邊界沒有被本 Epic
-      // 的新程式碼意外放寬）。
+      // 的新程式碼意外放寬）。TASK-066 起 anon 對 appointments 沒有 select 授權，
+      // 直接回 42501（以前是 RLS 回空陣列）。
       const { count, error: countError } = await serviceRoleClient
         .from("appointments")
         .select("id", { count: "exact", head: true })
@@ -443,8 +453,8 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
         .from("appointments")
         .select("customer_name")
         .like("customer_name", `${escapeLikePattern(TEST_MARKER)}%`);
-      expect(error).toBeNull();
-      expect(data).toEqual([]);
+      expect(error?.code).toBe("42501");
+      expect(data).toBeNull();
     });
   });
 

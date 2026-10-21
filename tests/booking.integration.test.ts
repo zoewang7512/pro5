@@ -581,15 +581,17 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       if (customerCountError) throw customerCountError;
       expect(customerCount ?? 0).toBeGreaterThan(0);
 
+      // TASK-066（0015_explicit_table_grants.sql）起，anon 對 appointments／customers 在
+      // 權限層就沒有授權，直接回 42501，不再是 RLS 回空陣列。
       const { data: appointments, error: appointmentsError } = await anonClient
         .from("appointments")
         .select("id");
-      expect(appointmentsError).toBeNull();
-      expect(appointments).toEqual([]);
+      expect(appointmentsError?.code).toBe("42501");
+      expect(appointments).toBeNull();
 
       const { data: customers, error: customersError } = await anonClient.from("customers").select("id");
-      expect(customersError).toBeNull();
-      expect(customers).toEqual([]);
+      expect(customersError?.code).toBe("42501");
+      expect(customers).toBeNull();
     });
 
     it("anon 無法直接 insert appointments／customers（精確比對權限錯誤代碼，並確認沒有資料真的寫入）", async () => {
@@ -626,7 +628,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       expect(customerShouldNotExist).toEqual([]);
     });
 
-    it("anon 直接 delete appointments／customers 不會實際刪除資料", async () => {
+    it("anon 直接 delete appointments／customers 在權限層就被拒（42501），資料不會被刪除", async () => {
       const { data: fixtureAppointment, error: fixtureError } = await serviceRoleClient
         .from("appointments")
         .insert({
@@ -639,7 +641,12 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .single();
       if (fixtureError) throw fixtureError;
 
-      await anonClient.from("appointments").delete().eq("id", fixtureAppointment.id);
+      // TASK-066 起 anon 對 appointments／customers 沒有 delete 授權，在權限層就回 42501。
+      const { error: appointmentDeleteError } = await anonClient
+        .from("appointments")
+        .delete()
+        .eq("id", fixtureAppointment.id);
+      expect(appointmentDeleteError?.code).toBe("42501");
 
       const { data: appointmentStillThere, error: refetchError } = await serviceRoleClient
         .from("appointments")
@@ -656,7 +663,8 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .single();
       if (customerFixtureError) throw customerFixtureError;
 
-      await anonClient.from("customers").delete().eq("id", fixtureCustomer.id);
+      const { error: customerDeleteError } = await anonClient.from("customers").delete().eq("id", fixtureCustomer.id);
+      expect(customerDeleteError?.code).toBe("42501");
 
       const { data: customerStillThere, error: customerRefetchError } = await serviceRoleClient
         .from("customers")
@@ -667,7 +675,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       expect(customerStillThere).not.toBeNull();
     });
 
-    it("anon 直接 update appointments／customers 不會實際更動資料（RLS 阻擋回傳空結果而非拋錯）", async () => {
+    it("anon 直接 update appointments／customers 在權限層就被拒（42501），資料不會被更動", async () => {
       const { data: fixtureAppointment, error: fixtureError } = await serviceRoleClient
         .from("appointments")
         .insert({
@@ -680,7 +688,12 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .single();
       if (fixtureError) throw fixtureError;
 
-      await anonClient.from("appointments").update({ status: "confirmed" }).eq("id", fixtureAppointment.id);
+      // TASK-066 起 anon 對 appointments／customers 沒有 update 授權，在權限層就回 42501。
+      const { error: appointmentUpdateError } = await anonClient
+        .from("appointments")
+        .update({ status: "confirmed" })
+        .eq("id", fixtureAppointment.id);
+      expect(appointmentUpdateError?.code).toBe("42501");
 
       const { data: appointmentAfter, error: refetchError } = await serviceRoleClient
         .from("appointments")
@@ -697,7 +710,11 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .single();
       if (customerFixtureError) throw customerFixtureError;
 
-      await anonClient.from("customers").update({ name: "hijacked" }).eq("id", fixtureCustomer.id);
+      const { error: customerUpdateError } = await anonClient
+        .from("customers")
+        .update({ name: "hijacked" })
+        .eq("id", fixtureCustomer.id);
+      expect(customerUpdateError?.code).toBe("42501");
 
       const { data: customerAfter, error: customerRefetchError } = await serviceRoleClient
         .from("customers")

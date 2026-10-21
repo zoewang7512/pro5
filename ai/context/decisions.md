@@ -165,3 +165,96 @@
       的並發競態問題（目前判定為低機率），才需要重新評估資料庫層級約束。
 ```
 
+
+## TASK-065：建立資料表的 migration 必須在同一檔案寫出明確且最小權限的 GRANT
+
+```text
+日期：2026-10-21
+決策：之後任何在 public schema 建立資料表的 migration，都要在同一個檔案裡、緊接在
+      create table 之後寫出明確的 table GRANT，依這張表的實際用途分別決定 anon／
+      authenticated／service_role 各自需要的最小權限：
+        1. 先 revoke all on public.<表> from anon, authenticated, service_role;
+           （TASK-066 審查後補上 service_role：同一個交易內 revoke 再 grant 不會有權限
+           空窗，連 service_role 一起收，各環境的結果才會一致）
+        2. 再只 grant 實際需要的權限（例如顧客端要讀才給 anon select；寫入走
+           SECURITY DEFINER RPC 的表，不給 anon／authenticated 直接寫入權限）；
+           需要限制可寫欄位時，用欄位層級 grant（語法可參考 0001 對 appointments 的
+           insert (欄位...) 寫法）；
+        3. service_role 明確 grant select, insert, update, delete（伺服器端與整合測試
+           使用）。
+      不得直接照抄 Supabase 通知信的範例：範例對每張表都給 anon select、對
+      authenticated 給完整讀寫，對 customers／admins 這類含個資或管理用途的表過寬。
+      down migration 不需要另外 revoke，drop table 會一併移除授權。
+情境：Supabase 於 2026-10-20 通知，2026-10-30 起既有專案在 public schema 新建的資料表，
+      不再自動授權給 Data API 角色（anon／authenticated／service_role）。沒有明確
+      GRANT 時，supabase-js／PostgREST 會回 permission denied。這也影響「用 migration
+      重建 schema」的情境（新 Supabase 專案、preview branch、本機 db reset）。
+      10/30 前建立的既有 8 張表維持原本自動授權，不受影響，補齊明確授權另見 TASK-066。
+      在此之前，本專案的資料表權限都靠 Supabase 自動授權（實際上 anon／authenticated
+      幾乎拿到全部權限），只有局部收緊（0001 appointments 欄位層級 insert、0008／0014
+      revoke truncate）；函式則早已慣例化「revoke from public + revoke from anon +
+      grant execute to 指定角色」（見 0007 檔內註解）。
+考慮過的替代方案：
+  - 照抄通知信範例的 grant：最省事，但等於把原本過寬的自動授權寫死進版控，
+    customers／admins 會對 anon 開 select，只剩 RLS 一道防線。
+  - 只寫 grant、不先 revoke：在 10/30 之前就存在、或是由 default privileges 授權的
+    環境裡，原本過寬的權限仍會留著，結果會因環境而異。
+為何選這個：GRANT 與 RLS 是兩層不同的邊界：GRANT 決定這個角色能不能碰這張表、能做
+      哪種操作；RLS 決定能碰到哪幾列。兩層都收緊，任何一層寫錯時另一層仍能擋住，
+      比照本專案既有的縱深防禦做法（TASK-003 is_admin()、TASK-046 revoke truncate）。
+      先 revoke all 再 grant，讓同一支 migration 不論在哪個環境執行，結果都一樣。
+影響：撰寫建表 migration 時，要先想清楚「哪個角色、透過什麼路徑（直接查表或 RPC）
+      會用到這張表」，再決定 grant。security-checklist.md 已加入對應檢查項，
+      security-reviewer 審查 migration 時要確認每張新表都有明確 GRANT。新增資料表時，
+      建議在整合測試裡加一個「不該有權限的角色被拒絕」的案例。
+```
+
+## TASK-066：既有 8 張資料表補上明確的最小權限 GRANT（0015），兩個刻意收斂與不再生效的 RLS policy
+
+```text
+日期：2026-10-21
+決策：用 supabase/migrations/0015_explicit_table_grants.sql 為 0001～0014 建立的 8 張表
+      補上明確授權，權限表如下（authenticated 的寫入都還要再通過 RLS 的 is_admin()）：
+        表              anon      authenticated                       service_role
+        services        select    select, insert, update              s/i/u/d
+        business_hours  select    select, insert, update              s/i/u/d
+        store_settings  select    select, update                      s/i/u/d
+        booking_policy  select    select, update                      s/i/u/d
+        closed_dates    －        select, insert, update, delete      s/i/u/d
+        appointments    －        欄位層級：select 除 access_token 外； s/i/u/d
+                                  update 只限 status, start_at,
+                                  end_at, reminder_sent_at
+        customers       －        －                                  s/i/u/d
+        admins          －        －                                  s/i/u/d
+      刻意的收斂：
+        - closed_dates 不給 anon：前台不直接讀，公休日由 get_available_slots 判斷。
+        - customers 不給 authenticated：後台不直接查 customers。這推翻了 TASK-003 的
+          「設計師可讀 customers」測試斷言（tests/rls.integration.test.ts 已改為預期
+          42501）。未來「顧客資料管理」Epic 需要時，由該卡的 migration 開放。
+        - appointments 對 authenticated 用欄位層級授權：access_token 是顧客自助查詢的
+          憑證，後台不需要讀；customer_* 等欄位後台不需要改。
+情境：Supabase 自 2026-10-30 起不再自動授權 public schema 的新表（見 TASK-065）。這 8
+      張表套用前，anon／authenticated 幾乎全開，唯一的邊界是 RLS。正式環境套用前的實際
+      授權已存進 TASK-066 任務卡，0015_explicit_table_grants_down.sql 依此還原。
+考慮過的替代方案：
+  - 照 Supabase 通知信範例全部開 anon select、authenticated 完整讀寫：等於把過寬的自動
+    授權寫死進版控。
+  - 什麼都不做：既有環境不受影響，但 migration 無法重建出可運作的資料庫。
+為何選這個：依程式碼實際存取路徑給最小權限，授權層和 RLS 兩道邊界都收緊。所有 RPC 與
+      webhook trigger function 都是 SECURITY DEFINER，不受授權收緊影響。
+影響：
+  - 以下 RLS policy 仍留在資料庫裡，但因授權層已擋住而不再生效，讀 policy 時不要誤判
+    誰實際能存取什麼（本卡依範圍不改 policy，清理留給後續任務）：
+      * 0003 "public read closed dates"：對 anon 不再生效（對 authenticated 仍生效，
+        非管理員登入帳號仍可讀 closed_dates）。
+      * 0001 "admin full access to customers"：authenticated 沒有任何授權。
+      * 0006 "admin insert store settings"、0008 "admin insert booking policy"：
+        authenticated 沒有 insert 授權。
+  - anon 對 services／business_hours／store_settings／booking_policy 是整張表 select，
+    日後在這 4 張表新增的欄位一律視為對外公開（比照 0008 檔頭對 booking_policy 的約定）。
+    含敏感資料的欄位不要加在這 4 張表，或改用欄位層級授權。
+  - appointments 日後新增欄位時，後台若要讀寫，要在新的 migration 補上欄位層級授權，
+    否則設計師端會收到 42501。
+  - anon 對 appointments／customers／closed_dates／admins 的查詢，現在在授權層就回
+    42501，不再是 RLS 回空陣列；測試斷言要比對錯誤代碼。
+```

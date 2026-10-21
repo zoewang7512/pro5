@@ -15,3 +15,4 @@
 - 視情況檢查 CSRF 與 CORS。
 - 檢查依賴套件與供應鏈風險。
 - 檢查遷移（migration）與回滾（rollback）安全性。
+- 新建 Supabase 資料表的 migration，要在同一檔案寫出明確且最小權限的 GRANT（先 revoke all from anon, authenticated, service_role，再依用途 grant），不可依賴平台自動授權，也不可照抄「全部角色都給」的範例（見 `ai/context/decisions.md` TASK-065）。

@@ -1,0 +1,125 @@
+{
+  "stage": "done",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "專案設置",
+  "userStory": "核心資料模型與認證框架基礎",
+  "id": "TASK-066",
+  "title": "補 migration 0015：為既有 8 張資料表寫出明確的最小權限 GRANT",
+  "content": "目前 0001～0014 建立的 8 張表（admins/services/customers/appointments/business_hours/closed_dates/store_settings/booking_policy）都靠 Supabase 自動授權，migration 沒有明確的 table GRANT。2026-10-30 後若用這些 migration 重建資料庫，表建得出來但 app 讀不到。做法：先請使用者在 SQL Editor 查出正式環境目前的實際授權作為基準，再盤點程式碼產出「表 × 角色」權限表，經人工核准後寫 0015（先 revoke all from anon/authenticated/service_role 再依表 grant，service_role 給 s/i/u/d，appointments 對 authenticated 用欄位層級授權）和可回滾的 down。高風險：開發與正式共用同一個 Supabase 專案，需經 architect 與 security-reviewer 審查，並跑全部 test:* 整合測試。",
+  "risk": "high",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-065"
+  ],
+  "order": 66,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-066.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0001_core_schema.sql",
+    "supabase/migrations/0007_admin_profile.sql",
+    "supabase/migrations/0008_booking_policy.sql",
+    "supabase/migrations/0014_create_appointment_business_hours.sql",
+    "tests/rls.integration.test.ts",
+    "supabase/migrations/0015_explicit_table_grants.sql",
+    "supabase/migrations/0015_explicit_table_grants_down.sql",
+    "tests/booking.integration.test.ts",
+    "tests/admin-booking.integration.test.ts",
+    "tests/business-hours.integration.test.ts",
+    "ai/context/decisions.md",
+    "ai/artifacts/專案設置/verification/TASK-066-sql/2-dry-run.sql"
+  ],
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "收到 Supabase 通知信（10/30 起 public schema 新表不再自動授權 Data API），請開任務卡處理。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "建立本卡，依賴 TASK-065 的規則。動手前需要使用者先在 SQL Editor 執行任務卡內的唯讀查詢，回貼目前的實際授權。放在 backlog，等人工核准。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "開始做 TASK-066。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "TASK-065 已 Done，前置條件滿足，轉 implementing。先盤點程式碼中各角色對 8 張表的實際存取，同時請使用者回貼正式環境目前的授權查詢結果。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "回貼正式環境授權查詢結果；①（closed_dates 不給 anon）②（customers 不給 authenticated）照草案。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "權限表已寫入任務卡。起草 0015_explicit_table_grants.sql／_down.sql，修改 rls／booking／admin-booking 三個整合測試的 anon 斷言（RLS 回空陣列 → 42501），新增 anon 對 closed_dates／admins、設計師對 customers／admins 的 42501 測試。tsc、lint 通過。已送 architect 與 security-reviewer 審查，尚未套用到資料庫。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "architect（要求修改）與 security-reviewer（無 Critical/High）審查完成，發現已全部處理：補改 admin-booking 兩個 anon 斷言；service_role 一併 revoke all 再 grant s/i/u/d；appointments 改欄位層級授權（比核准版本更緊，待人工確認）；補非管理員與設計師授權層測試；decisions.md 新增 TASK-066 決策並同步 TASK-065 規則；產生 SQL Editor 用的基準、試跑、套用後檢查腳本。tsc／lint 通過。尚未套用到資料庫，gate 待人工核准。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "同意③（appointments 欄位層級授權），核准架構與安全性兩個關卡。先執行步驟 1（基準）與步驟 2（試跑）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "0015 已由使用者套用到正式資料庫，套用後檢查全部一致。整合測試 154/154 通過（test:rls 原有 fixture 撞到真實預約，改排到 3 年後重跑通過）。本機前台與後台 8 個頁面只讀檢查正常。轉 verify，待人工驗收轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "沒問題，轉 Done 並 commit。"
+    }
+  ],
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [
+      "SQL Editor：1-baseline.sql（14 條 policy 與 migration 一致，grantor 皆 postgres）",
+      "SQL Editor：2-dry-run.sql（權限不一致 0 筆，非管理員可見／可更新 appointments 0 筆，anon 可見 services 4 筆）",
+      "SQL Editor：套用 0015（Success）→ 3-post-apply-check.sql（全部一致）",
+      "npm run test:rls／booking／admin-booking／business-hours／store-settings／booking-policy／services／account／notifications（154/154 通過）",
+      "npx tsc --noEmit、npm run lint 通過",
+      "npx vitest run tests/components --testTimeout=30000（108/108 通過；預設 5 秒 timeout 在高負載下有逾時）",
+      "瀏覽器：本機前台與後台 8 個頁面只讀檢查正常，console／server log 無錯誤"
+    ],
+    "findings": [
+      "architect：要求修改（H1 測試漏改、M1 service_role 不一致、M2 決策未記錄），已全部處理",
+      "security-reviewer：無 Critical/High，M1～M3、L1～L6 已處理"
+    ],
+    "residual": "不再生效的 RLS policy 仍留在資料庫；is_admin() 不檢查 aal（既有）；is_admin() 依賴 PUBLIC execute（既有）；npm test 高負載時元件測試逾時（既有）。"
+  }
+}
