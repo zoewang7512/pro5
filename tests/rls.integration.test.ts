@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -26,6 +27,8 @@ describe("RLS 邊界（真實 Supabase 專案）", () => {
   let anonClient: SupabaseClient;
   let activeServiceId: string;
   let inactiveServiceId: string;
+  // 0018 起 appointments.designer_id 為 not null：直接 insert fixture 預約要帶測試設計師。
+  let testDesignerId: string;
   const appointmentIdsToCleanup: string[] = [];
   const serviceIdsToCleanup: string[] = [];
 
@@ -65,15 +68,18 @@ describe("RLS 邊界（真實 Supabase 專案）", () => {
     inactiveServiceId = inactiveService.id;
     serviceIdsToCleanup.push(inactiveServiceId);
 
+    testDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "rls", serviceIds: [activeServiceId, inactiveServiceId] })).id;
+
     // 用 service role 直接建立一筆預約（繞過 RLS），供下面「設計師可讀取」測試使用。
     // 顧客端建立預約的路徑（create_appointment RPC）由 npm run test:booking 驗證。
     const { data: appointment, error: appointmentError } = await serviceRoleClient
       .from("appointments")
       .insert({
         service_id: activeServiceId,
+        designer_id: testDesignerId,
         customer_name: `${TEST_MARKER} fixture`,
         // 排在約 3 年後（再錯開下方 TASK-066 describe 的 fixture 2 小時），避開正式環境
-        // 真實預約：appointments_no_overlap 不分服務，原本「1 小時後」會撞到當天已有的預約。
+        // 真實預約：appointments_no_overlap 不分服務（0018 起是依設計師），原本「1 小時後」會撞到當天已有的預約。
         start_at: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(),
         end_at: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000 + 150 * 60 * 1000).toISOString(),
       })
@@ -87,9 +93,19 @@ describe("RLS 邊界（真實 Supabase 專案）", () => {
     if (appointmentIdsToCleanup.length > 0) {
       await serviceRoleClient.from("appointments").delete().in("id", appointmentIdsToCleanup);
     }
+    // 設計師清除失敗不能讓後面的服務清除被跳過：先記下錯誤，最後再丟。
+    let designerCleanupError: unknown;
+    if (testDesignerId) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+      } catch (error) {
+        designerCleanupError = error;
+      }
+    }
     if (serviceIdsToCleanup.length > 0) {
       await serviceRoleClient.from("services").delete().in("id", serviceIdsToCleanup);
     }
+    if (designerCleanupError) throw designerCleanupError;
   });
 
   it("anon 可讀取啟用中的 service，讀不到未啟用的", async () => {
@@ -208,6 +224,7 @@ describe("TASK-066 授權層邊界（真實 Supabase 專案）", () => {
   let nonAdminClient: SupabaseClient;
   let nonAdminUserId: string | undefined;
   let serviceId: string | undefined;
+  let fixtureDesignerId: string | undefined;
   let appointmentId: string;
 
   beforeAll(async () => {
@@ -222,11 +239,13 @@ describe("TASK-066 授權層邊界（真實 Supabase 專案）", () => {
       .single();
     if (serviceError) throw serviceError;
     serviceId = service.id;
+    fixtureDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "grants", serviceIds: [service.id] })).id;
 
     const { data: appointment, error: appointmentError } = await serviceRoleClient
       .from("appointments")
       .insert({
         service_id: serviceId,
+        designer_id: fixtureDesignerId,
         customer_name: `${MARKER} fixture`,
         // 排在約 3 年後，避開正式環境真實預約（appointments_no_overlap 不分服務）。
         start_at: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000).toISOString(),
@@ -264,7 +283,8 @@ describe("TASK-066 授權層邊界（真實 Supabase 專案）", () => {
       password: nonAdminPassword,
     });
     if (nonAdminSignInError) throw nonAdminSignInError;
-  });
+    // 這個 beforeAll 要做十幾次連續的網路往返（建服務、設計師、預約、兩個帳號登入），預設 10 秒不夠。
+  }, 60000);
 
   afterAll(async () => {
     const cleanupErrors: unknown[] = [];
@@ -280,6 +300,13 @@ describe("TASK-066 授權層邊界（真實 Supabase 專案）", () => {
         .delete()
         .eq("service_id", serviceId);
       if (appointmentsError) cleanupErrors.push(appointmentsError);
+      if (fixtureDesignerId) {
+        try {
+          await cleanupTestDesigners(serviceRoleClient, [fixtureDesignerId]);
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+      }
       const { error: serviceError } = await serviceRoleClient.from("services").delete().eq("id", serviceId);
       if (serviceError) cleanupErrors.push(serviceError);
     }

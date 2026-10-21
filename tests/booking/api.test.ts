@@ -86,6 +86,8 @@ describe("lib/booking/api", () => {
       end_at: "2026-08-12T03:45:00+00:00",
       customer_name: "王小美",
       customer_phone: "0912345678",
+      designer_id: "designer-1",
+      designer_name: "林小美",
     };
     const client = fakeRpcClient({ data: { ok: true, data: confirmation }, error: null });
     const result = await createAppointment(client, {
@@ -126,5 +128,79 @@ describe("lib/booking/api", () => {
     });
 
     expect(rpc).toHaveBeenCalledWith("create_appointment", expect.objectContaining({ p_customer_email: null }));
+  });
+
+  it("createAppointment：未指定設計師時 p_designer_id 傳 null（省略與明確傳 null 結果相同）", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, data: {} }, error: null });
+    const client = { rpc } as unknown as SupabaseClient;
+    const base = {
+      serviceId: "service-1",
+      startAt: "2026-08-12T03:00:00+00:00",
+      customerName: "王小美",
+      customerPhone: "0912345678",
+    };
+
+    await createAppointment(client, base);
+    await createAppointment(client, { ...base, designerId: null });
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "create_appointment", expect.objectContaining({ p_designer_id: null }));
+    expect(rpc).toHaveBeenNthCalledWith(2, "create_appointment", expect.objectContaining({ p_designer_id: null }));
+  });
+
+  it("createAppointment：指定設計師時把 designerId 傳給 p_designer_id，並完整保留 RPC 回傳的指派結果", async () => {
+    const data = {
+      service_name: "剪髮造型",
+      start_at: "2026-08-12T03:00:00+00:00",
+      end_at: "2026-08-12T03:45:00+00:00",
+      customer_name: "王小美",
+      customer_phone: "0912345678",
+      designer_id: "designer-9",
+      designer_name: "陳阿傑",
+    };
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, data }, error: null });
+    const client = { rpc } as unknown as SupabaseClient;
+
+    const result = await createAppointment(client, {
+      serviceId: "service-1",
+      startAt: "2026-08-12T03:00:00+00:00",
+      customerName: "王小美",
+      customerPhone: "0912345678",
+      designerId: "designer-9",
+    });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "create_appointment",
+      expect.objectContaining({ p_service_id: "service-1", p_designer_id: "designer-9" }),
+    );
+    expect(result).toEqual({ ok: true, data });
+    if (result.ok) {
+      expect(result.data.designer_name).toBe("陳阿傑");
+      expect(result.data.designer_id).toBe("designer-9");
+    }
+  });
+
+  it("getAvailableSlots：省略或 null 時 p_designer_id 傳 null，指定時傳設計師 id", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, data: [] }, error: null });
+    const client = { rpc } as unknown as SupabaseClient;
+
+    await getAvailableSlots(client, "service-1", "2026-08-05");
+    await getAvailableSlots(client, "service-1", "2026-08-05", null);
+    await getAvailableSlots(client, "service-1", "2026-08-05", "designer-9");
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "get_available_slots", {
+      p_service_id: "service-1",
+      p_date: "2026-08-05",
+      p_designer_id: null,
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "get_available_slots", {
+      p_service_id: "service-1",
+      p_date: "2026-08-05",
+      p_designer_id: null,
+    });
+    expect(rpc).toHaveBeenNthCalledWith(3, "get_available_slots", {
+      p_service_id: "service-1",
+      p_date: "2026-08-05",
+      p_designer_id: "designer-9",
+    });
   });
 });

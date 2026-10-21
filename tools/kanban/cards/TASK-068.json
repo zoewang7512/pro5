@@ -2,9 +2,9 @@
   "id": "TASK-068",
   "title": "多位設計師 依設計師計算時段與建立預約（0018：exclusion 依設計師、RPC 加 p_designer_id 與自動指派）",
   "content": "designer_id 改 not null、exclusion constraint 改 (designer_id, 時段)、get_available_slots／create_appointment 加 p_designer_id default null，不指定時依（當天預約數, sort_order, id）指派並在併發衝突時改派下一位。不改畫面。 另併入：同一 email 最多 3 筆待服務預約（取代延後的 TASK-080 限流）。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "high",
-  "owner": "",
+  "owner": "zoewang7512",
   "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-10-21",
@@ -37,7 +37,7 @@
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-068.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-068.md",
     "pr": ""
   },
   "refs": [
@@ -46,12 +46,30 @@
     "lib/booking/api.ts",
     "lib/booking/types.ts",
     "tests/designers.integration.test.ts",
-    "ai/context/decisions.md"
+    "ai/context/decisions.md",
+    "tests/helpers/designer-fixture.ts",
+    "tests/mfa-rls.integration.test.ts",
+    "ai/context/project-map.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit → 通過；npm run lint → 通過；npm run build → 通過；npm test → 48 檔 552 項通過",
+      "npm run test:designers（0018 套用後）→ 75 項通過（首次 66 項，採納 test-engineer 意見補強後 75 項）",
+      "10 套既有整合測試回歸：套用 0018 前（0017 狀態、改完 fixture）與套用後數量完全相同（rls 18／booking 23／admin-booking 13／business-hours 33／store-settings 11／booking-policy 7／services 17／account 17／mfa-rls 20／notifications 19）；git diff 確認既有測試只改 fixture、沒有改任何斷言",
+      "併發案例（含 8 筆壓力）重複 10 次 → 10／10 通過，零 INTERNAL_ERROR、零孤兒 customers",
+      "套用前 pg_proc.proacl（使用者於 SQL Editor 執行）：postgres、anon、authenticated、service_role 皆有 execute；套用後行為層一致（三角色可呼叫兩支 RPC、anon／authenticated 呼叫內部函式 42501）",
+      "正式資料庫唯讀查詢：1 位預設設計師、16 筆預約 designer_id 皆非 null、無任何 __TEST__ 殘留、booking_policy 與 closed_dates 已還原",
+      "2026-10-22 使用者整份重跑 0018 → Success（冪等實測）；重跑後 test:designers 75 項與 10 套既有整合測試（數量不變）再跑一次全數通過",
+      "2026-10-22 套用後 pg_proc.proacl：兩支 RPC 對 postgres／anon／authenticated／service_role 皆有 execute（與套用前一致）；_designer_is_eligible／_designer_is_free／_email_dedupe_key 只有 postgres／service_role，anon 與 authenticated 皆無",
+      "2026-10-22 前台既有流程人工走查（使用者授權，Browser 實際操作）：剪髮造型／11/04 15:00／姓名 __TEST__走查／假電話／不填 email → 預約成功；讀回資料庫指派給預設設計師、status pending；走查後立即刪除預約與顧客，無殘留"
+    ],
+    "findings": [
+      "architect（套用前，Request changes）：M1 巢狀 handler 需接 deadlock_detected、M2 鎖升級死結、M3 service_role 授權明寫——全部採納",
+      "security-reviewer（套用前，無 Critical／High）：email 上限加 advisory lock＋正規化、套用前檢查上架中服務都有設計師、grant 三角色、when others 記錄 sqlstate——採納；email 只收 ASCII 未採納（待人工決定）",
+      "test-engineer（套用後）：不指定含不合格設計師、8 筆壓力、id 確定性、公休日視野內與對照組、email 跨設計師／confirmed／不誤判、buffer 改派與跨服務、讀回資料列、fixture 防護等——已補；explain analyze、down／冪等實跑、確定性競爭證據等無法在此環境取得，列為尚未驗證",
+      "agent 審查意見不等於人工核准，security／test／code_review 關卡待人工核准"
+    ],
+    "residual": "尚未驗證：0018_down 實跑、explain analyze、併發競爭路徑確定性證據、seed-booking-data.mjs 實跑（會覆寫真實營業時間，未執行）、Resend 對 .invalid 的處理；email 併發未測。既有已知限制：第 90 天邊界、exclusion 不含 buffer、BOOKING_LIMIT 與 SLOT_CONFLICT 檢查順序、email 全表掃描、指定模式可推算忙碌時段、無限流。人工已決定（2026-10-22）：接受套用到合併之間舊後台新增服務的空窗（只有文件提醒，不加程式碼防護）、email 先不改成只收 ASCII。待人工決定：前台文案、是否在拋棄式環境補驗證。部署順序：先套用 0018 再合併 master。"
   },
   "comments": [
     {
@@ -73,6 +91,31 @@
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准把「同 email 最多 3 筆待服務預約」併入本卡。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "開始實作 TASK-068。分兩段降低風險：先把既有整合測試改成同時相容 0017／0018（共用 designer-fixture、補 designer_id）並對現況跑通，再寫並套用 0018。0018 套用前會先請人工記錄兩支 RPC 的 proacl。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作完成並已套用 0018（使用者貼上執行，Success），進入 verify。套用前經 architect／security-reviewer 逐行審查並採納（死結、鎖升級、email 上限、授權），套用後經 test-engineer 審查並補強測試。驗證報告見 ai/artifacts/多位設計師/verification/TASK-068.md；數項證據尚未取得（見「尚未驗證」），待人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "依人工選擇補證據：使用者重跑 0018（Success）並提供套用後 proacl，兩者皆符合預期；重跑後完整測試再跑一次通過。仍待人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "授權用瀏覽器做前台走查（__TEST__走查、假電話、不填 email、做完立刻刪除）；email 是否只收 ASCII：先不做；套用到合併 master 之間的空窗：接受，期間不在後台新增服務，只有文件提醒、不加程式碼防護。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "前台走查完成：預約成功並指派給預設設計師，已刪除測試預約與顧客，資料庫無殘留。"
     }
   ]
 }

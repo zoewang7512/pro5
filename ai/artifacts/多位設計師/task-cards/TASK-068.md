@@ -8,7 +8,7 @@
 - 上層 User Story：依設計師計算時段與建立預約
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-067
-- 狀態：就緒前審查中（人工已於 2026-10-21 核准；動工前先完成 architect／security-reviewer 架構審查）
+- 狀態：待驗證／待人工驗收（人工已於 2026-10-21 核准；套用前 architect／security-reviewer 與套用後 test-engineer 審查皆已完成並採納，見完成證據；有數項證據尚未取得，見驗證報告「尚未驗證」）
 - 風險等級：高（改寫顧客端唯一的預約讀寫路徑、更換資料庫層級的防雙重預約約束、新增併發下的自動指派）
 - Agent owner：Claude Code
 - 人工核准者：使用者
@@ -125,9 +125,13 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：TASK-073（前台串接）、TASK-075（後台改期依設計師）、TASK-076（通知信）
+完整內容見 [`../verification/TASK-068.md`](../verification/TASK-068.md)。
+
+- 變更的檔案：`supabase/migrations/0018_designer_aware_booking.sql`、`0018_designer_aware_booking_down.sql`；`lib/booking/api.ts`、`lib/booking/types.ts`；`lib/admin/closed-dates.ts`（過時註解）；`scripts/seed-booking-data.mjs`；`tests/helpers/designer-fixture.ts`（新）；`tests/designers.integration.test.ts`、`tests/booking/api.test.ts`；既有整合測試只改 fixture：`booking`、`rls`、`admin-booking`、`business-hours`、`notifications`、`services`，以及**不在原允許清單內的 `mfa-rls`**（它直接 insert `appointments`，`designer_id` 改 not null 後必須補）；`booking-policy` 不需要修改；`vitest.designers.config.ts`（沿用 TASK-067）；`ai/context/decisions.md`、`project-map.md`。
+- 執行過的指令：`tsc --noEmit`、`npm run lint`、`npm run build`、`npm test`（552 項）、`npm run test:designers`（75 項）、10 套既有整合測試回歸（套用 0018 前後數量完全相同）、併發案例重複 10 次、正式資料庫唯讀查詢。
+- 測試輸出：全數通過，詳見驗證報告。
+- 螢幕截圖：不適用（無畫面變更）。
+- 已知限制：見驗證報告「尚未驗證」——`0018_down` 未實跑、`explain analyze`、併發競爭路徑的確定性證據、`seed-booking-data.mjs` 未實跑、Resend 對 `.invalid` 的處理未確認（前台既有流程人工走查已於 2026-10-22 完成）；以及既有已知限制（第 90 天邊界、exclusion 不含 buffer、`BOOKING_LIMIT` 與 `SLOT_CONFLICT` 的檢查順序、email 全表掃描）。
+- 實作期偏離原設計（已寫入 `decisions.md`）：巢狀 handler 也接 `deadlock_detected`；一開始就取 access exclusive＋`lock_timeout`；email 上限加 advisory lock 與正規化；套用前檢查上架中服務都有啟用中設計師；兩支 RPC 明寫三個角色的 execute 權限；`when others` 記錄 sqlstate。
+- 部署順序：**先套用 0018，再合併 master**（新前端一定送出 `p_designer_id`）；套用 0018 到合併之間不要在後台新增服務。
+- 後續任務：TASK-073（前台串接，含 `BOOKING_LIMIT_EXCEEDED` 文案）、TASK-075（後台改期依原設計師）、TASK-076（通知信）

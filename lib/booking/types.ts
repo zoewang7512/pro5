@@ -35,6 +35,8 @@ export type CreateAppointmentInput = {
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
+  // 省略或 null＝不指定設計師（送出時由資料庫自動指派）。
+  designerId?: string | null;
 };
 
 // create_appointment 成功時回傳的欄位一律回顯本次請求送出的值，不是資料庫既有顧客
@@ -45,6 +47,9 @@ export type AppointmentConfirmation = {
   end_at: string;
   customer_name: string;
   customer_phone: string;
+  // 實際被指派的設計師（指定時就是顧客選的那位；不指定時是系統指派的那位）。0018 起回傳。
+  designer_id: string;
+  designer_name: string;
 };
 
 export type BookingErrorCode =

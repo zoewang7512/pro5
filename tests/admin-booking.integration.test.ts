@@ -24,6 +24,7 @@ import {
   rescheduleAppointment,
 } from "../lib/admin/appointments";
 import { getWeekRange } from "../lib/admin/week-range";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -102,6 +103,8 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
   let anonClient: SupabaseClient;
   let designerClient: SupabaseClient;
   let testServiceId: string;
+  // 0018 起預約依設計師計算、appointments.designer_id 為 not null：fixture 預約要帶測試設計師。
+  let testDesignerId: string;
 
   const OPEN_DATES = generateOpenWeekdays(4, 40);
   const [READ_DATE, STATUS_DATE, RESCHEDULE_DATE, RLS_WRITE_DATE] = OPEN_DATES;
@@ -135,6 +138,7 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       .single();
     if (serviceError) throw serviceError;
     testServiceId = service.id;
+    testDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "admbook", serviceIds: [testServiceId] })).id;
   });
 
   afterAll(async () => {
@@ -154,6 +158,14 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
         .delete()
         .eq("service_id", testServiceId);
       if (deleteRemainingError) cleanupErrors.push(deleteRemainingError);
+
+      if (testDesignerId) {
+        try {
+          await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+      }
 
       const { error: deleteServiceError } = await serviceRoleClient.from("services").delete().eq("id", testServiceId);
       if (deleteServiceError) cleanupErrors.push(deleteServiceError);
@@ -176,6 +188,7 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       .from("appointments")
       .insert({
         service_id: testServiceId,
+        designer_id: testDesignerId,
         customer_name: `${TEST_MARKER} ${params.name}`,
         customer_phone: testPhone(),
         start_at: params.startAt,

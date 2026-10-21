@@ -71,14 +71,18 @@ export async function getBusinessHours(
   return { ok: true, data: data as BusinessHours | null };
 }
 
+// designerId 省略或 null＝「不指定設計師」：回傳至少一位合格設計師有空的時段聯集；指定時只回傳該設計師的
+// 空檔。兩種模式的回應都只有時間，不含任何設計師識別資訊（0018_designer_aware_booking.sql）。
 export async function getAvailableSlots(
   supabase: SupabaseClient,
   serviceId: string,
   date: string,
+  designerId?: string | null,
 ): Promise<Result<AvailableSlot[]>> {
   const { data, error } = await supabase.rpc("get_available_slots", {
     p_service_id: serviceId,
     p_date: date,
+    p_designer_id: designerId ?? null,
   });
 
   if (error) {
@@ -97,6 +101,8 @@ export async function createAppointment(
     p_customer_name: input.customerName,
     p_customer_phone: input.customerPhone,
     p_customer_email: input.customerEmail || null,
+    // 省略或 null＝「不指定設計師」，由資料庫在送出時自動指派；成功時回傳實際指派的設計師。
+    p_designer_id: input.designerId ?? null,
   });
 
   if (error) {

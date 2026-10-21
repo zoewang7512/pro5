@@ -26,6 +26,7 @@
 import { NextRequest } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 // server-only 依賴 Next.js 建置時才會設定的 "react-server" resolve condition，
 // Vitest 走一般 Node 解析一律拿到會直接 throw 的版本，比照既有
@@ -95,6 +96,8 @@ function testPhone(): string {
 describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案）", () => {
   let serviceRoleClient: SupabaseClient;
   let testServiceId: string;
+  // 0018 起 appointments.designer_id 為 not null：直接 insert fixture 預約要帶測試設計師。
+  let testDesignerId: string;
   let POST: typeof import("../app/api/webhooks/appointment-events/route").POST;
   let GET: typeof import("../app/api/cron/appointment-reminders/route").GET;
 
@@ -114,6 +117,7 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
       .single();
     if (serviceError) throw serviceError;
     testServiceId = service.id;
+    testDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "notif", serviceIds: [testServiceId] })).id;
 
     // vi.mock 已在檔案頂端 hoist 完成，這裡才 import route handler 確保拿到 mock 過的
     // sendEmail／server-only（比照 tests/api/appointment-events-webhook.test.ts 的既有
@@ -136,6 +140,14 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
         .delete()
         .eq("service_id", testServiceId);
       if (deleteAppointmentsError) cleanupErrors.push(deleteAppointmentsError);
+
+      if (testDesignerId) {
+        try {
+          await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+      }
 
       const { error: deleteServiceError } = await serviceRoleClient.from("services").delete().eq("id", testServiceId);
       if (deleteServiceError) cleanupErrors.push(deleteServiceError);
@@ -173,6 +185,7 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
       .from("appointments")
       .insert({
         service_id: testServiceId,
+        designer_id: testDesignerId,
         customer_name: `${TEST_MARKER} ${params.name}`,
         customer_phone: testPhone(),
         customer_email: null,

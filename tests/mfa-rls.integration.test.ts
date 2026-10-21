@@ -28,6 +28,7 @@
 import { randomUUID, createHmac } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -84,6 +85,8 @@ describe("資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 a
   const uploadedObjectPaths: string[] = [];
   let serviceId: string | undefined;
   let appointmentId: string | undefined;
+  // 0018 起 appointments.designer_id 為 not null：直接 insert fixture 預約要帶測試設計師。
+  let fixtureDesignerId: string | undefined;
 
   let mfaAdmin: TestUser;
   let plainAdmin: TestUser;
@@ -104,6 +107,8 @@ describe("資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 a
       (u) => u.email?.startsWith(MARKER_PREFIX) && u.email.endsWith("@example.invalid"),
     );
     await serviceRoleClient.from("appointments").delete().like("customer_name", `${MARKER_PREFIX}%`);
+    // 前次中斷殘留的 fixture 設計師（預約已在上一行刪除，設計師才刪得掉）。
+    await serviceRoleClient.from("designers").delete().like("name", "__TEST__fx-mfarls-%");
     await serviceRoleClient.from("services").delete().like("name", `${MARKER_PREFIX}%`);
     const { data: objects } = await serviceRoleClient.storage.from("admin-assets").list("avatar", { limit: 1000 });
     const leftoverPaths = (objects ?? []).filter((o) => o.name.startsWith(MARKER_PREFIX)).map((o) => `avatar/${o.name}`);
@@ -222,12 +227,14 @@ describe("資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 a
       .single();
     if (serviceError || !service) throw serviceError ?? new Error("建立測試服務項目失敗");
     serviceId = service.id;
+    fixtureDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "mfarls", serviceIds: [service.id] })).id;
 
     // customer_email 刻意留 null（見檔頭說明），日期放在遙遠的未來避免與真實預約的 exclusion constraint 衝突。
     const { data: appointment, error: appointmentError } = await serviceRoleClient
       .from("appointments")
       .insert({
         service_id: serviceId,
+        designer_id: fixtureDesignerId,
         customer_name: `${TEST_MARKER}-customer`,
         start_at: "2099-01-01T10:00:00Z",
         end_at: "2099-01-01T10:30:00Z",
@@ -249,6 +256,14 @@ describe("資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 a
     if (appointmentId) {
       const { error } = await serviceRoleClient.from("appointments").delete().eq("id", appointmentId);
       if (error) cleanupErrors.push(error);
+    }
+
+    if (fixtureDesignerId) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, [fixtureDesignerId]);
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
     }
 
     if (serviceId) {

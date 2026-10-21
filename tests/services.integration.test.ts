@@ -12,6 +12,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { cleanupTestDesigners, createTestDesigner, linkTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -92,6 +93,8 @@ describe("服務項目管理：services 權限邊界與下架對既有 RPC 的�
   let nonAdminClient: SupabaseClient;
   let nonAdminUserId: string | undefined;
   const createdServiceIds: string[] = [];
+  // 0018 起 get_available_slots／create_appointment 依設計師計算：RPC 會用到的測試服務要對測試設計師開啟。
+  let testDesignerId: string | undefined;
 
   beforeAll(async () => {
     serviceRoleClient = createClient(url!, serviceRoleKey!, {
@@ -128,6 +131,8 @@ describe("服務項目管理：services 權限邊界與下架對既有 RPC 的�
       password: nonAdminPassword,
     });
     if (nonAdminSignInError) throw nonAdminSignInError;
+
+    testDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "svc" })).id;
   });
 
   afterAll(async () => {
@@ -166,6 +171,14 @@ describe("服務項目管理：services 權限邊界與下架對既有 RPC 的�
         .delete()
         .in("id", createdServiceIds);
       if (deleteServicesError) cleanupErrors.push(deleteServicesError);
+    }
+
+    if (testDesignerId) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
     }
 
     if (cleanupErrors.length > 0) {
@@ -298,6 +311,7 @@ describe("服務項目管理：services 權限邊界與下架對既有 RPC 的�
       if (error) throw error;
       toggleServiceId = data.id;
       createdServiceIds.push(toggleServiceId);
+      await linkTestDesigner(serviceRoleClient, testDesignerId!, [toggleServiceId]);
     });
 
     it("上架中時，get_available_slots 回傳非空的可預約時段", async () => {
@@ -375,6 +389,7 @@ describe("緩衝時間 buffer_minutes（TASK-078）：admin 可寫入、超出�
       expect(data?.buffer_minutes).toBe(15);
       bufferServiceId = data!.id;
       createdServiceIds.push(bufferServiceId);
+      await linkTestDesigner(serviceRoleClient, testDesignerId!, [bufferServiceId]);
     });
 
     it("designer 可以編輯 buffer_minutes 到邊界值 0 與 120", async () => {

@@ -133,6 +133,11 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       if (error) errors.push(error);
     }
     if (ids.length > 0) {
+      // appointments.designer_id 沒有 cascade：先刪這些設計師的預約（0018 的 RPC 測試會建立預約），再刪顧客，最後才刪設計師。
+      const { error: appointmentsError } = await serviceRoleClient.from("appointments").delete().in("designer_id", ids);
+      if (appointmentsError) errors.push(appointmentsError);
+      const { error: customersError } = await serviceRoleClient.from("customers").delete().like("name", `${prefix}%`);
+      if (customersError) errors.push(customersError);
       const { error } = await serviceRoleClient.from("designers").delete().in("id", ids);
       if (error) errors.push(error);
     }
@@ -964,6 +969,1218 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
         expect(data ?? []).toEqual([]);
       }
       expect(await listFolder(`portfolio/${activeDesignerId}`)).toContain(path);
+    });
+  });
+
+  describe("依設計師計算時段與建立預約（0018）", () => {
+    // 這個 describe 對真實資料庫呼叫 get_available_slots／create_appointment，需要先套用 0018。
+    // 每個案例各自建立專屬的 `__TEST__` 服務與設計師（makeScenario），不共用，避免互相干擾；
+    // 「不指定」的候選清單是所有合格設計師，所以每個案例的服務只有該案例的設計師開啟。
+    // 日期選離今天 86 天起（晚於其他套件使用的範圍，且仍在 90 天視野內）；時間依實際 business_hours 推算。
+    // 注意：appointments 的 INSERT 有 Database Webhook trigger（customer_email 不為 null 才會觸發）。本區塊
+    // 除了「email 上限：不計入已取消與已過期」這一個案例（會真的成立一筆帶 email 的預約，email 用
+    // @example.invalid，Resend 於 API 層拒絕、不會真的寄出，見 feedback_integration_test_db_triggers），
+    // 其餘建立預約一律不帶 email；需要「已有 email 的既有預約」時，先以 null 建立再只更新 customer_email
+    // 這一欄（0012 的 WHEN 條件只在 status／start_at／end_at 改變時才成立）。
+    type Envelope<T> = { ok: true; data: T } | { ok: false; error_code: string; message: string };
+    type Slot = { start_at: string; end_at: string };
+    type Created = {
+      service_name: string;
+      start_at: string;
+      end_at: string;
+      customer_name: string;
+      customer_phone: string;
+      designer_id: string;
+      designer_name: string;
+    };
+    type DayInfo = { date: string; openMin: number; closeMin: number };
+
+    const SLOT_CONFLICT = { ok: false, error_code: "SLOT_CONFLICT", message: "slot already booked" } as const;
+    const TZ = "+08:00";
+    const phoneRunSeed = String(Date.now() % 100_000).padStart(5, "0");
+    let phoneSeq = 0;
+    let scenarioSeq = 0;
+    let hours: Map<number, { openMin: number; closeMin: number } | null>;
+    let closedDates: Set<string>;
+
+    function testPhone(): string {
+      phoneSeq += 1;
+      return `09${phoneRunSeed}${String(phoneSeq).padStart(3, "0")}`;
+    }
+    function taipeiToday(): string {
+      return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+    }
+    function addDays(dateStr: string, days: number): string {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, d) + days * 86_400_000).toISOString().slice(0, 10);
+    }
+    function weekdayOf(dateStr: string): number {
+      return new Date(`${dateStr}T00:00:00Z`).getUTCDay();
+    }
+    function at(dateStr: string, minutesFromMidnight: number): string {
+      const hh = String(Math.floor(minutesFromMidnight / 60)).padStart(2, "0");
+      const mm = String(minutesFromMidnight % 60).padStart(2, "0");
+      return new Date(`${dateStr}T${hh}:${mm}:00${TZ}`).toISOString();
+    }
+    function toMinutes(time: string): number {
+      const [h, m] = time.split(":").map(Number);
+      return h * 60 + m;
+    }
+    // 從 startOffset 天後起，找第一個營業中、不在 closed_dates 的日期。
+    // 預設結果不得超過第 89 天：get_available_slots 的視野到 today+90，超過一律回空陣列，會讓「時段查詢是空陣列」
+    // 的斷言空洞通過。刻意要測 90 天外的案例才傳 beyondHorizon。
+    function pickOpenDay(startOffset: number, options: { beyondHorizon?: boolean } = {}): DayInfo {
+      for (let i = 0; i < 14; i++) {
+        const date = addDays(taipeiToday(), startOffset + i);
+        const h = hours.get(weekdayOf(date));
+        if (h && !closedDates.has(date)) {
+          if (!options.beyondHorizon && startOffset + i > 89) {
+            throw new Error(`挑到的營業日在第 ${startOffset + i} 天，超過 get_available_slots 的視野（89 天）`);
+          }
+          return { date, ...h };
+        }
+      }
+      throw new Error("找不到營業日");
+    }
+    // 指定日期的下一個營業日（同樣不得超過第 89 天）。
+    function pickOpenDayAfter(day: DayInfo): DayInfo {
+      const offset = Math.round(
+        (Date.parse(`${day.date}T00:00:00Z`) - Date.parse(`${taipeiToday()}T00:00:00Z`)) / 86_400_000,
+      );
+      return pickOpenDay(offset + 1);
+    }
+
+    async function slots(client: SupabaseClient, serviceId: string, date: string, designerId?: string | null) {
+      const { data, error } = await client.rpc("get_available_slots", {
+        p_service_id: serviceId,
+        p_date: date,
+        ...(designerId === undefined ? {} : { p_designer_id: designerId }),
+      });
+      if (error) throw error;
+      return data as Envelope<Slot[]>;
+    }
+    async function create(
+      client: SupabaseClient,
+      input: {
+        serviceId: string;
+        startAt: string;
+        label: string;
+        designerId?: string | null;
+        phone?: string;
+        email?: string | null;
+      },
+    ) {
+      const { data, error } = await client.rpc("create_appointment", {
+        p_service_id: input.serviceId,
+        p_start_at: input.startAt,
+        p_customer_name: `${TEST_MARKER} ${input.label}`,
+        p_customer_phone: input.phone ?? testPhone(),
+        p_customer_email: input.email ?? null,
+        ...(input.designerId === undefined ? {} : { p_designer_id: input.designerId }),
+      });
+      if (error) throw error;
+      return data as Envelope<Created>;
+    }
+    function startsOf(envelope: Envelope<Slot[]>): number[] {
+      expect(envelope.ok).toBe(true);
+      return envelope.ok ? envelope.data.map((s) => new Date(s.start_at).getTime()) : [];
+    }
+    function ms(iso: string): number {
+      return new Date(iso).getTime();
+    }
+
+    // 建立一個 `__TEST__` 服務與數位設計師，並把服務對設計師開啟（link: false 的除外）。
+    async function makeScenario(options: {
+      designers: Array<{ id?: string; sortOrder?: number; isActive?: boolean; link?: boolean; leaveDate?: string }>;
+      durationMinutes?: number;
+      bufferMinutes?: number;
+    }) {
+      scenarioSeq += 1;
+      const { data: service, error: serviceError } = await serviceRoleClient
+        .from("services")
+        .insert({
+          name: `${TEST_MARKER} svc${scenarioSeq}`,
+          price: 100,
+          duration_minutes: options.durationMinutes ?? 30,
+          buffer_minutes: options.bufferMinutes ?? 0,
+          is_active: true,
+        })
+        .select("id")
+        .single();
+      if (serviceError) throw serviceError;
+
+      const designerIds: string[] = [];
+      for (const spec of options.designers) {
+        const id = await createDesigner({
+          ...(spec.id ? { id: spec.id } : {}),
+          sort_order: spec.sortOrder ?? 0,
+          is_active: spec.isActive ?? true,
+        });
+        designerIds.push(id);
+        if (spec.link !== false) {
+          const { error } = await serviceRoleClient
+            .from("designer_services")
+            .insert({ designer_id: id, service_id: service.id });
+          if (error) throw error;
+        }
+        if (spec.leaveDate) {
+          const { error } = await serviceRoleClient
+            .from("designer_leaves")
+            .insert({ designer_id: id, date: spec.leaveDate });
+          if (error) throw error;
+        }
+      }
+      return { serviceId: service.id as string, designers: designerIds };
+    }
+
+    // 另外建立一個 `__TEST__` 服務並對指定設計師開啟（用於「既有預約屬於另一個 buffer 不同的服務」這類案例）。
+    async function makeExtraService(
+      designerIds: string[],
+      options: { durationMinutes?: number; bufferMinutes?: number },
+    ) {
+      scenarioSeq += 1;
+      const { data: service, error } = await serviceRoleClient
+        .from("services")
+        .insert({
+          name: `${TEST_MARKER} svc${scenarioSeq}`,
+          price: 100,
+          duration_minutes: options.durationMinutes ?? 30,
+          buffer_minutes: options.bufferMinutes ?? 0,
+          is_active: true,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      for (const designerId of designerIds) {
+        const { error: linkError } = await serviceRoleClient
+          .from("designer_services")
+          .insert({ designer_id: designerId, service_id: service.id });
+        if (linkError) throw linkError;
+      }
+      return service.id as string;
+    }
+
+    // 直接以 service_role 建立既有預約（customer_email 先留 null，需要 email 時只更新那一欄）。
+    async function seedAppointment(params: {
+      serviceId: string;
+      designerId: string;
+      startAt: string;
+      endAt: string;
+      status?: "pending" | "confirmed" | "completed" | "cancelled";
+      email?: string;
+      phone?: string;
+    }) {
+      const { data, error } = await serviceRoleClient
+        .from("appointments")
+        .insert({
+          service_id: params.serviceId,
+          designer_id: params.designerId,
+          customer_name: `${TEST_MARKER} seed`,
+          customer_phone: params.phone ?? testPhone(),
+          customer_email: null,
+          start_at: params.startAt,
+          end_at: params.endAt,
+          status: params.status ?? "pending",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (params.email !== undefined) {
+        const { error: updateError } = await serviceRoleClient
+          .from("appointments")
+          .update({ customer_email: params.email })
+          .eq("id", data.id);
+        if (updateError) throw updateError;
+      }
+      return data.id as string;
+    }
+
+    beforeAll(async () => {
+      const { data: rows, error } = await serviceRoleClient
+        .from("business_hours")
+        .select("weekday, open_time, close_time, is_closed");
+      if (error) throw error;
+      hours = new Map();
+      for (const row of rows ?? []) {
+        hours.set(
+          row.weekday as number,
+          row.is_closed || !row.open_time || !row.close_time
+            ? null
+            : { openMin: toMinutes(row.open_time as string), closeMin: toMinutes(row.close_time as string) },
+        );
+      }
+      const { data: closed, error: closedError } = await serviceRoleClient.from("closed_dates").select("date");
+      if (closedError) throw closedError;
+      closedDates = new Set((closed ?? []).map((r) => r.date as string));
+
+      const day = pickOpenDay(86);
+      // 測試最晚用到 openMin + 240 起算的 30 分鐘時段，所以至少要 270 分鐘。
+      if (day.closeMin - day.openMin < 270) {
+        throw new Error("營業時間窗少於 4.5 小時，本區塊的測試時段會放不下");
+      }
+    });
+
+    it("兩位設計師同一時段各成立一筆；同一位設計師同一時段第二筆 SLOT_CONFLICT；成功時回傳實際被指派的設計師", async () => {
+      const day = pickOpenDay(86);
+      const t = at(day.date, day.openMin + 60);
+      const {
+        serviceId,
+        designers: [d1, d2],
+      } = await makeScenario({ designers: [{ sortOrder: 1 }, { sortOrder: 2 }] });
+
+      const first = await create(anonClient, { serviceId, startAt: t, label: "a1", designerId: d1 });
+      expect(first.ok).toBe(true);
+      if (first.ok) {
+        expect(first.data.designer_id).toBe(d1);
+        expect(first.data.designer_name).toContain(TEST_MARKER);
+      }
+
+      const second = await create(anonClient, { serviceId, startAt: t, label: "a2", designerId: d2 });
+      expect(second.ok).toBe(true);
+      if (second.ok) expect(second.data.designer_id).toBe(d2);
+
+      expect(await create(anonClient, { serviceId, startAt: t, label: "a3", designerId: d1 })).toEqual(SLOT_CONFLICT);
+
+      const { data: rows } = await serviceRoleClient
+        .from("appointments")
+        .select("designer_id")
+        .eq("service_id", serviceId);
+      expect((rows ?? []).map((r) => r.designer_id).sort()).toEqual([d1, d2].sort());
+    });
+
+    it("資料庫層級：同一位設計師同時段不能有第二筆有效預約（23P01），不同設計師可以，designer_id 不可為 null", async () => {
+      const day = pickOpenDay(86);
+      const t = at(day.date, day.openMin + 120);
+      const end = at(day.date, day.openMin + 150);
+      const {
+        serviceId,
+        designers: [d1, d2],
+      } = await makeScenario({ designers: [{}, {}] });
+
+      await seedAppointment({ serviceId, designerId: d1, startAt: t, endAt: end });
+      const overlap = await serviceRoleClient.from("appointments").insert({
+        service_id: serviceId,
+        designer_id: d1,
+        customer_name: `${TEST_MARKER} dup`,
+        start_at: t,
+        end_at: end,
+      });
+      expect(overlap.error?.code).toBe("23P01");
+      expect(overlap.error?.message).toContain("appointments_no_overlap");
+
+      await seedAppointment({ serviceId, designerId: d2, startAt: t, endAt: end });
+
+      // 已取消的預約不佔用時段：同一位設計師同一時段可以先有一筆已取消、再有一筆有效的。
+      const cancelledStart = at(day.date, day.openMin + 180);
+      const cancelledEnd = at(day.date, day.openMin + 210);
+      await seedAppointment({
+        serviceId,
+        designerId: d1,
+        startAt: cancelledStart,
+        endAt: cancelledEnd,
+        status: "cancelled",
+      });
+      await seedAppointment({ serviceId, designerId: d1, startAt: cancelledStart, endAt: cancelledEnd });
+
+      const noDesigner = await serviceRoleClient.from("appointments").insert({
+        service_id: serviceId,
+        customer_name: `${TEST_MARKER} nodesigner`,
+        start_at: at(day.date, day.openMin + 30),
+        end_at: at(day.date, day.openMin + 60),
+      });
+      expect(noDesigner.error?.code).toBe("23502");
+    });
+
+    it("指定設計師不合格（不存在／停用／沒開服務／請假）時：時段是空陣列，建立預約的回應完全相同；90 天外一律 VALIDATION_ERROR", async () => {
+      const day = pickOpenDay(86);
+      const t = at(day.date, day.openMin + 60);
+      const {
+        serviceId,
+        designers: [eligible, inactive, noService, onLeave],
+      } = await makeScenario({
+        designers: [{}, { isActive: false }, { link: false }, { leaveDate: day.date }],
+      });
+      const ineligible = [inactive, noService, onLeave, randomUUID()];
+
+      // 合格的設計師對照組：有時段。
+      expect(startsOf(await slots(anonClient, serviceId, day.date, eligible)).length).toBeGreaterThan(0);
+
+      for (const designerId of ineligible) {
+        expect(await slots(anonClient, serviceId, day.date, designerId)).toEqual({ ok: true, data: [] });
+        expect(await create(anonClient, { serviceId, startAt: t, label: "ine", designerId })).toEqual(SLOT_CONFLICT);
+      }
+
+      // 時段被佔滿的合格設計師，回應也和上面一樣（五種情況在單次回應中看起來完全一樣）。
+      await seedAppointment({ serviceId, designerId: eligible, startAt: t, endAt: at(day.date, day.openMin + 90) });
+      expect(await create(anonClient, { serviceId, startAt: t, label: "full", designerId: eligible })).toEqual(
+        SLOT_CONFLICT,
+      );
+
+      // 90 天外：合格與不合格設計師都回同一個 VALIDATION_ERROR，不能拿來探測設計師狀態。
+      const far = pickOpenDay(100, { beyondHorizon: true });
+      const farStart = at(far.date, far.openMin + 60);
+      for (const designerId of [eligible, ...ineligible]) {
+        expect(await create(anonClient, { serviceId, startAt: farStart, label: "far", designerId })).toEqual({
+          ok: false,
+          error_code: "VALIDATION_ERROR",
+          message: "start_at out of allowed range",
+        });
+      }
+    });
+
+    it("不指定成功後：資料列與回傳完全一致（designer_id、設計師名稱、時間、顧客、狀態）", async () => {
+      const day = pickOpenDay(86);
+      const t = at(day.date, day.openMin + 60);
+      const {
+        serviceId,
+        designers: [d1],
+      } = await makeScenario({ designers: [{}] });
+      const phone = testPhone();
+
+      const result = await create(anonClient, { serviceId, startAt: t, label: "readback", phone });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const { data: designer } = await serviceRoleClient.from("designers").select("name").eq("id", d1).single();
+      expect(result.data.designer_id).toBe(d1);
+      expect(result.data.designer_name).toBe(designer?.name);
+
+      const { data: rows, error } = await serviceRoleClient
+        .from("appointments")
+        .select(
+          "designer_id, service_id, customer_id, customer_name, customer_phone, customer_email, status, start_at, end_at",
+        )
+        .eq("service_id", serviceId);
+      expect(error).toBeNull();
+      expect(rows).toHaveLength(1);
+      const row = rows![0];
+      expect(row).toMatchObject({
+        designer_id: d1,
+        service_id: serviceId,
+        customer_name: `${TEST_MARKER} readback`,
+        customer_phone: phone,
+        customer_email: null,
+        status: "pending",
+      });
+      expect(row.customer_id).toBeTruthy();
+      expect(ms(row.start_at)).toBe(ms(t));
+      expect(ms(row.end_at)).toBe(ms(result.data.end_at));
+      expect(ms(result.data.end_at) - ms(t)).toBe(30 * 60_000);
+
+      const { data: customer } = await serviceRoleClient
+        .from("customers")
+        .select("name, phone")
+        .eq("id", row.customer_id)
+        .single();
+      expect(customer).toEqual({ name: `${TEST_MARKER} readback`, phone });
+    });
+
+    describe("不指定且候選名單含不合格設計師（停用／沒開服務／請假）", () => {
+      it("不合格者的 sort_order 最小也不會被指派；時段聯集等於合格設計師自己的時段；請假只擋請假那一天", async () => {
+        const day = pickOpenDay(86);
+        const day2 = pickOpenDayAfter(day);
+        const t = at(day.date, day.openMin + 60);
+        const {
+          serviceId,
+          designers: [inactive, noService, onLeave, eligible],
+        } = await makeScenario({
+          designers: [
+            { sortOrder: 1, isActive: false },
+            { sortOrder: 2, link: false },
+            { sortOrder: 3, leaveDate: day.date },
+            { sortOrder: 9 },
+          ],
+        });
+
+        // 聯集：不合格者各自的空檔不能被算進去，結果必須等於合格設計師自己的時段。
+        const union = startsOf(await slots(anonClient, serviceId, day.date));
+        const own = startsOf(await slots(anonClient, serviceId, day.date, eligible));
+        expect(union.length).toBeGreaterThan(0);
+        expect(union).toEqual(own);
+        for (const designerId of [inactive, noService, onLeave]) {
+          expect(await slots(anonClient, serviceId, day.date, designerId)).toEqual({ ok: true, data: [] });
+        }
+
+        // 不指定建立預約：必須指派給唯一合格的設計師。
+        const result = await create(anonClient, { serviceId, startAt: t, label: "elig" });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.data.designer_id).toBe(eligible);
+
+        // 該時段合格設計師已被佔滿 → 不指定時段聯集不含 t，再約 t 回 SLOT_CONFLICT（不能指派給不合格者）。
+        expect(startsOf(await slots(anonClient, serviceId, day.date))).not.toContain(ms(t));
+        expect(await create(anonClient, { serviceId, startAt: t, label: "elig2" })).toEqual(SLOT_CONFLICT);
+
+        // 請假只擋請假那一天：隔天同一位設計師照常可預約（指定與不指定都可以）。
+        expect(startsOf(await slots(anonClient, serviceId, day2.date, onLeave)).length).toBeGreaterThan(0);
+        const nextDay = await create(anonClient, {
+          serviceId,
+          startAt: at(day2.date, day2.openMin + 60),
+          label: "leave-next-day",
+          designerId: onLeave,
+        });
+        expect(nextDay.ok).toBe(true);
+        if (nextDay.ok) expect(nextDay.data.designer_id).toBe(onLeave);
+      });
+
+      it("候選全部不合格：時段聯集是空陣列，建立預約 SLOT_CONFLICT", async () => {
+        const day = pickOpenDay(86);
+        const { serviceId } = await makeScenario({
+          designers: [{ isActive: false }, { link: false }, { leaveDate: day.date }],
+        });
+
+        expect(await slots(anonClient, serviceId, day.date)).toEqual({ ok: true, data: [] });
+        expect(await create(anonClient, { serviceId, startAt: at(day.date, day.openMin + 60), label: "none" })).toEqual(
+          SLOT_CONFLICT,
+        );
+      });
+    });
+
+    it("不指定：時段是聯集；指定時只看該設計師；回應只有時間、不含設計師資訊", async () => {
+      const day = pickOpenDay(86);
+      const t = at(day.date, day.openMin + 60);
+      const {
+        serviceId,
+        designers: [d1, d2],
+      } = await makeScenario({ designers: [{ sortOrder: 1 }, { sortOrder: 2 }] });
+
+      expect(startsOf(await slots(anonClient, serviceId, day.date))).toContain(ms(t));
+
+      await create(anonClient, { serviceId, startAt: t, label: "u1", designerId: d1 });
+      expect(startsOf(await slots(anonClient, serviceId, day.date, d1))).not.toContain(ms(t));
+      expect(startsOf(await slots(anonClient, serviceId, day.date, d2))).toContain(ms(t));
+      expect(startsOf(await slots(anonClient, serviceId, day.date))).toContain(ms(t));
+
+      await create(anonClient, { serviceId, startAt: t, label: "u2", designerId: d2 });
+      expect(startsOf(await slots(anonClient, serviceId, day.date))).not.toContain(ms(t));
+
+      const all = await slots(anonClient, serviceId, day.date);
+      expect(all.ok).toBe(true);
+      if (all.ok) {
+        for (const slot of all.data) expect(Object.keys(slot).sort()).toEqual(["end_at", "start_at"]);
+      }
+      expect(Object.keys(all).sort()).toEqual(["data", "ok"]);
+    });
+
+    describe("不指定的自動指派規則：當天有效預約數 → sort_order → id", () => {
+      it("當天預約數最少的設計師優先（即使 sort_order 較大）", async () => {
+        const day = pickOpenDay(86);
+        const {
+          serviceId,
+          designers: [d1, d2],
+        } = await makeScenario({ designers: [{ sortOrder: 1 }, { sortOrder: 2 }] });
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, day.openMin + 30),
+          endAt: at(day.date, day.openMin + 60),
+        });
+
+        const result = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 120),
+          label: "fewest",
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.data.designer_id).toBe(d2);
+      });
+
+      it("預約數相同時取 sort_order 較小者；已取消與已完成的預約不計入有效預約數", async () => {
+        const day = pickOpenDay(86);
+        const {
+          serviceId,
+          designers: [dLarge, dSmall],
+        } = await makeScenario({ designers: [{ sortOrder: 2 }, { sortOrder: 1 }] });
+        // dSmall 有一筆待服務預約（計入），dLarge 只有已取消與已完成（不計入）→ dLarge 的當天預約數較少。
+        await seedAppointment({
+          serviceId,
+          designerId: dSmall,
+          startAt: at(day.date, day.openMin + 30),
+          endAt: at(day.date, day.openMin + 60),
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: dLarge,
+          startAt: at(day.date, day.openMin + 30),
+          endAt: at(day.date, day.openMin + 60),
+          status: "cancelled",
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: dLarge,
+          startAt: at(day.date, day.openMin + 90),
+          endAt: at(day.date, day.openMin + 120),
+          status: "completed",
+        });
+
+        const first = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 180),
+          label: "notcounted",
+        });
+        expect(first.ok).toBe(true);
+        if (first.ok) expect(first.data.designer_id).toBe(dLarge);
+
+        // 此時 dLarge 有 1 筆有效預約、dSmall 也是 1 筆 → 平手，取 sort_order 較小的 dSmall。
+        const second = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 210),
+          label: "tiebreak",
+        });
+        expect(second.ok).toBe(true);
+        if (second.ok) expect(second.data.designer_id).toBe(dSmall);
+      });
+
+      it("預約數與 sort_order 都相同時取 id 較小者", async () => {
+        const day = pickOpenDay(86);
+        // 建立順序刻意與 id 順序相反（先建 ffff…、最後建 0000…），這樣「取 id 較小者」不會因為碰巧等於建立順序而通過。
+        const smallest = "00000000-0000-4000-8000-000000000001";
+        const { serviceId } = await makeScenario({
+          designers: [
+            { id: "ffffffff-ffff-4fff-8fff-ffffffffffff", sortOrder: 5 },
+            { id: "88888888-8888-4888-8888-888888888888", sortOrder: 5 },
+            { id: smallest, sortOrder: 5 },
+          ],
+        });
+        const expected = smallest;
+
+        const result = await create(anonClient, { serviceId, startAt: at(day.date, day.openMin + 60), label: "byid" });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.data.designer_id).toBe(expected);
+      });
+    });
+
+    describe("併發", () => {
+      it("兩筆「不指定」同時送同一時段、兩位候選 → 兩筆都成功且分屬不同設計師", async () => {
+        const day = pickOpenDay(86);
+        const t = at(day.date, day.openMin + 60);
+        const { serviceId, designers } = await makeScenario({ designers: [{ sortOrder: 1 }, { sortOrder: 2 }] });
+
+        const results = await Promise.all([
+          create(anonClient, { serviceId, startAt: t, label: "p1" }),
+          create(anonClient, { serviceId, startAt: t, label: "p2" }),
+        ]);
+        expect(results.every((r) => r.ok)).toBe(true);
+        const assigned = results.map((r) => (r.ok ? r.data.designer_id : ""));
+        expect(new Set(assigned).size).toBe(2);
+        expect([...assigned].sort()).toEqual([...designers].sort());
+      });
+
+      it("三筆「不指定」同時送同一時段、兩位候選 → 兩筆成功、第三筆 SLOT_CONFLICT，而且 customers 沒有多出孤兒列", async () => {
+        const day = pickOpenDay(86);
+        const t = at(day.date, day.openMin + 60);
+        const { serviceId } = await makeScenario({ designers: [{ sortOrder: 1 }, { sortOrder: 2 }] });
+
+        const labels = ["q1", "q2", "q3"];
+        const results = await Promise.all(labels.map((label) => create(anonClient, { serviceId, startAt: t, label })));
+        expect(results.filter((r) => r.ok)).toHaveLength(2);
+        const failed = results.map((r, i) => ({ r, label: labels[i] })).filter(({ r }) => !r.ok);
+        expect(failed).toHaveLength(1);
+        expect(failed[0].r).toEqual(SLOT_CONFLICT);
+
+        const { data: loserCustomers } = await serviceRoleClient
+          .from("customers")
+          .select("id")
+          .eq("name", `${TEST_MARKER} ${failed[0].label}`);
+        expect(loserCustomers).toEqual([]);
+
+        const { data: winnerCustomers } = await serviceRoleClient
+          .from("customers")
+          .select("id")
+          .in(
+            "name",
+            labels.filter((l) => l !== failed[0].label).map((l) => `${TEST_MARKER} ${l}`),
+          );
+        expect(winnerCustomers).toHaveLength(2);
+      });
+    });
+
+    describe("併發壓力", () => {
+      it("同一時段同時送 8 筆「不指定」給 3 位設計師：恰好 3 筆成功且分屬不同設計師，其餘都是 SLOT_CONFLICT（沒有任何 INTERNAL_ERROR），沒有孤兒 customers", async () => {
+        const day = pickOpenDay(86);
+        const t = at(day.date, day.openMin + 60);
+        const { serviceId, designers } = await makeScenario({
+          designers: [{ sortOrder: 1 }, { sortOrder: 2 }, { sortOrder: 3 }],
+        });
+
+        const labels = Array.from({ length: 8 }, (_, i) => `s${i}`);
+        const results = await Promise.all(labels.map((label) => create(anonClient, { serviceId, startAt: t, label })));
+
+        const succeeded = results.filter((r) => r.ok);
+        expect(succeeded).toHaveLength(3);
+        const assigned = succeeded.map((r) => (r.ok ? r.data.designer_id : ""));
+        expect([...assigned].sort()).toEqual([...designers].sort());
+
+        // 失敗的必須全部是 SLOT_CONFLICT：漏接 deadlock_detected 之類的退化會在這裡變成 INTERNAL_ERROR。
+        const failed = results.filter((r) => !r.ok);
+        expect(failed).toHaveLength(5);
+        for (const r of failed) expect(r).toEqual(SLOT_CONFLICT);
+
+        const failedLabels = labels.filter((_, i) => !results[i].ok).map((l) => `${TEST_MARKER} ${l}`);
+        const { data: orphans } = await serviceRoleClient.from("customers").select("id").in("name", failedLabels);
+        expect(orphans).toEqual([]);
+        const successLabels = labels.filter((_, i) => results[i].ok).map((l) => `${TEST_MARKER} ${l}`);
+        const { data: kept } = await serviceRoleClient.from("customers").select("id").in("name", successLabels);
+        expect(kept).toHaveLength(3);
+      });
+    });
+
+    describe("與既有規則交叉：指定與不指定兩種模式都仍然生效", () => {
+      async function expectBlockedBothModes(
+        serviceId: string,
+        designerId: string,
+        date: string,
+        startAt: string,
+        expectedCreate: unknown,
+      ) {
+        for (const mode of [designerId, null]) {
+          expect(await slots(anonClient, serviceId, date, mode)).toEqual({ ok: true, data: [] });
+          expect(await create(anonClient, { serviceId, startAt, label: "blocked", designerId: mode })).toEqual(
+            expectedCreate,
+          );
+        }
+      }
+
+      it("特殊公休日（closed_dates）", async () => {
+        const day = pickOpenDay(60);
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+        // 對照組：公休前同一天有時段，證明之後的空陣列是因為公休，不是因為超出視野或其他原因。
+        expect(startsOf(await slots(anonClient, serviceId, day.date, d1)).length).toBeGreaterThan(0);
+        const { error } = await serviceRoleClient.from("closed_dates").insert({ date: day.date });
+        if (error) throw error;
+        try {
+          await expectBlockedBothModes(serviceId, d1, day.date, at(day.date, day.openMin + 60), SLOT_CONFLICT);
+        } finally {
+          const { error: deleteError } = await serviceRoleClient.from("closed_dates").delete().eq("date", day.date);
+          if (deleteError) throw deleteError;
+        }
+      });
+
+      it("每週固定公休", async (ctx) => {
+        let closedDate: string | undefined;
+        // 只從視野內（60～89 天）挑公休日：超過第 90 天 get_available_slots 無論如何都回空陣列。
+        for (let i = 60; i < 90 && !closedDate; i++) {
+          const date = addDays(taipeiToday(), i);
+          if (!hours.get(weekdayOf(date))) closedDate = date;
+        }
+        if (!closedDate) return ctx.skip();
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+        // 對照組：同一服務在營業日有時段。
+        expect(startsOf(await slots(anonClient, serviceId, pickOpenDay(60).date, d1)).length).toBeGreaterThan(0);
+        await expectBlockedBothModes(serviceId, d1, closedDate, at(closedDate, 11 * 60), SLOT_CONFLICT);
+      });
+
+      it("營業時間邊界：開門前與打烊後（含服務時長跨過打烊）都被拒", async () => {
+        const day = pickOpenDay(86);
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+        for (const mode of [d1, null]) {
+          expect(
+            await create(anonClient, {
+              serviceId,
+              startAt: at(day.date, day.openMin - 30),
+              label: "early",
+              designerId: mode,
+            }),
+          ).toEqual(SLOT_CONFLICT);
+          expect(
+            await create(anonClient, {
+              serviceId,
+              startAt: at(day.date, day.closeMin - 15),
+              label: "late",
+              designerId: mode,
+            }),
+          ).toEqual(SLOT_CONFLICT);
+        }
+      });
+
+      it("提前量：時段落在提前量內，時段查詢是空陣列、建立預約 VALIDATION_ERROR", async () => {
+        const day = pickOpenDay(10);
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+        const { data: snapshot, error: snapshotError } = await serviceRoleClient
+          .from("booking_policy")
+          .select("min_lead_time_hours")
+          .eq("id", 1)
+          .single();
+        if (snapshotError) throw snapshotError;
+        // 印出原始值，供行程被強制中斷時人工還原（比照 tests/booking.integration.test.ts）。
+        console.log(
+          `[designers.integration.test] 原始 booking_policy.min_lead_time_hours = ${snapshot.min_lead_time_hours}`,
+        );
+        try {
+          const { error } = await serviceRoleClient
+            .from("booking_policy")
+            .update({ min_lead_time_hours: 720 })
+            .eq("id", 1);
+          if (error) throw error;
+          await expectBlockedBothModes(serviceId, d1, day.date, at(day.date, day.openMin + 60), {
+            ok: false,
+            error_code: "VALIDATION_ERROR",
+            message: "start_at out of allowed range",
+          });
+        } finally {
+          // 還原失敗就重試一次；仍失敗時錯誤訊息帶上原始值，方便人工還原（DB 會停在 720）。
+          let restoreError: unknown = null;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const { error } = await serviceRoleClient
+              .from("booking_policy")
+              .update({ min_lead_time_hours: snapshot.min_lead_time_hours })
+              .eq("id", 1);
+            restoreError = error;
+            if (!error) break;
+          }
+          if (restoreError) {
+            throw new Error(
+              `還原 booking_policy.min_lead_time_hours 失敗，請手動改回 ${snapshot.min_lead_time_hours}：${JSON.stringify(restoreError)}`,
+            );
+          }
+        }
+      });
+
+      it("不指定、兩位候選、第一順位被 buffer 擋住：改派給另一位（不是 SLOT_CONFLICT）；時段聯集仍列出該時段", async () => {
+        const day = pickOpenDay(86);
+        const t = day.openMin + 60;
+        const {
+          serviceId,
+          designers: [d1, d2],
+        } = await makeScenario({
+          designers: [{ sortOrder: 1 }, { sortOrder: 2 }],
+          durationMinutes: 30,
+          bufferMinutes: 30,
+        });
+        await seedAppointment({ serviceId, designerId: d1, startAt: at(day.date, t), endAt: at(day.date, t + 30) });
+
+        // t+30 落在 d1 既有預約的 buffer 內，d2 空閒：d1 的時段沒有，聯集有。
+        expect(startsOf(await slots(anonClient, serviceId, day.date, d1))).not.toContain(ms(at(day.date, t + 30)));
+        expect(startsOf(await slots(anonClient, serviceId, day.date))).toContain(ms(at(day.date, t + 30)));
+
+        const result = await create(anonClient, { serviceId, startAt: at(day.date, t + 30), label: "reroute" });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.data.designer_id).toBe(d2);
+      });
+
+      it("buffer 與非 30 倍數的時長：45 分鐘＋30 分鐘 buffer，依序建立每個列出的時段都成功，直到清單變空", async () => {
+        const day = pickOpenDay(86);
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}], durationMinutes: 45, bufferMinutes: 30 });
+
+        let created = 0;
+        for (let i = 0; i < 40; i++) {
+          const listed = await slots(anonClient, serviceId, day.date);
+          expect(listed.ok).toBe(true);
+          if (!listed.ok || listed.data.length === 0) break;
+          const first = listed.data[0];
+          const result = await create(anonClient, {
+            serviceId,
+            startAt: first.start_at,
+            label: `b45-${i}`,
+            designerId: i % 2 === 0 ? d1 : null,
+          });
+          expect(result.ok, first.start_at).toBe(true);
+          created += 1;
+        }
+        expect(created).toBeGreaterThan(1);
+        expect(await slots(anonClient, serviceId, day.date)).toEqual({ ok: true, data: [] });
+      });
+
+      it("跨服務的 buffer：既有預約屬於另一個 buffer 較大的服務，候選時段要避開「既有預約自己的 buffer」", async () => {
+        const day = pickOpenDay(86);
+        const t = day.openMin + 60;
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}], durationMinutes: 30, bufferMinutes: 0 });
+        const bigBufferService = await makeExtraService([d1], { durationMinutes: 30, bufferMinutes: 60 });
+        // 既有預約屬於 bigBufferService：佔用 [t, t+30)，加上它自己的 60 分鐘 buffer 到 t+90。
+        await seedAppointment({
+          serviceId: bigBufferService,
+          designerId: d1,
+          startAt: at(day.date, t),
+          endAt: at(day.date, t + 30),
+        });
+
+        const listed = startsOf(await slots(anonClient, serviceId, day.date, d1));
+        expect(listed).not.toContain(ms(at(day.date, t + 30)));
+        expect(listed).not.toContain(ms(at(day.date, t + 60)));
+        expect(listed).toContain(ms(at(day.date, t + 90)));
+
+        expect(
+          await create(anonClient, { serviceId, startAt: at(day.date, t + 60), label: "xbuf", designerId: d1 }),
+        ).toEqual(SLOT_CONFLICT);
+        const ok = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, t + 90),
+          label: "xbuf-ok",
+          designerId: d1,
+        });
+        expect(ok.ok).toBe(true);
+      });
+
+      it("buffer：擠進既有預約的 buffer、或自己的 buffer 擠進既有預約，指定與不指定都 SLOT_CONFLICT；時段查詢與建立預約判斷一致", async () => {
+        const day = pickOpenDay(86);
+        const t = day.openMin + 60;
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}], durationMinutes: 30, bufferMinutes: 30 });
+        // 既有預約佔用 [t, t+30)，加上它自己的 buffer 到 t+60。
+        await seedAppointment({ serviceId, designerId: d1, startAt: at(day.date, t), endAt: at(day.date, t + 30) });
+
+        const listed = startsOf(await slots(anonClient, serviceId, day.date, d1));
+        expect(listed).not.toContain(ms(at(day.date, t + 30)));
+        expect(listed).toContain(ms(at(day.date, t + 60)));
+
+        for (const mode of [d1, null]) {
+          expect(
+            await create(anonClient, { serviceId, startAt: at(day.date, t + 30), label: "inbuf", designerId: mode }),
+          ).toEqual(SLOT_CONFLICT);
+        }
+
+        // 反方向：既有預約在 t+150，候選時段 t+120（含自己的 30 分鐘 buffer 到 t+180）會擠進去。
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, t + 150),
+          endAt: at(day.date, t + 180),
+        });
+        expect(startsOf(await slots(anonClient, serviceId, day.date, d1))).not.toContain(ms(at(day.date, t + 120)));
+        for (const mode of [d1, null]) {
+          expect(
+            await create(anonClient, { serviceId, startAt: at(day.date, t + 120), label: "ownbuf", designerId: mode }),
+          ).toEqual(SLOT_CONFLICT);
+        }
+
+        // 剛好貼齊 buffer 邊界（t+60）可以成立。
+        const ok = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, t + 60),
+          label: "edge",
+          designerId: d1,
+        });
+        expect(ok.ok).toBe(true);
+      });
+
+      it("只有一位設計師、30 分鐘無 buffer 時，get_available_slots 列出的每個時段都能成功建立，建完之後時段清單變空", async () => {
+        const day = pickOpenDay(87);
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+
+        const listed = await slots(anonClient, serviceId, day.date);
+        expect(listed.ok).toBe(true);
+        if (!listed.ok) return;
+        expect(listed.data.length).toBeGreaterThan(0);
+
+        let index = 0;
+        for (const slot of listed.data) {
+          const result = await create(anonClient, {
+            serviceId,
+            startAt: slot.start_at,
+            label: `all${index}`,
+            designerId: index % 2 === 0 ? d1 : null,
+          });
+          expect(result.ok, slot.start_at).toBe(true);
+          index += 1;
+        }
+        expect(await slots(anonClient, serviceId, day.date)).toEqual({ ok: true, data: [] });
+      });
+    });
+
+    describe("BOOKING_LIMIT：電話跨設計師合計；email 上限", () => {
+      it("同電話對三位設計師各約一筆後，第四筆被拒（BOOKING_LIMIT_EXCEEDED）", async () => {
+        const day = pickOpenDay(86);
+        const t = at(day.date, day.openMin + 60);
+        const {
+          serviceId,
+          designers: [d1, d2, d3],
+        } = await makeScenario({ designers: [{}, {}, {}] });
+        const phone = testPhone();
+
+        for (const [i, designerId] of [d1, d2, d3].entries()) {
+          const result = await create(anonClient, { serviceId, startAt: t, label: `ph${i}`, designerId, phone });
+          expect(result.ok, `第 ${i + 1} 筆`).toBe(true);
+        }
+        const fourth = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 120),
+          label: "ph3",
+          designerId: d1,
+          phone,
+        });
+        expect(fourth).toEqual({
+          ok: false,
+          error_code: "BOOKING_LIMIT_EXCEEDED",
+          message: "too many pending appointments",
+        });
+      });
+
+      it("同 email 已有 3 筆未過期的待服務預約（大小寫與前後空白不同視為同一個）→ 第 4 筆被拒；未填 email 不受影響", async () => {
+        const day = pickOpenDay(86);
+        const email = `${TEST_MARKER.toLowerCase()}-lim@example.invalid`;
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+
+        // 既有預約的 email 刻意寫成不同的版本，驗證比對用的是正規化後的 key：大小寫、前後空白、`+標籤`、
+        // 網域結尾的點都視為同一個 email。
+        const local = email.split("@")[0];
+        const variants = [email.toUpperCase(), `  ${email}  `, `${local}+promo@example.invalid.`];
+        for (const [i, variant] of variants.entries()) {
+          await seedAppointment({
+            serviceId,
+            designerId: d1,
+            startAt: at(day.date, day.openMin + 30 * (i + 1)),
+            endAt: at(day.date, day.openMin + 30 * (i + 2)),
+            email: variant,
+          });
+        }
+
+        const rejected = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 240),
+          label: "emaillimit",
+          email: `${local}+other@Example.Invalid.`,
+          designerId: d1,
+        });
+        expect(rejected).toEqual({
+          ok: false,
+          error_code: "BOOKING_LIMIT_EXCEEDED",
+          message: "too many pending appointments",
+        });
+
+        // 「不指定」模式同樣受 email 上限限制。
+        const rejectedUnspecified = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 240),
+          label: "emaillimit2",
+          email,
+        });
+        expect(rejectedUnspecified).toEqual({
+          ok: false,
+          error_code: "BOOKING_LIMIT_EXCEEDED",
+          message: "too many pending appointments",
+        });
+
+        // 未填 email（null）不受 email 上限影響；這筆不帶 email，不會觸發寄信 webhook。
+        const noEmail = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 240),
+          label: "noemail",
+          designerId: d1,
+        });
+        expect(noEmail.ok).toBe(true);
+      });
+
+      it("同一支電話同時送出多筆（不同設計師）：advisory lock 讓上限不會被併發繞過，正好 3 筆成功", async () => {
+        const day = pickOpenDay(86);
+        const t = at(day.date, day.openMin + 60);
+        const { serviceId, designers } = await makeScenario({ designers: [{}, {}, {}, {}, {}] });
+        const phone = testPhone();
+
+        const results = await Promise.all(
+          designers.map((designerId, i) =>
+            create(anonClient, { serviceId, startAt: t, label: `pc${i}`, designerId, phone }),
+          ),
+        );
+        expect(results.filter((r) => r.ok)).toHaveLength(3);
+        const rejected = results.filter((r) => !r.ok);
+        expect(rejected).toHaveLength(2);
+        for (const r of rejected) {
+          expect(r).toEqual({
+            ok: false,
+            error_code: "BOOKING_LIMIT_EXCEEDED",
+            message: "too many pending appointments",
+          });
+        }
+      });
+
+      it("檢查順序（特徵化）：電話已達上限的人去約一個已被佔的時段，得到 SLOT_CONFLICT 而不是 BOOKING_LIMIT_EXCEEDED", async () => {
+        // BOOKING_LIMIT 在設計師候選清單之後檢查（0018 檔頭、decisions.md 已記為殘留）；這個案例把順序釘住，
+        // 日後誰調換順序、讓回應不同，會在這裡被抓到。
+        const day = pickOpenDay(86);
+        const t = at(day.date, day.openMin + 60);
+        const {
+          serviceId,
+          designers: [d1, d2, d3],
+        } = await makeScenario({ designers: [{}, {}, {}] });
+        const phone = testPhone();
+        for (const [i, designerId] of [d1, d2, d3].entries()) {
+          expect((await create(anonClient, { serviceId, startAt: t, label: `ord${i}`, designerId, phone })).ok).toBe(
+            true,
+          );
+        }
+        // 三位設計師在 t 都被佔了；同一支電話（已達上限）再約 t：候選清單為空，先回 SLOT_CONFLICT。
+        expect(await create(anonClient, { serviceId, startAt: t, label: "ord3", designerId: d1, phone })).toEqual(
+          SLOT_CONFLICT,
+        );
+        expect(await create(anonClient, { serviceId, startAt: t, label: "ord4", phone })).toEqual(SLOT_CONFLICT);
+      });
+
+      it("email 上限跨設計師合計，而且 confirmed 也計入", async () => {
+        const day = pickOpenDay(86);
+        const email = `${TEST_MARKER.toLowerCase()}-xd@example.invalid`;
+        const {
+          serviceId,
+          designers: [d1, d2, d3],
+        } = await makeScenario({ designers: [{}, {}, {}] });
+        const t = day.openMin + 30;
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, t),
+          endAt: at(day.date, t + 30),
+          email,
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: d2,
+          startAt: at(day.date, t),
+          endAt: at(day.date, t + 30),
+          email,
+          status: "confirmed",
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: d3,
+          startAt: at(day.date, t),
+          endAt: at(day.date, t + 30),
+          email,
+        });
+
+        for (const designerId of [d1, null]) {
+          expect(
+            await create(anonClient, { serviceId, startAt: at(day.date, t + 120), label: "xd", email, designerId }),
+          ).toEqual({ ok: false, error_code: "BOOKING_LIMIT_EXCEEDED", message: "too many pending appointments" });
+        }
+      });
+
+      it("email 上限只計未過期的待服務預約：已取消與已過期的不計入；不同 email 不會被誤判為同一個", async () => {
+        const day = pickOpenDay(86);
+        const email = `${TEST_MARKER.toLowerCase()}-ok@example.invalid`;
+        const {
+          serviceId,
+          designers: [d1],
+        } = await makeScenario({ designers: [{}] });
+        const past = new Date(Date.now() - 2 * 86_400_000);
+        const pastEnd = new Date(past.getTime() + 30 * 60_000);
+
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, day.openMin + 30),
+          endAt: at(day.date, day.openMin + 60),
+          email,
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, day.openMin + 60),
+          endAt: at(day.date, day.openMin + 90),
+          email,
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, day.openMin + 90),
+          endAt: at(day.date, day.openMin + 120),
+          email,
+          status: "cancelled",
+        });
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: past.toISOString(),
+          endAt: pastEnd.toISOString(),
+          email,
+        });
+        // 另一個不同信箱的待服務預約：若正規化過度（把不同 email 併成同一個 key），這裡會讓計數變成 3 而被拒。
+        await seedAppointment({
+          serviceId,
+          designerId: d1,
+          startAt: at(day.date, day.openMin + 120),
+          endAt: at(day.date, day.openMin + 150),
+          email: `${TEST_MARKER.toLowerCase()}-other@example.invalid`,
+        });
+
+        // 有效且未過期的只有 2 筆（< 3），所以這一筆會成立。這是本區塊唯一會真的成立一筆帶 email 的預約
+        // （見上方說明）：email 是 @example.invalid，Resend 於 API 層拒絕，不會真的寄出。
+        const result = await create(anonClient, {
+          serviceId,
+          startAt: at(day.date, day.openMin + 180),
+          label: "emailok",
+          email,
+          designerId: d1,
+        });
+        expect(result.ok).toBe(true);
+      });
+    });
+
+    describe("權限與效能證據", () => {
+      it("anon、authenticated（店長 session）、service_role 都能呼叫兩支 RPC（套用前實測三者皆可；pg_proc.proacl 的前後比對見驗證報告）", async () => {
+        const day = pickOpenDay(86);
+        const { serviceId } = await makeScenario({ designers: [{}] });
+        for (const [name, client] of [
+          ["anon", anonClient],
+          ["authenticated", adminClient],
+          ["service_role", serviceRoleClient],
+        ] as const) {
+          const envelope = await slots(client, serviceId, day.date);
+          expect(envelope.ok, `${name} get_available_slots`).toBe(true);
+          // 姓名為空 → VALIDATION_ERROR：證明函式本身可呼叫，又不會寫入任何資料。
+          const { data, error } = await client.rpc("create_appointment", {
+            p_service_id: serviceId,
+            p_start_at: at(day.date, day.openMin + 60),
+            p_customer_name: "",
+            p_customer_phone: "0912345678",
+            p_customer_email: null,
+          });
+          expect(error, `${name} create_appointment`).toBeNull();
+          expect((data as { error_code?: string }).error_code).toBe("VALIDATION_ERROR");
+        }
+      });
+
+      it("anon 與 authenticated 不能直接呼叫兩支內部判斷函式（42501）", async () => {
+        const args1 = { p_designer_id: randomUUID(), p_service_id: randomUUID(), p_date: "2099-01-01" };
+        const args2 = {
+          p_designer_id: randomUUID(),
+          p_start_at: "2099-01-01T02:00:00Z",
+          p_end_at: "2099-01-01T02:30:00Z",
+          p_buffer_minutes: 0,
+        };
+        for (const client of [anonClient, adminClient]) {
+          const eligible = await client.rpc("_designer_is_eligible", args1);
+          expect(eligible.error?.code).toBe("42501");
+          const free = await client.rpc("_designer_is_free", args2);
+          expect(free.error?.code).toBe("42501");
+        }
+      });
+
+      it("耗時記錄：三位設計師的「不指定」時段查詢（只記錄含網路往返的耗時，不是 explain analyze，見驗證報告）", async () => {
+        const day = pickOpenDay(86);
+        const { serviceId } = await makeScenario({ designers: [{}, {}, {}] });
+        const started = Date.now();
+        const envelope = await slots(anonClient, serviceId, day.date);
+        const elapsed = Date.now() - started;
+        console.log(
+          `[designers.integration.test] get_available_slots（不指定、3 位設計師、${day.date}）耗時 ${elapsed} ms（含網路往返）`,
+        );
+        expect(envelope.ok).toBe(true);
+        expect(elapsed).toBeLessThan(5000);
+      });
     });
   });
 
