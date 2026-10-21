@@ -1,0 +1,62 @@
+{
+  "id": "TASK-070",
+  "title": "多位設計師 「提供服務」頁籤與新增服務的預設行為",
+  "content": "設計師逐項開關服務（即時儲存）；新增服務成功提示「預設不開給任何設計師」。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "設定設計師提供的服務",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-067",
+    "TASK-069",
+    "TASK-078"
+  ],
+  "order": 70,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
+    "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-070.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/designers.ts",
+    "app/admin/_components/DesignerServicesTab.tsx",
+    "app/admin/_components/ServicesTable.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}

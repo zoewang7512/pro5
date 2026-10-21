@@ -1,0 +1,66 @@
+{
+  "id": "TASK-080",
+  "title": "〔延後〕顧客預約流程 建立預約加上人機驗證（Turnstile）與依 IP 限流",
+  "content": "create_appointment 收回 anon 直接呼叫，改經 POST /api/bookings（驗證 Turnstile、依 IP 限流、service role 呼叫 RPC）。來源：多位設計師動工前 security-reviewer 審查 S4。開工前需先走 spec-interrogation（門檻、Turnstile 模式、Cloudflare 帳號由使用者建立、部署順序）。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "顧客預約流程",
+  "userStory": "填寫聯絡資訊並確認預約",
+  "track": "n/a",
+  "dependsOn": [
+    "TASK-077"
+  ],
+  "order": 80,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": false,
+    "acceptance_testable": false,
+    "files_known": false,
+    "scope_defined": false,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/顧客預約流程/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/顧客預約流程/task-cards/TASK-080.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/api/bookings/route.ts",
+    "lib/booking/api.ts",
+    "app/_components/booking/ContactFormSection.tsx",
+    ".env.example"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "要求另開限流任務卡（多位設計師動工前 security-reviewer 審查 S4 的後續）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "MVP 不做，延後。面試作品、流量低、Demo 會定期還原資料庫；寄信濫用改由 TASK-068 的 email 上限緩解。重新啟動條件：真實店家上線、觀察到灌單、Resend 寄信量異常。"
+    }
+  ]
+}

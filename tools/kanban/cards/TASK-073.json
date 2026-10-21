@@ -1,0 +1,65 @@
+{
+  "id": "TASK-073",
+  "title": "多位設計師 前台「選擇設計師」步驟、服務列表過濾、時段與送出串接、成功頁設計師",
+  "content": "Variant B 橫向頭像列＋預覽卡；沒有設計師提供的服務不顯示；把選擇傳給兩支 RPC；成功頁顯示（不指定時顯示被安排的設計師）。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "顧客選擇設計師並查看詳細資訊",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-067",
+    "TASK-068",
+    "TASK-070"
+  ],
+  "order": 73,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "ai/artifacts/多位設計師/screen-spec-前台選擇設計師.md",
+    "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-前台選擇設計師.md",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-073.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/booking/api.ts",
+    "lib/booking/types.ts",
+    "app/_components/booking/BookingFlow.tsx",
+    "app/_components/booking/DesignerPickerSection.tsx",
+    "components/ui/DesignerAvatarRail.tsx",
+    "app/_components/booking/SuccessSection.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}

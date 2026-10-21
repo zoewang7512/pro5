@@ -1,0 +1,61 @@
+{
+  "id": "TASK-072",
+  "title": "多位設計師 「請假」頁籤（月曆標記整天請假、受影響預約警告）",
+  "content": "比照 ClosedDatesSection：點選日期、受影響預約警告、即將到來的請假清單；全店公休唯讀標示。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "設定設計師請假日",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-067",
+    "TASK-069"
+  ],
+  "order": 72,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
+    "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-072.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/designers.ts",
+    "app/admin/_components/DesignerLeavesTab.tsx",
+    "components/ui/MonthPicker.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}

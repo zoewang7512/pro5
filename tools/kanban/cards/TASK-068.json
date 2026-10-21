@@ -1,0 +1,78 @@
+{
+  "id": "TASK-068",
+  "title": "多位設計師 依設計師計算時段與建立預約（0018：exclusion 依設計師、RPC 加 p_designer_id 與自動指派）",
+  "content": "designer_id 改 not null、exclusion constraint 改 (designer_id, 時段)、get_available_slots／create_appointment 加 p_designer_id default null，不指定時依（當天預約數, sort_order, id）指派並在併發衝突時改派下一位。不改畫面。 另併入：同一 email 最多 3 筆待服務預約（取代延後的 TASK-080 限流）。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "依設計師計算時段與建立預約",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-067"
+  ],
+  "order": 68,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-068.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0018_designer_aware_booking.sql",
+    "supabase/migrations/0018_designer_aware_booking_down.sql",
+    "lib/booking/api.ts",
+    "lib/booking/types.ts",
+    "tests/designers.integration.test.ts",
+    "ai/context/decisions.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "動工前架構審查意見已併入（檢查順序、共用 insert 迴圈、execute 權限明寫 anon＋authenticated、lock table、designer-fixture、seed 腳本、回滾順序、BOOKING_LIMIT 維持全店）。待人工決定 buffer 檢查方式後才能實作候選清單。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "create_appointment 選 (a)：指定與不指定兩條路徑都檢查 buffer。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准把「同 email 最多 3 筆待服務預約」併入本卡。"
+    }
+  ]
+}

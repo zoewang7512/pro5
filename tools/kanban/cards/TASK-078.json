@@ -1,0 +1,64 @@
+{
+  "id": "TASK-078",
+  "title": "營業時間與可預約時段管理 服務項目表單新增「緩衝時間」欄位（後台 UI）",
+  "content": "在服務項目新增／編輯 Modal 加「緩衝時間（分鐘）」0～120，列表時長欄顯示緩衝；不改 schema 與 RPC。UI 關卡建議豁免 mockup 變體，待人工確認。",
+  "stage": "ready",
+  "risk": "low",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "營業時間與可預約時段管理",
+  "userStory": "設定服務間的緩衝時間",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-022",
+    "TASK-024",
+    "TASK-034",
+    "TASK-035"
+  ],
+  "order": 78,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/營業時間與可預約時段管理/feature-spec.md",
+    "screenSpec": "ai/artifacts/服務項目管理/screen-spec-服務項目管理.md",
+    "mockupDecision": "ai/artifacts/服務項目管理/mockup-decision-服務項目管理.md",
+    "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-078.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/services.ts",
+    "lib/booking/types.ts",
+    "app/admin/_components/ServiceFormDialog.tsx",
+    "app/admin/_components/ServicesTable.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准；UI 關卡豁免 mockup 變體（只在已核准的服務表單加一個既有 TextField 欄位），改在 screen-spec 補一段；排在多位設計師 Epic 之前。"
+    }
+  ]
+}

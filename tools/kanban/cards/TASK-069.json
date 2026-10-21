@@ -1,0 +1,64 @@
+{
+  "id": "TASK-069",
+  "title": "多位設計師 後台設計師列表操作與「基本資料」頁籤",
+  "content": "新增、停用／重新啟用（含未來預約警告）、上下箭頭排序；/admin/designers/[id] 四頁籤框架與基本資料（名稱、IG、專長、簡介、頭像）。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "管理設計師基本資料",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-067"
+  ],
+  "order": 69,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
+    "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-069.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/designers.ts",
+    "lib/designers.ts",
+    "app/admin/designers/[id]/page.tsx",
+    "app/admin/designers/new/page.tsx",
+    "app/admin/_components/DesignerEditView.tsx",
+    "app/admin/_components/DesignerBasicInfoForm.tsx",
+    "app/admin/_components/DesignersTable.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}
