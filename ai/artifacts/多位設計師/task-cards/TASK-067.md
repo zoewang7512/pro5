@@ -8,7 +8,7 @@
 - 上層 User Story：管理設計師基本資料
 - 分軌：不適用（架構基礎：資料庫遷移＋頁面骨架，比照 TASK-046／TASK-029 不強套三分法）
 - 前置任務（dependsOn）：TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009, TASK-063, TASK-064, TASK-065, TASK-066, TASK-079（人工決定排序：0016 先套用）
-- 狀態：就緒前審查中（人工已於 2026-10-21 核准；動工前先完成 architect／security-reviewer 架構審查）
+- 狀態：待驗證／待人工驗收（人工已於 2026-10-21 核准；動工前審查與實作後審查皆已完成並採納，見完成證據）
 - 風險等級：高（新增 4 張資料表與 1 個 Storage bucket，並在 `appointments` 新增外鍵欄位、回填全部既有預約；共用正式資料庫）
 - Agent owner：Claude Code
 - 人工核准者：使用者
@@ -53,7 +53,7 @@
 | `designers` | `id uuid pk`、`name text`、`bio text null`、`specialties text[] not null default '{}'`、`instagram_handle text null`、`avatar_url text null`、`is_active boolean not null default true`、`sort_order int not null default 0`、`created_at`、`updated_at` | `name` 去頭尾空白後 1～30 字且 `name !~ '[[:cntrl:]]'`〔審查〕；`bio` ≤ 200 字；`specialties` 由 `public.designer_specialties_valid(text[])`（immutable）檢查 0～5 個、每個 1～12 字、不重複；`instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'`（不含 `@`，前端送出前去掉）；`avatar_url` 長度 ≤ 2048〔審查〕；`updated_at` 沿用既有 `set_updated_at()` trigger |
 | `designer_services` | `designer_id`、`service_id` | 複合主鍵；兩個外鍵都 `on delete cascade`（服務本身只會下架不會刪，cascade 只是保險） |
 | `designer_leaves` | `designer_id`、`date date`、`created_at` | 複合主鍵；外鍵 `on delete cascade` |
-| `designer_portfolio_images` | `id uuid pk`、`designer_id`、`image_url text`、`storage_path text unique`、`created_at` | 索引 `(designer_id, created_at desc)`；〔審查〕`storage_path ~ ('^portfolio/' \|\| designer_id \|\| '/[0-9a-f-]{36}\.(jpg\|png\|webp)$')`、`image_url` 以 `storage_path` 結尾且長度 ≤ 2048；`before insert` trigger 先 `select ... for update` 鎖住設計師列再數張數，≥ 12 時以固定 errcode（`P0001`）加固定訊息前綴 `PORTFOLIO_LIMIT` 拋出，前端依此對應文案；〔審查〕trigger 函式用 `security definer`＋`set search_path = ''`，張數計算不受呼叫者 RLS 影響 |
+| `designer_portfolio_images` | `id uuid pk`、`designer_id`、`image_url text`、`storage_path text unique`、`created_at` | 索引 `(designer_id, created_at desc)`；〔審查〕`storage_path ~ ('^portfolio/' \|\| designer_id \|\| '/[0-9a-f-]{36}\.(jpg\|png\|webp)$')`、`image_url` 以 `storage_path` 結尾且長度 ≤ 2048；`after insert` trigger 先 `select ... for no key update` 鎖住設計師列再數張數，> 12 時以固定 errcode（`P0001`）加固定訊息前綴 `PORTFOLIO_LIMIT` 拋出，前端依此對應文案；〔審查〕trigger 函式用 `security definer`＋`set search_path = ''`，張數計算不受呼叫者 RLS 影響；〔實作期修訂，security-reviewer 實作後審查 M1〕原設計是 `before insert`＋`for update`，但 RLS 的 WITH CHECK 在 BEFORE ROW trigger 之後才檢查，任何自行註冊的使用者（Supabase 公開註冊開著）在被 42501 擋下之前就會以 postgres 身分觸發它（取鎖、以錯誤碼探測作品張數）；改成 AFTER（RLS 與 constraint 通過後才執行）。鎖用 `for no key update` 而不是 `for update`：外鍵檢查已持有 `for key share`，兩個並行交易再要 `for update` 會互相等待而死結，`no key update` 與 `key share` 相容、彼此互斥，也不會擋住 0018 的 `create_appointment` |
 | `appointments`（既有） | 新增 `designer_id uuid null references designers(id)`（不 cascade，設計師只會停用不會刪） | 索引 `(designer_id, start_at)` |
 
 回填：〔審查〕「建立預設設計師」與「把**全部既有服務**（含下架中）對他開啟」放在**同一個條件分支**，只在
@@ -67,7 +67,7 @@ WHEN 條件，不會寄信（architect 已驗證）。
 
 | 表 | anon | authenticated | service_role〔審查〕 | 說明 |
 |---|---|---|---|---|
-| `designers` | `select (id, name, bio, specialties, instagram_handle, avatar_url, sort_order, is_active)`，policy `using (is_active)` | `select`、`insert`、`update (name, bio, specialties, instagram_handle, avatar_url, is_active, sort_order)`〔審查：欄位層級，排除 `id`、`created_at`〕；policy 1「public read active」`using (is_active)`，policy 2「admin full access」`using/with check (is_admin())` | `select, insert, update, delete` | authenticated **不 grant delete**：設計師只能停用；delete 只給 service_role（測試清理用） |
+| `designers` | `select (id, name, bio, specialties, instagram_handle, avatar_url, sort_order, is_active)`，policy `using (is_active)` | `select`、`insert (name, bio, specialties, instagram_handle, avatar_url, is_active, sort_order)`、`update (同上欄位)`〔審查：欄位層級，排除 `id`、`created_at`；實作期修訂：insert 原為 table-level，改成欄位層級（security-reviewer 實作後審查 L1）——「預設設計師」以 `order by created_at, id` 辨識，insert 若能自訂 `created_at`，管理員 session 被盜用時可塞一位最早建立的設計師冒充預設設計師〕；policy 1「public read active」`using (is_active)`，policy 2「admin full access」`using/with check (is_admin())` | `select, insert, update, delete` | authenticated **不 grant delete**：設計師只能停用；delete 只給 service_role（測試清理用） |
 | `designer_services` | `select`，policy：`exists (select 1 from designers d where d.id = designer_services.designer_id and d.is_active)` | `select, insert, delete`（`is_admin()`）＋同樣的公開讀 policy | `select, insert, update, delete` | 開關＝insert／delete 一列 |
 | `designer_portfolio_images` | `select (id, designer_id, image_url, created_at)`，policy 同上（以 `d.is_active` 判斷） | `select, insert, delete`（`is_admin()`）＋公開讀 policy | `select, insert, update, delete` | `storage_path` 不給 anon（沒有保密作用，公開網址本來就含路徑；只是讓前台查詢必須列出欄位） |
 | `designer_leaves` | **無** | `select, insert, delete`（`is_admin()`） | `select, insert, update, delete` | 請假日是個人行程，前台不能直接讀，只透過 `SECURITY DEFINER` RPC 間接影響時段 |
@@ -131,8 +131,10 @@ WHEN 條件，不會寄信（architect 已驗證）。
     變成 N 倍）。換電話號碼繞過上限是既有殘留，限流由 TASK-080 處理。
   - 共用判斷抽成兩支內部函式 `public._designer_is_eligible(designer_id, service_id, date)`、
     `public._designer_is_free(designer_id, start_at, end_at, buffer_minutes)`：宣告 `stable`、`set search_path = ''`、
-    所有物件寫完整 schema 名稱；`revoke execute ... from public, anon, authenticated`。`designer_specialties_valid`
-    與作品集 trigger 函式同樣 revoke（check constraint 使用的函式要確認管理員寫入時仍可執行）。
+    所有物件寫完整 schema 名稱；`revoke execute ... from public, anon, authenticated`。作品集 trigger 函式同樣 revoke。
+    **`designer_specialties_valid` 例外（實作期定案）**：只 revoke public／anon，保留 authenticated 與 service_role
+    的 execute——PostgreSQL 評估 CHECK 時會以當前使用者身分檢查函式的 execute 權限，revoke 會讓管理員寫入
+    designers 全部失敗（整合測試證實管理員可寫入）；它是純函式、無副作用，公開沒有風險。
   - 〔審查〕**兩支 RPC 的 execute 權限要明寫**：`revoke ... from public, anon, authenticated; grant execute ... to anon, authenticated`。
     本專案 public schema 有 default privileges，drop 再 create 後授權會被重設；店長在同一個瀏覽器登入後台再開前台，
     會以 authenticated 身分呼叫。套用前用 `select proname, proacl from pg_proc where proname in (...)` 記下兩支 RPC
@@ -239,9 +241,12 @@ WHEN 條件，不會寄信（architect 已驗證）。
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
+完整內容見 [`../verification/TASK-067.md`](../verification/TASK-067.md)。
+
+- 變更的檔案：`supabase/migrations/0017_designers.sql`、`0017_designers_down.sql`；`lib/designers.ts`、`lib/admin/designers.ts`；`app/admin/designers/page.tsx`、`app/admin/_components/DesignersTable.tsx`、`AdminShell.tsx`（新增「設計師」導覽項目與圖示）；`tests/designers.integration.test.ts`、`vitest.designers.config.ts`、`package.json`（`test:designers`）；`tests/lib/designers.test.ts`、`tests/admin/designers.test.ts`、`tests/components/designers-table.test.tsx`、`tests/components/admin-shell.test.tsx`。
+- 執行過的指令：`tsc --noEmit`、`npm run lint`、`npm run build`、`npm test`（549 項）、`npm run test:designers`（44 項）、既有 10 套整合測試回歸；正式資料庫唯讀查詢；瀏覽器走查。
+- 測試輸出：全數通過，詳見驗證報告。
+- 螢幕截圖：設計師列表（載入中、已載入、窄寬度修正前後、桌面寬度），見驗證報告。
+- 已知限制：見驗證報告「殘留風險」——公開註冊未關閉（待人工決定）、0017 重跑冪等與 down 未在隔離環境實跑、`test:mfa-rls` 未涵蓋新表、既有套件 global signOut。
+- 實作期偏離原設計（已更正於上方架構筆記）：作品集 trigger 改 AFTER＋`for no key update`；`designers` insert 改欄位層級；`designer_specialties_valid` 保留 authenticated 的 execute；Storage insert policy 補層數與副檔名限制。
 - 後續任務：TASK-068～TASK-077

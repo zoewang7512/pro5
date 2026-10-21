@@ -296,3 +296,42 @@
     admins，不使用 designer001。
   - 多位設計師 Epic 的 migration 順延為 0017／0018。
 ```
+
+## TASK-067（多位設計師 架構基礎，0017）：四張新表的權限與 trigger 設計取捨
+
+```text
+日期：2026-10-21
+決策：0017 新增 designers／designer_services／designer_leaves／designer_portfolio_images 與
+      designer-assets bucket；appointments.designer_id 先 nullable、回填「預設設計師」，0018 才改
+      not null。以下是實作與審查期定案、容易被日後誤改的取捨。
+決定與理由：
+  - 作品集 12 張上限的 trigger 是 AFTER INSERT＋`for no key update`，不是 BEFORE＋`for update`。
+    RLS 的 WITH CHECK 在 BEFORE ROW trigger 之後才檢查，BEFORE 會讓任何自行註冊的使用者（Supabase
+    公開註冊開著）在被 42501 擋下前就以 postgres 身分取鎖、並用錯誤碼探測作品張數。`for update`
+    與外鍵檢查已持有的 `for key share` 會在並行時互相等待而死結；`no key update` 相容 key share，
+    也不會擋住 0018 的 create_appointment。測試：並行 14 筆正好 12 成功、單一 insert 14 列整批回滾、
+    非管理員得到 42501 而非 PORTFOLIO_LIMIT。
+  - designers 的 insert／update 都是欄位層級授權（排除 id、created_at）。「預設設計師」以
+    `order by created_at, id limit 1` 辨識（0018 補回填 null 預約用），insert 若能自訂 created_at，
+    被盜用的管理員 session 可以塞一位最早建立的設計師冒充。
+  - designer_specialties_valid 保留 authenticated／service_role 的 execute，與架構筆記 E 原本寫的
+    「同樣 revoke」不同：PostgreSQL 評估 CHECK 時以當前使用者身分檢查函式 execute 權限，revoke
+    會讓管理員寫入 designers 全部失敗。只收回 public／anon。
+  - image_url 的 check constraint 只保證以 storage_path 結尾，**擋不住外部網域**。網址只能指向
+    designer-assets 的唯一防線是顯示層 resolveDesignerAssetUrl（origin＋pathname 白名單，並拒絕帳密與
+    %2F／%5C），前台與後台每個顯示圖片的地方都必須套用。
+  - Storage insert policy 限定剛好兩層資料夾與 jpg／png／webp 副檔名（bucket 的 MIME 限制只看用戶端
+    宣告的 Content-Type）。不建 update policy（無 upsert 這條路），但管理員可以先刪再上傳到同一路徑，
+    不能宣稱「同一網址不可能被換圖」。
+  - authenticated 對 designer_leaves／designer_services 沒有 update 權限：TASK-070／072 不能用 upsert
+    （on conflict do update），只能 insert（ignoreDuplicates）或 delete。
+  - 0017 對四張新表做 revoke all 再 grant 並重建所有 policy：0018 套用後不要再重跑 0017，否則會悄悄
+    還原 0018 之後對這些表追加的授權或 policy。
+影響與殘留：
+  - Supabase 公開註冊開著（disable_signup: false），本 Epic 所有防線靠 is_admin()；建議關閉，列為
+    合併 master 或套用 0018 的前置條件（待人工決定）。
+  - 0017 重跑冪等與 0017_down 尚未在隔離環境實跑；is_admin() aal2 對新表寫入是「繼承」保護，
+    test:mfa-rls 尚未涵蓋新表。
+  - 既有整合測試套件結束時 signOut() 預設 global scope，會撤銷設計師帳號在所有裝置的登入；
+    新套件 test:designers 已改用 scope: "local"，其餘套件建議另開卡處理。
+```

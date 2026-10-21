@@ -85,8 +85,19 @@ function UserCircleIcon() {
   );
 }
 
+function UsersIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0111 0" />
+      <path d="M16 5.2a3 3 0 010 5.6M17.5 14a5.5 5.5 0 013 5" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean; icon: React.ReactNode }> = [
   { label: "預約", href: "/admin", icon: <CalendarIcon /> },
+  { label: "設計師", href: "/admin/designers", icon: <UsersIcon /> },
   { label: "服務設定", href: "/admin/services", icon: <ScissorsIcon /> },
   { label: "營業時間", href: "/admin/business-hours", icon: <ClockIcon /> },
   { label: "預約規則", href: "/admin/booking-policy", icon: <ClipboardCheckIcon /> },

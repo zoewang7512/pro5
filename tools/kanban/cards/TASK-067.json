@@ -2,9 +2,9 @@
   "id": "TASK-067",
   "title": "多位設計師 架構基礎（設計師資料表、RLS/GRANT、Storage、appointments.designer_id 回填、後台列表骨架）",
   "content": "0017：designers／designer_services／designer_leaves／designer_portfolio_images、designer-assets bucket、appointments.designer_id（nullable）回填預設設計師；/admin/designers 唯讀列表與 Sidebar。本 Epic 架構筆記在此卡。套用後行為與升級前相同。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "high",
-  "owner": "",
+  "owner": "zoewang7512",
   "agent": "Claude Code",
   "approvalRequired": true,
   "createdAt": "2026-10-21",
@@ -50,7 +50,7 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-067.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-067.md",
     "pr": ""
   },
   "refs": [
@@ -63,12 +63,30 @@
     "app/admin/_components/AdminShell.tsx",
     "tests/designers.integration.test.ts",
     "vitest.designers.config.ts",
-    "package.json"
+    "package.json",
+    "tests/lib/designers.test.ts",
+    "tests/admin/designers.test.ts",
+    "tests/components/designers-table.test.tsx",
+    "tests/components/admin-shell.test.tsx",
+    "ai/context/decisions.md",
+    "ai/context/project-map.md",
+    "ai/context/design-system.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit → 通過；npm run lint → 通過；npm run build → 通過",
+      "npm test → 48 檔 549 項通過",
+      "npm run test:designers → 44 項通過（0017 重新套用後）",
+      "回歸 test:rls 18、booking 23、admin-booking 13、business-hours 33、store-settings 11、booking-policy 7、services 17、account 17、mfa-rls 20、notifications 19 → 全數通過",
+      "正式資料庫唯讀查詢：1 位預設設計師、16 筆預約 designer_id 無 null、designer_services 4 列＝services 4 項、bucket 設定正確、測試後無殘留",
+      "瀏覽器走查：登入後台 → Sidebar「設計師」→ 列表正確；窄寬度版面問題已修正"
+    ],
+    "findings": [
+      "security-reviewer：無 Critical／High；M1（trigger 在 RLS 前執行）、L1（insert 可自訂 created_at）、L3／L4／L5 已修正並加測試；L2／L6／L7／I1 已改註解與文件",
+      "test-engineer：H3／H4／M1～M5／M7、hookTimeout、signOut scope 已處理；H2（0017 重跑冪等與 down 未實跑）列為殘留",
+      "agent 審查意見不等於人工核准，security／test／code_review 關卡待人工核准"
+    ],
+    "residual": "待人工決定：Supabase 公開註冊未關閉（disable_signup=false，建議合併 master 或套用 0018 前關閉）；0017 重跑冪等與 0017_down 未在隔離環境實跑；test:mfa-rls 未涵蓋新表；既有整合測試套件 global signOut 會撤銷設計師帳號所有裝置登入（新套件已用 local）；lib/admin/account.ts 的 resolveAdminAvatarUrl 有與修正前 resolveDesignerAssetUrl 相同的弱點（建議另開卡）。"
   },
   "comments": [
     {
@@ -85,6 +103,16 @@
       "name": "使用者",
       "time": "2026-10-21",
       "text": "隱私承諾照建議修改（規格書改為「回應不含設計師識別資訊」，排程可被推算列為已接受殘留）；create_appointment 選 (a) 指定與不指定都檢查 buffer；限流另開 TASK-080。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "開始實作 TASK-067：依架構筆記 B／C／D 寫 0017 migration、lib/designers.ts、後台唯讀列表與 Sidebar。migration 需人工貼到 SQL Editor 套用後才能跑整合測試。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "實作完成，進入 verify。實作期偏離原設計：作品集 trigger 改 AFTER＋for no key update、designers insert 改欄位層級、designer_specialties_valid 保留 authenticated execute、Storage policy 補層數與副檔名限制（已更正架構筆記並記錄於 decisions.md）。0017 因審查修訂重新套用一次（可重複執行，結果 Success）。驗證報告見 ai/artifacts/多位設計師/verification/TASK-067.md，待人工驗收。"
     }
   ]
 }

@@ -17,6 +17,7 @@
     "test:store-settings": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.store-settings.config.ts",
     "test:booking-policy": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking-policy.config.ts",
     "test:services": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.services.config.ts",
+    "test:designers": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.designers.config.ts",
     "test:account": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.account.config.ts",
     "test:mfa-rls": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.mfa-rls.config.ts",
     "test:notifications": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.notifications.config.ts",
