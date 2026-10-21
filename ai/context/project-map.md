@@ -66,7 +66,7 @@
   `ai/context/decisions.md` TASK-003 決策）。`admins` 表另有 `display_name`／
   `avatar_url` 兩個個人資料欄位（TASK-038，`0007_admin_profile.sql`），讀寫透過
   `get_admin_profile`／`update_admin_profile` 兩支 `SECURITY DEFINER` RPC（不直接查
-  `admins` 表，該表零 RLS policy）；大頭貼存於 Storage `admin-assets` public bucket
+  `admins` 表，該表零 RLS policy）；`is_admin()` 自 TASK-079（`0016_is_admin_require_aal2.sql`）起，對已有 verified MFA factor 的帳號要求 JWT 為 `aal2`，aal1 session 直接呼叫 REST／RPC／Storage 也會被拒絕（未啟用 MFA 的帳號行為不變）；大頭貼存於 Storage `admin-assets` public bucket
   （5MB、jpg/png/webp，路徑固定 `avatar/<uuid>.<ext>`）。忘記密碼／重設密碼（TASK-040）、
   帳號設定頁修改顯示名稱／大頭貼（TASK-041）、修改密碼／登入 email（TASK-042）皆已實作，
   見下方「重要目錄」`lib/admin/account.ts`／`app/admin/account/`／`app/reset-password/`。

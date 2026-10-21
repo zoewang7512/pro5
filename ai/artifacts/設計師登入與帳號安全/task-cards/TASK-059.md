@@ -215,7 +215,7 @@ middleware.ts` 的 `/admin/:path*` 路由守門、`app/admin/layout.tsx` 頁面�
     未來新增以 `/admin` 開頭但語意不同的路徑（例如 `/administrators`）會被誤判
     為受保護路由——目前專案沒有這類路徑，暫不處理，architect 複審時建議記錄。
 - 後續任務：
-  - 【高優先，合併 TASK-043 H1 與本卡殘留風險】新任務卡：評估並實作
+  - 【高優先，合併 TASK-043 H1 與本卡殘留風險】（已由 TASK-079 處理）新任務卡：評估並實作
     `is_admin()`／RLS policy 層級的 `auth.jwt()->>'aal' = 'aal2'` 強制檢查，讓
     已啟用 MFA 的帳號在直接呼叫 Supabase API（不經過 Next.js 應用層）時也真正
     受到保護。

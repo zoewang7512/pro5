@@ -2,7 +2,7 @@
   "id": "TASK-079",
   "title": "設計師登入與帳號安全 資料庫層強制 MFA：已啟用 MFA 的帳號 is_admin() 需要 aal2",
   "content": "修正 TASK-059 的 High 殘留風險：is_admin() 加上「有 verified factor 時 JWT aal 必須是 aal2」，所有 RLS／Storage／RPC 自動生效。先確認 designer001 是否已啟用 MFA（影響整合測試）。",
-  "stage": "ready",
+  "stage": "verify",
   "risk": "high",
   "owner": "",
   "agent": "Claude Code",
@@ -39,7 +39,7 @@
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-079.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/設計師登入與帳號安全/task-cards/TASK-079.md",
     "pr": ""
   },
   "refs": [
@@ -50,9 +50,21 @@
     "ai/context/decisions.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit → 通過",
+      "npm run lint → 通過",
+      "npm run build → 通過",
+      "npm test → 44 檔 496 項通過",
+      "npm run test:mfa-rls → 20 項通過（四情境＋aal1 三條繞過路徑＋讀取／Storage 刪除／無法自註冊 factor／refresh 後仍 aal2）",
+      "回歸 test:rls 18、test:admin-booking 13、test:business-hours 33、test:store-settings 11、test:booking-policy 7、test:services 17、test:account 17、test:booking 23 → 全數通過",
+      "正式資料庫 pg_get_functiondef 確認 is_admin() 為新版；proacl 無 anon；Dashboard 無 Database Webhook；測試後 admins 僅剩 1 列"
+    ],
+    "findings": [
+      "security-reviewer：無 Critical／High；除 0007 兩支 RPC 外無其他繞過 is_admin() 的路徑；Medium（依賴 aal1 不能自註冊 factor）已補測試",
+      "test-engineer：H2／M1／M3／M5／M6／L1 已處理；H1（down／重複套用未實際執行）列為殘留風險",
+      "agent 審查意見不等於人工核准，security／test／code_review 關卡待人工核准"
+    ],
+    "residual": "範圍擴大：0016 一併修正 get_admin_profile／update_admin_profile（原繞過 is_admin()）。真實瀏覽器走查以整合測試取代（人工決定）。down 與重複套用未實際在資料庫執行；僅驗證 TOTP；designer001 日後啟用 MFA 會使 test:* 管理員案例失敗；改密碼／改 Email 後對已啟用 MFA 帳號的 UX 退化。後續任務見任務卡。"
   },
   "comments": [
     {
