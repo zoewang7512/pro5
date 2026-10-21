@@ -111,4 +111,6 @@ TASK-076（通知信顯示設計師）。
 
 ## 人工核准
 
-- 待人工驗收。
+- 核准者：使用者
+- 日期：2026-10-22
+- 備註：驗收通過。`0018_down` 實跑、`explain analyze`、併發競爭路徑的確定性證據、Resend 對 `.invalid` 的處理、`seed-booking-data.mjs` 實跑仍為殘留（見上方「尚未驗證」）；前台 `BOOKING_LIMIT_EXCEEDED` 文案留給 TASK-073。

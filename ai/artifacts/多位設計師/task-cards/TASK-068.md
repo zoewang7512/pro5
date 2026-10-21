@@ -8,7 +8,7 @@
 - 上層 User Story：依設計師計算時段與建立預約
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-067
-- 狀態：待驗證／待人工驗收（人工已於 2026-10-21 核准；套用前 architect／security-reviewer 與套用後 test-engineer 審查皆已完成並採納，見完成證據；有數項證據尚未取得，見驗證報告「尚未驗證」）
+- 狀態：完成（人工驗收通過，2026-10-22；套用前 architect／security-reviewer 與套用後 test-engineer 審查皆已完成並採納，見完成證據；少數證據仍為殘留，見驗證報告「尚未驗證」）
 - 風險等級：高（改寫顧客端唯一的預約讀寫路徑、更換資料庫層級的防雙重預約約束、新增併發下的自動指派）
 - Agent owner：Claude Code
 - 人工核准者：使用者

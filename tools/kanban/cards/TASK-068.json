@@ -2,7 +2,7 @@
   "id": "TASK-068",
   "title": "多位設計師 依設計師計算時段與建立預約（0018：exclusion 依設計師、RPC 加 p_designer_id 與自動指派）",
   "content": "designer_id 改 not null、exclusion constraint 改 (designer_id, 時段)、get_available_slots／create_appointment 加 p_designer_id default null，不指定時依（當天預約數, sort_order, id）指派並在併發衝突時改派下一位。不改畫面。 另併入：同一 email 最多 3 筆待服務預約（取代延後的 TASK-080 限流）。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "high",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -116,6 +116,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "前台走查完成：預約成功並指派給預設設計師，已刪除測試預約與顧客，資料庫無殘留。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過。"
     }
   ]
 }
