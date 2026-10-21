@@ -2,7 +2,7 @@
   "id": "TASK-067",
   "title": "多位設計師 架構基礎（設計師資料表、RLS/GRANT、Storage、appointments.designer_id 回填、後台列表骨架）",
   "content": "0017：designers／designer_services／designer_leaves／designer_portfolio_images、designer-assets bucket、appointments.designer_id（nullable）回填預設設計師；/admin/designers 唯讀列表與 Sidebar。本 Epic 架構筆記在此卡。套用後行為與升級前相同。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "high",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -113,6 +113,11 @@
       "name": "Claude Code",
       "time": "2026-10-21",
       "text": "實作完成，進入 verify。實作期偏離原設計：作品集 trigger 改 AFTER＋for no key update、designers insert 改欄位層級、designer_specialties_valid 保留 authenticated execute、Storage policy 補層數與副檔名限制（已更正架構筆記並記錄於 decisions.md）。0017 因審查修訂重新套用一次（可重複執行，結果 Success）。驗證報告見 ai/artifacts/多位設計師/verification/TASK-067.md，待人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "人工驗收通過。"
     }
   ]
 }
