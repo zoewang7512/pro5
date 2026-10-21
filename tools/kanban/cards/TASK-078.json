@@ -2,7 +2,7 @@
   "id": "TASK-078",
   "title": "營業時間與可預約時段管理 服務項目表單新增「緩衝時間」欄位（後台 UI）",
   "content": "在服務項目新增／編輯 Modal 加「緩衝時間（分鐘）」0～120，列表時長欄顯示緩衝；不改 schema 與 RPC。UI 關卡建議豁免 mockup 變體，待人工確認。",
-  "stage": "ready",
+  "stage": "verify",
   "risk": "low",
   "owner": "",
   "agent": "Claude Code",
@@ -40,7 +40,7 @@
     "screenSpec": "ai/artifacts/服務項目管理/screen-spec-服務項目管理.md",
     "mockupDecision": "ai/artifacts/服務項目管理/mockup-decision-服務項目管理.md",
     "taskCard": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-078.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/營業時間與可預約時段管理/task-cards/TASK-078.md",
     "pr": ""
   },
   "refs": [
@@ -50,9 +50,16 @@
     "app/admin/_components/ServicesTable.tsx"
   ],
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx tsc --noEmit → 通過",
+      "npm run lint → 通過",
+      "npm test → 44 檔 496 項通過（含 tests/admin/services.test.ts 新增 validateServiceBuffer 與 buffer_minutes 寫入案例）",
+      "npm run test:services → 17 項通過（新增 4 項：admin 寫入 buffer_minutes、0／120 邊界、121／-1 被 check constraint 拒絕 23514、30 分鐘緩衝排除相鄰時段）",
+      "npm run build → 通過",
+      "Browser 走查（localhost:3000/admin/services，建立 __TEST__ 測試服務後已用 service role 腳本刪除）：預設 0、121 被擋並顯示錯誤文案、30 成功送出、列表顯示「30 分鐘＋緩衝 30」、無緩衝列維持「45 分鐘」、編輯表單帶入 30"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "未做：亮色模式截圖與截圖存檔（走查截圖只在 session 內，未存入 repo）；前台選服務看時段變化未用瀏覽器走查，改由 test:services 對 get_available_slots 的整合測試證明。三欄並排時錯誤文案在窄欄內會折成兩行，Modal 寬度由 xs 調為 sm。"
   },
   "comments": [
     {

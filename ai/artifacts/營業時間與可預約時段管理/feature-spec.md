@@ -60,6 +60,7 @@
   `services.buffer_minutes` 欄位與計算邏輯，UI 留給該 Epic。緩衝時間本批次只能由具備
   service role 權限的維運人員直接改資料庫設定（或視需要擴充 seed script），這是明確接受
   的已知限制。
+  （**更新**：緩衝時間欄位的後台 UI 已由 TASK-078 補上，見該任務卡；上述限制僅描述本批次當時的狀態。）
 - **緩衝時間不改變 `appointments.end_at` 的實際紀錄語意，也不改變
   `appointments_no_overlap` exclusion constraint**——已與人工確認：緩衝時間純粹是
   `get_available_slots` RPC／後台改期表單在「計算可選時段」時的過濾條件，不是資料庫層級的

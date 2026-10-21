@@ -146,6 +146,21 @@ describe("服務項目管理：services 權限邊界與下架對既有 RPC 的�
     }
 
     if (createdServiceIds.length > 0) {
+      // 緩衝時間測試會透過 create_appointment 建立預約與顧客（customer_email 一律為 null，
+      // 不滿足 appointments 通知 trigger 的條件，見 0011／0012）。FK 順序：預約 → 顧客 → 服務。
+      const { error: deleteAppointmentsError } = await serviceRoleClient
+        .from("appointments")
+        .delete()
+        .in("service_id", createdServiceIds)
+        .like("customer_name", `${TEST_MARKER}%`);
+      if (deleteAppointmentsError) cleanupErrors.push(deleteAppointmentsError);
+
+      const { error: deleteCustomersError } = await serviceRoleClient
+        .from("customers")
+        .delete()
+        .like("name", `${TEST_MARKER}%`);
+      if (deleteCustomersError) cleanupErrors.push(deleteCustomersError);
+
       const { error: deleteServicesError } = await serviceRoleClient
         .from("services")
         .delete()
@@ -332,6 +347,101 @@ describe("服務項目管理：services 權限邊界與下架對既有 RPC 的�
       if (result.ok) {
         expect(result.data.length).toBeGreaterThan(0);
       }
+    });
+  });
+
+describe("緩衝時間 buffer_minutes（TASK-078）：admin 可寫入、超出範圍被 check constraint 拒絕、確實影響可預約時段", () => {
+    let bufferServiceId: string;
+
+    // 以台北時間 HH:mm 組出 SLOTS_TEST_DATE 當天的毫秒時間戳，與 get_available_slots 回傳的
+    // timestamptz 字串統一以 getTime() 比較，避免時區字串格式差異。
+    function taipeiMs(hhmm: string): number {
+      return new Date(`${SLOTS_TEST_DATE}T${hhmm}:00+08:00`).getTime();
+    }
+
+    async function slotStartsMs(): Promise<number[]> {
+      const result = await callGetAvailableSlots(anonClient, bufferServiceId, SLOTS_TEST_DATE);
+      expect(result.ok).toBe(true);
+      return result.ok ? result.data.map((slot) => new Date(slot.start_at).getTime()) : [];
+    }
+
+    it("designer 可以新增帶 buffer_minutes 的服務項目，且讀得回來", async () => {
+      const { data, error } = await designerClient
+        .from("services")
+        .insert({ name: `${TEST_MARKER} buffer-fixture`, price: 500, duration_minutes: 30, buffer_minutes: 15 })
+        .select("id, buffer_minutes")
+        .single();
+      expect(error).toBeNull();
+      expect(data?.buffer_minutes).toBe(15);
+      bufferServiceId = data!.id;
+      createdServiceIds.push(bufferServiceId);
+    });
+
+    it("designer 可以編輯 buffer_minutes 到邊界值 0 與 120", async () => {
+      for (const value of [0, 120]) {
+        const { data, error } = await designerClient
+          .from("services")
+          .update({ buffer_minutes: value })
+          .eq("id", bufferServiceId)
+          .select("id, buffer_minutes");
+        expect(error).toBeNull();
+        expect(data).toHaveLength(1);
+        expect(data?.[0]?.buffer_minutes).toBe(value);
+      }
+    });
+
+    it("buffer_minutes = 121 與 -1 被 services_buffer_minutes_range check constraint 拒絕，值不變", async () => {
+      for (const value of [121, -1]) {
+        const { error } = await designerClient
+          .from("services")
+          .update({ buffer_minutes: value })
+          .eq("id", bufferServiceId)
+          .select("id");
+        expect(error?.code).toBe("23514");
+      }
+
+      const { data: unchanged } = await serviceRoleClient
+        .from("services")
+        .select("buffer_minutes")
+        .eq("id", bufferServiceId)
+        .single();
+      expect(unchanged?.buffer_minutes).toBe(120);
+    });
+
+    it("設定 30 分鐘緩衝後，既有預約前後相鄰的時段被排除；緩衝為 0 時相鄰時段可預約", async () => {
+      const { error: resetError } = await designerClient
+        .from("services")
+        .update({ buffer_minutes: 0 })
+        .eq("id", bufferServiceId);
+      expect(resetError).toBeNull();
+
+      const booking = await callCreateAppointment(anonClient, {
+        serviceId: bufferServiceId,
+        startAt: `${SLOTS_TEST_DATE}T12:00:00+08:00`,
+        customerName: `${TEST_MARKER} buffer-customer`,
+        customerPhone: "0912345678",
+      });
+      expect(booking.ok).toBe(true);
+
+      // 12:00～12:30 已被預約，緩衝 0：11:30、12:30 緊鄰但不重疊，仍可預約。
+      const withoutBuffer = await slotStartsMs();
+      expect(withoutBuffer).not.toContain(taipeiMs("12:00"));
+      expect(withoutBuffer).toContain(taipeiMs("11:30"));
+      expect(withoutBuffer).toContain(taipeiMs("12:30"));
+
+      const { error: bufferError } = await designerClient
+        .from("services")
+        .update({ buffer_minutes: 30 })
+        .eq("id", bufferServiceId);
+      expect(bufferError).toBeNull();
+
+      // 緩衝 30：11:30（結束後的緩衝撞到 12:00 預約）與 12:30（預約結束後的緩衝）被排除；
+      // 11:00 與 13:00 距離預約夠遠，仍可預約。
+      const withBuffer = await slotStartsMs();
+      expect(withBuffer).not.toContain(taipeiMs("11:30"));
+      expect(withBuffer).not.toContain(taipeiMs("12:30"));
+      expect(withBuffer).toContain(taipeiMs("11:00"));
+      expect(withBuffer).toContain(taipeiMs("13:00"));
     });
   });
 });

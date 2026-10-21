@@ -89,8 +89,17 @@
 ## 完成證據
 
 - 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
+  - `lib/admin/services.ts`（select／create／update 加 `buffer_minutes`、新增 `validateServiceBuffer`）
+  - `lib/booking/types.ts`（新增 `AdminService = Service & { buffer_minutes }`）
+  - `app/admin/_components/ServiceFormDialog.tsx`、`ServicesTable.tsx`
+  - `tests/admin/services.test.ts`、`tests/services.integration.test.ts`
+  - `ai/artifacts/服務項目管理/screen-spec-服務項目管理.md`、`ai/artifacts/營業時間與可預約時段管理/feature-spec.md`
+- 執行過的指令：`npx tsc --noEmit`、`npm run lint`、`npm test`、`npm run test:services`、`npm run build`
+- 測試輸出：tsc／lint／build 通過；`npm test` 44 檔 496 項通過；`npm run test:services` 17 項通過（含新增 4 項）
+- 螢幕截圖：Browser 走查已執行（預設 0、121 驗證錯誤、新增 30 後列表、編輯帶入值）；截圖僅在 session 內，未存檔，亮色模式未截
 - 已知限制：
-- 後續任務：
+  - 前台型別未改：選擇新增 `AdminService` 型別（`Service` 加上 `buffer_minutes`），而非卡片所列 `Omit`／選填二選一，前台 `getServices`／`Service` 完全不動，不多讀用不到的欄位。
+  - `validateServiceBuffer` 接收原始字串（卡片驗證契約要求涵蓋空字串；`Number("")` 會變 0 而漏判）。
+  - helper text 以欄位下方一行 caption 呈現，不放在欄位內，避免三欄窄欄內折成多行。
+  - Modal 寬度由 `xs` 調為 `sm` 以容納三欄。
+- 後續任務：與 TASK-070 同檔案（`ServicesTable.tsx`／`ServiceFormDialog.tsx`），本卡合併後才能開始 TASK-070。

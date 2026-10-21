@@ -13,30 +13,33 @@ import { createClient } from "@/lib/supabase/client";
 import {
   createService,
   updateService,
+  validateServiceBuffer,
   validateServiceDuration,
   validateServiceName,
   validateServicePrice,
 } from "@/lib/admin/services";
-import type { Service } from "@/lib/booking/types";
+import type { AdminService } from "@/lib/booking/types";
 import { useToast } from "@/components/ui/ToastProvider";
 
-// 新增/編輯共用的 Modal 表單，比照 mockup 變體 A：名稱單獨一列，價格/時長並排，
-// 描述獨立一列，底部「取消」「新增／儲存」。mode 決定標題文案與呼叫哪支寫入函式，
-// 不重複兩份幾乎相同的表單 JSX。
+// 新增/編輯共用的 Modal 表單，比照 mockup 變體 A：名稱單獨一列，價格/時長/緩衝時間
+// 並排（TASK-078 新增緩衝時間），描述獨立一列，底部「取消」「新增／儲存」。mode 決定
+// 標題文案與呼叫哪支寫入函式，不重複兩份幾乎相同的表單 JSX。
 
 type FormState = {
   name: string;
   price: string;
   durationMinutes: string;
+  bufferMinutes: string;
   description: string;
 };
 
-function toFormState(service: Service | null): FormState {
-  if (!service) return { name: "", price: "", durationMinutes: "", description: "" };
+function toFormState(service: AdminService | null): FormState {
+  if (!service) return { name: "", price: "", durationMinutes: "", bufferMinutes: "0", description: "" };
   return {
     name: service.name,
     price: String(service.price),
     durationMinutes: String(service.duration_minutes),
+    bufferMinutes: String(service.buffer_minutes),
     description: service.description ?? "",
   };
 }
@@ -48,7 +51,7 @@ export function ServiceFormDialog({
   onSuccess,
 }: {
   mode: "create" | "edit";
-  service: Service | null;
+  service: AdminService | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -70,16 +73,18 @@ export function ServiceFormDialog({
   const nameError = validateServiceName(form.name);
   const priceError = validateServicePrice(priceNumber);
   const durationError = validateServiceDuration(durationNumber);
+  const bufferError = validateServiceBuffer(form.bufferMinutes);
 
   async function handleSubmit() {
     setSubmitAttempted(true);
-    if (nameError || priceError || durationError) return;
+    if (nameError || priceError || durationError || bufferError) return;
 
     setSubmitting(true);
     const input = {
       name: form.name,
       price: priceNumber,
       durationMinutes: durationNumber,
+      bufferMinutes: Number(form.bufferMinutes),
       description: form.description,
     };
     const result =
@@ -97,7 +102,7 @@ export function ServiceFormDialog({
   }
 
   return (
-    <Dialog open onClose={submitting ? undefined : onClose} fullWidth maxWidth="xs">
+    <Dialog open onClose={submitting ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>{mode === "create" ? "新增服務項目" : "編輯服務項目"}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
@@ -132,7 +137,20 @@ export function ServiceFormDialog({
               disabled={submitting}
               fullWidth
             />
+            <TextField
+              label="緩衝時間（分鐘）"
+              type="number"
+              value={form.bufferMinutes}
+              onChange={(event) => setForm((prev) => ({ ...prev, bufferMinutes: event.target.value }))}
+              error={submitAttempted && Boolean(bufferError)}
+              helperText={submitAttempted ? bufferError : undefined}
+              disabled={submitting}
+              fullWidth
+            />
           </Stack>
+          <Typography variant="caption" color="text.secondary">
+            緩衝時間：服務結束後保留的整理時間，這段時間不開放下一筆預約。修改後只影響之後的預約。
+          </Typography>
           <TextField
             label="描述"
             value={form.description}

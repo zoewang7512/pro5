@@ -11,6 +11,12 @@ export type Service = {
   sort_order: number;
 };
 
+// 後台才需要的欄位：緩衝時間由 get_available_slots 在資料庫端套用，前台不顯示，
+// 所以 getServices 不讀它，前台維持使用 Service。
+export type AdminService = Service & {
+  buffer_minutes: number;
+};
+
 export type BusinessHours = {
   weekday: number;
   open_time: string | null;

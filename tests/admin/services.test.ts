@@ -4,6 +4,7 @@ import {
   createService,
   setServiceActive,
   updateService,
+  validateServiceBuffer,
   validateServiceDuration,
   validateServiceName,
   validateServicePrice,
@@ -49,6 +50,31 @@ describe("validateServiceDuration", () => {
   });
 });
 
+describe("validateServiceBuffer", () => {
+  const MESSAGE = "緩衝時間需為 0～120 的整數分鐘";
+  it("0 與 120（邊界）通過", () => {
+    expect(validateServiceBuffer("0")).toBeNull();
+    expect(validateServiceBuffer("15")).toBeNull();
+    expect(validateServiceBuffer("120")).toBeNull();
+  });
+  it("負數回傳錯誤", () => {
+    expect(validateServiceBuffer("-1")).toBe(MESSAGE);
+  });
+  it("超過 120 回傳錯誤", () => {
+    expect(validateServiceBuffer("121")).toBe(MESSAGE);
+  });
+  it("小數回傳錯誤", () => {
+    expect(validateServiceBuffer("1.5")).toBe(MESSAGE);
+  });
+  it("空字串與純空白不會被當成 0", () => {
+    expect(validateServiceBuffer("")).toBe(MESSAGE);
+    expect(validateServiceBuffer("  ")).toBe(MESSAGE);
+  });
+  it("非數字回傳錯誤", () => {
+    expect(validateServiceBuffer("abc")).toBe(MESSAGE);
+  });
+});
+
 // 比照 tests/admin/business-hours.test.ts 的 fake client 模式：insert／update 皆掛在
 // 同一個可鏈式呼叫的物件上，最終 resolve 成 { data, error }。
 function fakeInsertClient(result: { data: unknown; error: unknown }) {
@@ -66,13 +92,14 @@ function fakeUpdateClient(result: { data: unknown; error: unknown }) {
   return { client: { from } as unknown as SupabaseClient, from, update, eq, select };
 }
 
-const VALID_INPUT = { name: "經典剪髮", price: 600, durationMinutes: 45, description: "" };
+const VALID_INPUT = { name: "經典剪髮", price: 600, durationMinutes: 45, bufferMinutes: 15, description: "" };
 
 describe("createService", () => {
-  it("成功時回傳 ok:true", async () => {
+  it("成功時回傳 ok:true，並把 bufferMinutes 寫入 buffer_minutes", async () => {
     const fake = fakeInsertClient({ data: [{ id: "1" }], error: null });
     const result = await createService(fake.client, VALID_INPUT);
     expect(result.ok).toBe(true);
+    expect(fake.insert).toHaveBeenCalledWith(expect.objectContaining({ buffer_minutes: 15 }));
   });
 
   it("RLS 擋下（0 筆受影響）時回傳 ok:false，不誤報成功", async () => {
@@ -89,10 +116,11 @@ describe("createService", () => {
 });
 
 describe("updateService", () => {
-  it("成功時回傳 ok:true", async () => {
+  it("成功時回傳 ok:true，並把 bufferMinutes 寫入 buffer_minutes", async () => {
     const fake = fakeUpdateClient({ data: [{ id: "1" }], error: null });
     const result = await updateService(fake.client, "1", VALID_INPUT);
     expect(result.ok).toBe(true);
+    expect(fake.update).toHaveBeenCalledWith(expect.objectContaining({ buffer_minutes: 15 }));
   });
 
   it("RLS 擋下（0 筆受影響）時回傳 ok:false，不誤報成功", async () => {
