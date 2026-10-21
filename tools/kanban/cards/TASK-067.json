@@ -1,0 +1,90 @@
+{
+  "id": "TASK-067",
+  "title": "多位設計師 架構基礎（設計師資料表、RLS/GRANT、Storage、appointments.designer_id 回填、後台列表骨架）",
+  "content": "0017：designers／designer_services／designer_leaves／designer_portfolio_images、designer-assets bucket、appointments.designer_id（nullable）回填預設設計師；/admin/designers 唯讀列表與 Sidebar。本 Epic 架構筆記在此卡。套用後行為與升級前相同。",
+  "stage": "backlog",
+  "risk": "high",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "管理設計師基本資料",
+  "track": "n/a",
+  "dependsOn": [
+    "TASK-001",
+    "TASK-002",
+    "TASK-003",
+    "TASK-004",
+    "TASK-005",
+    "TASK-006",
+    "TASK-007",
+    "TASK-008",
+    "TASK-009",
+    "TASK-063",
+    "TASK-064",
+    "TASK-065",
+    "TASK-066",
+    "TASK-079"
+  ],
+  "order": 67,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
+    "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-067.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0017_designers.sql",
+    "supabase/migrations/0017_designers_down.sql",
+    "lib/designers.ts",
+    "lib/admin/designers.ts",
+    "app/admin/designers/page.tsx",
+    "app/admin/_components/DesignersTable.tsx",
+    "app/admin/_components/AdminShell.tsx",
+    "tests/designers.integration.test.ts",
+    "vitest.designers.config.ts",
+    "package.json"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-21",
+      "text": "動工前架構審查：architect（Request changes：M1 service_role grant、M2 單一資料庫資料隔離、M3 既有測試需共用 fixture）、security-reviewer（Approve with changes：M1 service_role grant、M2 Storage 缺 admin select policy 導致刪檔靜默失敗）。MUST FIX 與 SHOULD FIX 已改進架構筆記（標〔審查〕）；兩項〔待人工決定〕：隱私承諾文字、create_appointment 是否檢查 buffer。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "隱私承諾照建議修改（規格書改為「回應不含設計師識別資訊」，排程可被推算列為已接受殘留）；create_appointment 選 (a) 指定與不指定都檢查 buffer；限流另開 TASK-080。"
+    }
+  ]
+}

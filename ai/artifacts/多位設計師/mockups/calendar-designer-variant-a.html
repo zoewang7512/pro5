@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>預約週曆設計師篩選 Variant A · 頭像篩選 Chip 列</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-50:#FBF4E2; --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+  p.page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 24px; max-width: 1000px; line-height: 1.7; }
+  .stack { display: flex; flex-direction: column; gap: 32px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .04em; margin-bottom: 8px; }
+  .screen { width: 1100px; height: 640px; background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+
+  .sidebar { width: 220px; background: var(--surface); padding: 24px 0; flex-shrink: 0; box-shadow: 1px 0 0 var(--grey-300); }
+  .sidebar .logo { font-size: 18px; font-weight: 700; padding: 0 24px 24px; }
+  .nav-item { padding: 12px 24px; font-size: 16px; color: var(--grey-700); display: flex; gap: 12px; align-items: center; }
+  .nav-item i { width: 20px; height: 20px; border-radius: 6px; background: var(--grey-300); }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); font-weight: 600; }
+  .nav-item.active i { background: var(--primary-500); }
+  .nav-item .new { font-size: 11px; color: var(--primary-700); background: var(--primary-50); padding: 1px 6px; border-radius: 999px; margin-left: auto; }
+
+  .main { flex: 1; padding: 32px 40px; overflow: hidden; display: flex; flex-direction: column; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+  .head h2 { font-size: 24px; margin: 0; }
+  .head .sub { font-size: 14px; color: var(--grey-700); margin-top: 4px; }
+  .crumb { font-size: 13px; color: var(--grey-700); margin-bottom: 8px; }
+  .btn { height: 40px; padding: 0 20px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: none; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); font-weight: 600; }
+  .btn.danger { background: var(--danger); }
+  .btn.text { background: transparent; color: var(--grey-700); font-weight: 500; padding: 0 12px; }
+  .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  .panel { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--grey-700); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--grey-300); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--grey-200); vertical-align: middle; }
+  tr.off td { color: var(--grey-500); }
+  tr.off .avatar { opacity: .5; }
+  .who { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; flex-shrink: 0; }
+  .av1 { background: linear-gradient(135deg,#C9A36A,#7D5A3A); }
+  .av2 { background: linear-gradient(135deg,#8E9C88,#4F5E4A); }
+  .av3 { background: linear-gradient(135deg,#B78C7A,#6E4536); }
+  .av4 { background: linear-gradient(135deg,#A79E92,#6B6259); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--grey-300); color: var(--grey-700); }
+  .status { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+  .status.on { background: var(--success-light); color: #57644F; }
+  .status.off { background: var(--grey-200); color: var(--grey-700); }
+  .order { display: flex; flex-direction: column; gap: 2px; color: var(--grey-500); font-size: 10px; line-height: 1; }
+  .actions { display: flex; gap: 4px; justify-content: flex-end; }
+  .link { color: var(--primary-700); font-weight: 600; font-size: 13px; padding: 6px 8px; }
+  .link.muted { color: var(--grey-700); }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--grey-300); margin-bottom: 24px; }
+  .tabs span { padding: 12px 16px; font-size: 14px; color: var(--grey-700); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs span.on { color: var(--grey-900); font-weight: 600; border-bottom-color: var(--primary-500); }
+  .tabs .count { font-size: 12px; color: var(--grey-500); margin-left: 4px; }
+
+  .form { padding: 24px; display: grid; grid-template-columns: 200px 1fr; gap: 32px; }
+  .upload { width: 120px; height: 120px; border-radius: 50%; border: 2px dashed var(--grey-300); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--grey-700); position: relative; }
+  .upload .avatar { width: 116px; height: 116px; font-size: 40px; }
+  .upload-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--grey-700); margin-bottom: 6px; }
+  .input { height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 14px; display: flex; align-items: center; }
+  .input.area { height: 72px; align-items: flex-start; padding-top: 10px; line-height: 1.6; }
+  .input.err { border-color: var(--danger); }
+  .input .pre { color: var(--grey-500); margin-right: 2px; }
+  .helper { font-size: 12px; color: var(--grey-700); margin-top: 4px; display: flex; justify-content: space-between; }
+  .helper.err { color: var(--danger); }
+  .tag-input { min-height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag { font-size: 13px; padding: 4px 8px 4px 10px; border-radius: 999px; background: var(--grey-200); display: inline-flex; gap: 6px; align-items: center; }
+  .tag b { color: var(--grey-500); font-weight: 400; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--grey-200); }
+  .notice { font-size: 12px; color: var(--info); background: var(--info-light); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 20px; }
+
+  .svc { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--grey-200); }
+  .svc .n { font-size: 14px; font-weight: 600; }
+  .svc .m { font-size: 12px; color: var(--grey-700); margin-top: 2px; }
+  .switch { width: 40px; height: 22px; border-radius: 999px; background: var(--grey-300); position: relative; }
+  .switch::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch.on { background: var(--primary-500); }
+  .switch.on::after { left: 20px; }
+  .svc.off .n { color: var(--grey-500); }
+
+  .pf-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; }
+  .pf-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding: 0 24px 24px; }
+  .pf-grid > div { aspect-ratio: 1; border-radius: var(--radius-sm); position: relative; }
+  .pf-grid .add { border: 2px dashed var(--grey-300); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: var(--grey-700); gap: 4px; }
+  .pf-grid .add b { font-size: 24px; font-weight: 400; color: var(--grey-500); }
+  .pf-grid .del { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(43,38,34,.7); color: #fff; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .pf-grid .loading { background: var(--grey-200); display: flex; align-items: center; justify-content: center; }
+  .spinner { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--grey-300); border-top-color: var(--primary-500); }
+  .p1 { background: linear-gradient(160deg,#3B2B22,#A47148 60%,#E4C9A6); }
+  .p2 { background: linear-gradient(200deg,#2F2A26,#6B5B4E 50%,#C9B8A3); }
+  .p3 { background: linear-gradient(140deg,#5A3E36,#C08B6F 55%,#F1D9C4); }
+  .p4 { background: linear-gradient(180deg,#1F1C1A,#7A6A5A 70%,#D9C7B0); }
+  .p5 { background: linear-gradient(120deg,#6F531E,#DDB55A 60%,#FBF4E2); }
+  .p6 { background: linear-gradient(210deg,#2B2622,#8E7A69 50%,#E4DDD1); }
+  .p7 { background: linear-gradient(150deg,#4F5E4A,#8E9C88 55%,#E4EBE1); }
+  .p8 { background: linear-gradient(170deg,#3E2A20,#B78C7A 60%,#F3DEDA); }
+
+  .leave { display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 24px; }
+  .month-h { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 13px; }
+  .month .w { font-size: 11px; color: var(--grey-700); padding: 4px 0; }
+  .month .d { height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .month .past { color: var(--grey-500); }
+  .month .today { outline: 2px solid var(--primary-500); }
+  .month .leave-d { background: var(--warning-light); color: var(--warning); font-weight: 700; }
+  .month .shop { background: var(--grey-200); color: var(--grey-500); text-decoration: line-through; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--grey-700); margin-top: 12px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .leave-list h4 { font-size: 14px; margin: 0 0 12px; }
+  .leave-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--grey-200); font-size: 14px; }
+
+  .overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; }
+  .dialog { width: 440px; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .dialog h3 { font-size: 18px; margin: 0 0 8px; }
+  .dialog p { font-size: 14px; color: var(--grey-700); line-height: 1.7; margin: 0 0 16px; }
+  .dialog .list { background: var(--warning-light); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; line-height: 1.8; margin-bottom: 16px; }
+  .dialog .foot { display: flex; justify-content: flex-end; gap: 8px; }
+  .sk { background: var(--grey-200); border-radius: var(--radius-sm); }
+</style>
+<style>
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 16px; }
+  .week-nav { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; }
+  .week-nav .arrow { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-1); display: flex; align-items: center; justify-content: center; }
+  .view-toggle { display: flex; gap: 4px; background: var(--grey-200); border-radius: var(--radius-sm); padding: 2px; }
+  .view-toggle span { font-size: 13px; padding: 6px 12px; border-radius: 6px; color: var(--grey-700); }
+  .view-toggle span.active { background: var(--surface); color: var(--grey-900); font-weight: 600; box-shadow: var(--shadow-1); }
+  .filter { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 4px; border-radius: 999px; border: 1px solid var(--grey-300); background: var(--surface); font-size: 13px; color: var(--grey-700); }
+  .fchip.all { padding: 0 14px; }
+  .fchip.on { background: var(--primary-500); border-color: var(--primary-500); color: #fff; font-weight: 600; }
+  .fchip .avatar { width: 24px; height: 24px; font-size: 11px; }
+  .fchip .n { font-size: 11px; opacity: .8; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; flex: 1; min-height: 0; }
+  .day { background: var(--surface); border-radius: var(--radius-sm); padding: 8px; box-shadow: var(--shadow-1); overflow: hidden; }
+  .day.today { outline: 2px solid var(--primary-500); }
+  .day.closed { background: var(--grey-200); box-shadow: none; }
+  .day .d { font-size: 12px; font-weight: 700; color: var(--grey-700); margin-bottom: 8px; }
+  .day .closed-t { font-size: 12px; color: var(--grey-500); }
+  .ev { border-radius: var(--radius-sm); padding: 6px 8px; margin-bottom: 6px; background: var(--grey-100); }
+  .ev .t { font-size: 11px; color: var(--grey-700); font-weight: 600; }
+  .ev .n { font-size: 13px; font-weight: 700; margin: 1px 0; }
+  .ev .s { font-size: 11px; color: var(--grey-700); }
+  .ev .by { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--grey-700); margin-top: 4px; }
+  .ev .by .avatar { width: 16px; height: 16px; font-size: 9px; }
+  .ev .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--warning-light); color: var(--warning); margin-top: 4px; }
+  .ev.done .badge { background: var(--success-light); color: #57644F; }
+  .leave-tag { font-size: 11px; color: var(--warning); background: var(--warning-light); border-radius: 6px; padding: 4px 6px; margin-bottom: 6px; }
+  .kv { display: flex; justify-content: space-between; font-size: 14px; padding: 10px 0; border-bottom: 1px solid var(--grey-200); }
+  .kv .k { color: var(--grey-700); } .kv .v { font-weight: 600; display: flex; gap: 8px; align-items: center; }
+  .kv .v .avatar { width: 24px; height: 24px; font-size: 11px; }
+  .empty-cal { grid-column: 1 / -1; text-align: center; padding: 64px; color: var(--grey-700); font-size: 14px; }
+  .empty-cal .t { font-size: 16px; font-weight: 600; color: var(--grey-900); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">預約週曆設計師篩選 · Variant A：頭像篩選 Chip 列＋事件卡標示設計師</h1>
+  <p class="page-note">在週曆工具列下方加一排設計師篩選 Chip（<b>多選</b>，2026-10-21 人工要求由單選改為多選：可同時勾選多位設計師；都不勾或點「全部」＝顯示全部），Chip 上帶頭像和本週預約數。事件卡多一行「頭像＋設計師名」。<b>完全不需要新增色彩 token</b>：設計師用頭像辨識，不用顏色，不會和既有的狀態色（待服務／已完成／已取消）混淆。篩選單一設計師時，該設計師的請假日會在日期格上標示。</p>
+  <div class="stack">
+
+    <div class="frame">
+      <div class="label">1 · 全部設計師（事件卡標示設計師）</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div><div class="nav-item"><i></i>營業時間</div></div>
+        <div class="main">
+          <div class="toolbar"><div class="week-nav"><span class="arrow">‹</span>10/19 – 10/25<span class="arrow">›</span><span class="btn text sm">本週</span></div><div class="view-toggle"><span class="active">週曆</span><span>列表</span></div></div>
+          <div class="filter">
+            <span class="fchip all on">全部 · 14</span>
+            <span class="fchip"><span class="avatar av1">林</span>林小美 <span class="n">6</span></span>
+            <span class="fchip"><span class="avatar av2">陳</span>陳阿傑 <span class="n">5</span></span>
+            <span class="fchip"><span class="avatar av3">王</span>王大明 <span class="n">3</span></span>
+          </div>
+          <div class="cal">
+            <div class="day"><div class="d">日 10/19</div><div class="ev done"><div class="t">10:00</div><div class="n">周小姐</div><div class="s">韓系剪髮</div><div class="by"><span class="avatar av1">林</span>林小美</div></div></div>
+            <div class="day closed"><div class="d">一 10/20</div><div class="closed-t">公休</div></div>
+            <div class="day today"><div class="d">二 10/21</div>
+              <div class="ev"><div class="t">11:00</div><div class="n">王小姐</div><div class="s">韓系剪髮</div><div class="by"><span class="avatar av1">林</span>林小美</div></div>
+              <div class="ev"><div class="t">11:00</div><div class="n">李先生</div><div class="s">男士油頭</div><div class="by"><span class="avatar av2">陳</span>陳阿傑</div></div>
+              <div class="ev"><div class="t">14:30</div><div class="n">黃小姐</div><div class="s">護髮</div><div class="by"><span class="avatar av3">王</span>王大明</div></div>
+            </div>
+            <div class="day"><div class="d">三 10/22</div><div class="ev"><div class="t">13:00</div><div class="n">吳先生</div><div class="s">洗剪吹</div><div class="by"><span class="avatar av2">陳</span>陳阿傑</div></div></div>
+            <div class="day"><div class="d">四 10/23</div><div class="ev"><div class="t">10:30</div><div class="n">陳小姐</div><div class="s">漸層染</div><div class="by"><span class="avatar av3">王</span>王大明</div></div></div>
+            <div class="day"><div class="d">五 10/24</div><div class="ev"><div class="t">15:00</div><div class="n">林先生</div><div class="s">洗剪吹</div><div class="by"><span class="avatar av1">林</span>林小美</div></div></div>
+            <div class="day"><div class="d">六 10/25</div>
+              <div class="ev"><div class="t">10:00</div><div class="n">鄭小姐</div><div class="s">空氣感燙</div><div class="by"><span class="avatar av1">林</span>林小美</div></div>
+              <div class="ev"><div class="t">14:00</div><div class="n">許先生</div><div class="s">漸層推剪</div><div class="by"><span class="avatar av2">陳</span>陳阿傑</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2 · 只勾選一位設計師（事件卡隱藏設計師列、顯示請假日）</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div></div>
+        <div class="main">
+          <div class="toolbar"><div class="week-nav"><span class="arrow">‹</span>10/19 – 10/25<span class="arrow">›</span></div><div class="view-toggle"><span class="active">週曆</span><span>列表</span></div></div>
+          <div class="filter">
+            <span class="fchip all">全部 · 14</span>
+            <span class="fchip on"><span class="avatar av1">林</span>林小美 <span class="n">6</span></span>
+            <span class="fchip"><span class="avatar av2">陳</span>陳阿傑 <span class="n">5</span></span>
+            <span class="fchip"><span class="avatar av3">王</span>王大明 <span class="n">3</span></span>
+          </div>
+          <div class="cal">
+            <div class="day"><div class="d">日 10/19</div><div class="ev done"><div class="t">10:00</div><div class="n">周小姐</div><div class="s">韓系剪髮</div><span class="badge">已完成</span></div></div>
+            <div class="day closed"><div class="d">一 10/20</div><div class="closed-t">公休</div></div>
+            <div class="day today"><div class="d">二 10/21</div><div class="ev"><div class="t">11:00</div><div class="n">王小姐</div><div class="s">韓系剪髮</div><span class="badge">待服務</span></div></div>
+            <div class="day"><div class="d">三 10/22</div></div>
+            <div class="day"><div class="d">四 10/23</div><div class="leave-tag">林小美請假</div></div>
+            <div class="day"><div class="d">五 10/24</div><div class="ev"><div class="t">15:00</div><div class="n">林先生</div><div class="s">洗剪吹</div><span class="badge">待服務</span></div></div>
+            <div class="day"><div class="d">六 10/25</div><div class="ev"><div class="t">10:00</div><div class="n">鄭小姐</div><div class="s">空氣感燙</div><span class="badge">待服務</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">2b · 多選（2026-10-21 人工要求）：同時勾選兩位設計師，事件卡保留設計師列</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務項目</div></div>
+        <div class="main">
+          <div class="toolbar"><div class="week-nav"><span class="arrow">‹</span>10/19 – 10/25<span class="arrow">›</span></div><div class="view-toggle"><span class="active">週曆</span><span>列表</span></div></div>
+          <div class="filter">
+            <span class="fchip all">全部 · 14</span>
+            <span class="fchip on"><span class="avatar av1">林</span>✓ 林小美 <span class="n">6</span></span>
+            <span class="fchip on"><span class="avatar av2">陳</span>✓ 陳阿傑 <span class="n">5</span></span>
+            <span class="fchip"><span class="avatar av3">王</span>王大明 <span class="n">3</span></span>
+            <span class="btn text sm">清除篩選</span>
+          </div>
+          <div class="cal">
+            <div class="day"><div class="d">日 10/19</div><div class="ev done"><div class="t">10:00</div><div class="n">周小姐</div><div class="s">韓系剪髮</div><div class="by"><span class="avatar av1">林</span>林小美</div></div></div>
+            <div class="day closed"><div class="d">一 10/20</div><div class="closed-t">公休</div></div>
+            <div class="day today"><div class="d">二 10/21</div>
+              <div class="ev"><div class="t">11:00</div><div class="n">王小姐</div><div class="s">韓系剪髮</div><div class="by"><span class="avatar av1">林</span>林小美</div></div>
+              <div class="ev"><div class="t">11:00</div><div class="n">李先生</div><div class="s">男士油頭</div><div class="by"><span class="avatar av2">陳</span>陳阿傑</div></div>
+            </div>
+            <div class="day"><div class="d">三 10/22</div><div class="ev"><div class="t">13:00</div><div class="n">吳先生</div><div class="s">洗剪吹</div><div class="by"><span class="avatar av2">陳</span>陳阿傑</div></div></div>
+            <div class="day"><div class="d">四 10/23</div><div class="leave-tag">林小美請假</div></div>
+            <div class="day"><div class="d">五 10/24</div><div class="ev"><div class="t">15:00</div><div class="n">林先生</div><div class="s">洗剪吹</div><div class="by"><span class="avatar av1">林</span>林小美</div></div></div>
+            <div class="day"><div class="d">六 10/25</div>
+              <div class="ev"><div class="t">10:00</div><div class="n">鄭小姐</div><div class="s">空氣感燙</div><div class="by"><span class="avatar av1">林</span>林小美</div></div>
+              <div class="ev"><div class="t">14:00</div><div class="n">許先生</div><div class="s">漸層推剪</div><div class="by"><span class="avatar av2">陳</span>陳阿傑</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">3 · 預約詳情 Modal（新增設計師列；改期時設計師固定）</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div></div>
+        <div class="main"><div class="cal"><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div></div></div>
+        <div class="overlay" style="gap:24px">
+          <div class="dialog" style="width:380px">
+            <h3>王小姐</h3><p style="margin-bottom:8px">10/21（二）11:00 – 12:00</p>
+            <div class="kv"><span class="k">服務</span><span class="v">韓系剪髮</span></div>
+            <div class="kv"><span class="k">設計師</span><span class="v"><span class="avatar av1">林</span>林小美</span></div>
+            <div class="kv"><span class="k">電話</span><span class="v">0912-345-678</span></div>
+            <div class="kv"><span class="k">狀態</span><span class="v">待服務</span></div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px"><div class="btn">標記完成</div><div class="btn outline">改期</div><div class="btn text" style="color:var(--danger)">取消預約</div></div>
+          </div>
+          <div class="dialog" style="width:380px">
+            <h3>改期</h3><p style="margin-bottom:12px">只會顯示林小美有空的時段。</p>
+            <div class="field"><label>設計師</label><div class="input" style="background:var(--grey-100);color:var(--grey-700)">林小美（改期不能更換設計師）</div></div>
+            <div class="field"><label>日期</label><div class="input">10/24（五）</div></div>
+            <div class="field"><label>時段</label><div class="input">16:00 – 17:00</div></div>
+            <div class="foot"><div class="btn text">取消</div><div class="btn">確認改期</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="label">4 · 列表檢視（新增設計師欄）＋ 篩選後的空狀態</div>
+      <div class="screen">
+        <div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item active"><i></i>預約</div></div>
+        <div class="main">
+          <div class="toolbar"><div class="week-nav"><span class="arrow">‹</span>10/19 – 10/25<span class="arrow">›</span></div><div class="view-toggle"><span>週曆</span><span class="active">列表</span></div></div>
+          <div class="filter"><span class="fchip all on">全部 · 14</span><span class="fchip"><span class="avatar av1">林</span>林小美 <span class="n">6</span></span><span class="fchip"><span class="avatar av2">陳</span>陳阿傑 <span class="n">5</span></span><span class="fchip"><span class="avatar av3">王</span>王大明 <span class="n">0</span></span></div>
+          <div class="panel">
+            <table>
+              <tr><th>時間</th><th>顧客</th><th>服務</th><th>設計師</th><th>狀態</th></tr>
+              <tr><td>10/21 11:00</td><td>王小姐</td><td>韓系剪髮</td><td><div class="who" style="font-weight:500"><span class="avatar av1" style="width:24px;height:24px;font-size:11px">林</span>林小美</div></td><td><span class="status" style="background:var(--warning-light);color:var(--warning)">待服務</span></td></tr>
+              <tr><td>10/21 11:00</td><td>李先生</td><td>男士油頭</td><td><div class="who" style="font-weight:500"><span class="avatar av2" style="width:24px;height:24px;font-size:11px">陳</span>陳阿傑</div></td><td><span class="status" style="background:var(--warning-light);color:var(--warning)">待服務</span></td></tr>
+            </table>
+          </div>
+          <div class="panel" style="margin-top:24px"><div class="empty-cal"><div class="t">王大明本週沒有預約</div>切換到「全部」或其他週次看看</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

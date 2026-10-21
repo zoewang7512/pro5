@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Service } from "@/lib/booking/types";
+import type { AdminService } from "@/lib/booking/types";
 import type { Result } from "./appointments";
 
 // 服務項目管理頁的資料存取。與顧客端 lib/booking/api.ts 的 getServices() 不同之處：
@@ -7,10 +7,10 @@ import type { Result } from "./appointments";
 
 const INTERNAL_ERROR = { message: "發生未預期的錯誤，請稍後再試。" };
 
-export async function listServices(supabase: SupabaseClient): Promise<Result<Service[]>> {
+export async function listServices(supabase: SupabaseClient): Promise<Result<AdminService[]>> {
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, description, price, duration_minutes, is_active, sort_order")
+    .select("id, name, description, price, duration_minutes, buffer_minutes, is_active, sort_order")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -18,7 +18,7 @@ export async function listServices(supabase: SupabaseClient): Promise<Result<Ser
     return { ok: false, error: INTERNAL_ERROR };
   }
 
-  return { ok: true, data: (data ?? []) as Service[] };
+  return { ok: true, data: (data ?? []) as AdminService[] };
 }
 
 // 新增/編輯共用的表單驗證：名稱 trim 後不可為空白（資料庫僅 not null，允許純空白字串，
@@ -39,10 +39,21 @@ export function validateServiceDuration(durationMinutes: number): string | null 
   return durationMinutes > 0 ? null : "時長需大於 0";
 }
 
+// 緩衝時間對齊 0003_closures_and_buffer.sql 的 services_buffer_minutes_range（0～120 整數）。
+// 接收原始輸入字串而非數字：空白欄位 Number("") 會變成 0 而被誤判為合法，必須在轉型前擋下。
+export function validateServiceBuffer(raw: string): string | null {
+  const message = "緩衝時間需為 0～120 的整數分鐘";
+  if (raw.trim() === "") return message;
+  const value = Number(raw);
+  if (!Number.isInteger(value)) return message;
+  return value >= 0 && value <= 120 ? null : message;
+}
+
 export type ServiceInput = {
   name: string;
   price: number;
   durationMinutes: number;
+  bufferMinutes: number;
   description: string;
 };
 
@@ -55,6 +66,7 @@ export async function createService(supabase: SupabaseClient, input: ServiceInpu
       name: input.name.trim(),
       price: input.price,
       duration_minutes: input.durationMinutes,
+      buffer_minutes: input.bufferMinutes,
       description: input.description.trim() || null,
     })
     .select("id");
@@ -65,7 +77,7 @@ export async function createService(supabase: SupabaseClient, input: ServiceInpu
   return { ok: true, data: undefined };
 }
 
-// 編輯只更新名稱/價格/時長/描述，不觸碰 is_active（TASK-036 負責）與 sort_order
+// 編輯只更新名稱/價格/時長/緩衝時間/描述，不觸碰 is_active（TASK-036 負責）與 sort_order
 // （本批次不提供排序介面，見 feature-spec 非目標）。RLS 擋下 UPDATE 時 PostgREST
 // 回傳成功但 0 筆受影響，用 .select("id") 檢查實際受影響列數，比照
 // lib/store-settings.ts updateStoreSettingsBasicInfo 的既有教訓。
@@ -80,6 +92,7 @@ export async function updateService(
       name: input.name.trim(),
       price: input.price,
       duration_minutes: input.durationMinutes,
+      buffer_minutes: input.bufferMinutes,
       description: input.description.trim() || null,
     })
     .eq("id", id)

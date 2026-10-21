@@ -17,7 +17,7 @@ import Chip from "@mui/material/Chip";
 import { createClient } from "@/lib/supabase/client";
 import { listServices, setServiceActive } from "@/lib/admin/services";
 import { formatPrice } from "@/lib/admin/format";
-import type { Service } from "@/lib/booking/types";
+import type { AdminService } from "@/lib/booking/types";
 import { ServiceFormDialog } from "./ServiceFormDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -27,9 +27,9 @@ import { useToast } from "@/components/ui/ToastProvider";
 type LoadState =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "loaded"; services: Service[] };
+  | { status: "loaded"; services: AdminService[] };
 
-type DialogState = { mode: "create" } | { mode: "edit"; service: Service } | null;
+type DialogState = { mode: "create" } | { mode: "edit"; service: AdminService } | null;
 
 const SKELETON_ROWS = 4;
 
@@ -38,7 +38,7 @@ export function ServicesTable() {
   const { showToast } = useToast();
   const [state, setState] = React.useState<LoadState>({ status: "loading" });
   const [dialog, setDialog] = React.useState<DialogState>(null);
-  const [toggleTarget, setToggleTarget] = React.useState<Service | null>(null);
+  const [toggleTarget, setToggleTarget] = React.useState<AdminService | null>(null);
   const [toggleLoading, setToggleLoading] = React.useState(false);
 
   const loadServices = React.useCallback(async () => {
@@ -159,7 +159,14 @@ export function ServicesTable() {
                     )}
                   </TableCell>
                   <TableCell>{formatPrice(service.price)}</TableCell>
-                  <TableCell>{service.duration_minutes} 分鐘</TableCell>
+                  <TableCell>
+                    {service.duration_minutes} 分鐘
+                    {service.buffer_minutes > 0 && (
+                      <Typography component="span" variant="body2" sx={{ color: "text.secondary" }}>
+                        ＋緩衝 {service.buffer_minutes}
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       size="small"

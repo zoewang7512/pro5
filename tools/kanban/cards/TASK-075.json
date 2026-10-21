@@ -1,0 +1,66 @@
+{
+  "id": "TASK-075",
+  "title": "多位設計師 後台週曆／列表設計師標示與多選篩選、詳情顯示設計師、改期依原設計師",
+  "content": "多選 Chip 篩選（規則見 mockup-decision）、請假標示、列表設計師欄、詳情設計師列；reschedule-slots 依 designer_id 與請假日計算。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "後台依設計師檢視預約",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-068",
+    "TASK-072"
+  ],
+  "order": 75,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "ai/artifacts/多位設計師/screen-spec-預約週曆設計師篩選.md",
+    "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-預約週曆設計師篩選.md",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-075.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/appointments.ts",
+    "lib/admin/reschedule-slots.ts",
+    "lib/admin/designer-filter.ts",
+    "app/admin/_components/AdminDashboard.tsx",
+    "app/admin/_components/WeekCalendar.tsx",
+    "app/admin/_components/AppointmentListView.tsx",
+    "app/admin/_components/AppointmentDetailDialog.tsx",
+    "app/admin/_components/DesignerFilterChips.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}

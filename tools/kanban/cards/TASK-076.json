@@ -1,0 +1,63 @@
+{
+  "id": "TASK-076",
+  "title": "多位設計師 四種通知信顯示設計師名稱",
+  "content": "確認／提醒／取消／改期信加「設計師」一行（HTML 跳脫，空值省略）；webhook 與 cron 讀取設計師名稱。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "通知信顯示設計師",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-068"
+  ],
+  "order": 76,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-076.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/email/templates/confirmation.ts",
+    "lib/email/templates/reminder.ts",
+    "lib/email/templates/cancellation.ts",
+    "lib/email/templates/reschedule.ts",
+    "app/api/webhooks/appointment-events/route.ts",
+    "app/api/cron/appointment-reminders/route.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}

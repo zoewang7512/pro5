@@ -1,0 +1,71 @@
+{
+  "id": "TASK-077",
+  "title": "多位設計師 前後端串接驗證、端到端走查與文件同步",
+  "content": "逐條對照 feature-spec 驗收標準、跑全部測試套件、完整走查、更新 project-map／decisions／design-system／README，人工驗收後合併 master。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-21",
+  "epic": "多位設計師",
+  "userStory": "全部（整合驗證）",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-067",
+    "TASK-068",
+    "TASK-069",
+    "TASK-070",
+    "TASK-071",
+    "TASK-072",
+    "TASK-073",
+    "TASK-074",
+    "TASK-075",
+    "TASK-076"
+  ],
+  "order": 77,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/多位設計師/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-077.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/多位設計師/verification/TASK-077.md",
+    "ai/context/project-map.md",
+    "ai/context/decisions.md",
+    "ai/context/design-system.md",
+    "README.md"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-21",
+      "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    }
+  ]
+}
