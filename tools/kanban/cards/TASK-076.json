@@ -2,7 +2,7 @@
   "id": "TASK-076",
   "title": "多位設計師 四種通知信顯示設計師名稱",
   "content": "確認／提醒／取消／改期信加「設計師」一行（HTML 跳脫，空值省略）；webhook 與 cron 讀取設計師名稱。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -82,6 +82,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }
