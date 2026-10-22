@@ -1,0 +1,64 @@
+{
+  "id": "TASK-081",
+  "title": "UI 設計系統 後台表單「未儲存變更」離開提示",
+  "content": "後台有「儲存」按鈕的表單，填到一半切頁籤、點側邊欄或關閉頁面時，目前輸入會直接消失、沒有任何提示。來源：TASK-070 驗收時使用者提出。即時儲存的控制項（如設計師服務開關）不在範圍。開工前需先走 spec-interrogation（涵蓋哪些表單、攔截哪些離開方式、文案）與 ui-mockup-gate。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-22",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-072"
+  ],
+  "order": 81,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": false,
+    "files_known": false,
+    "scope_defined": false,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-081.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/DesignerBasicInfoForm.tsx",
+    "app/admin/_components/DesignerEditView.tsx",
+    "app/admin/_components/StoreSettingsForm.tsx",
+    "app/admin/_components/BookingPolicyForm.tsx",
+    "app/admin/_components/BusinessHoursForm.tsx",
+    "app/admin/_components/AccountSettingsView.tsx",
+    "components/ui/ConfirmDialog.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "TASK-070 驗收時提出「有存檔按鈕的頁面，修改後沒存檔離開應提示」，決定另開一張卡處理，不併入 TASK-070。"
+    }
+  ]
+}

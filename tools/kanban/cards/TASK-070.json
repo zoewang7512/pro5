@@ -2,7 +2,7 @@
   "id": "TASK-070",
   "title": "多位設計師 「提供服務」頁籤與新增服務的預設行為",
   "content": "設計師逐項開關服務（即時儲存）；新增服務成功提示「預設不開給任何設計師」。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "low",
   "owner": "",
   "agent": "Claude Code",
@@ -39,7 +39,7 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-070.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-070.md",
     "pr": ""
   },
   "refs": [
@@ -48,15 +48,36 @@
     "app/admin/_components/ServicesTable.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：0 error／0 warning",
+      "npm run build：通過",
+      "npx vitest run --maxWorkers=3：712／716，4 項為 account-settings-view 逾時（單獨跑 33 項全過，非本卡檔案）",
+      "本卡相關 7 個測試檔 136 項：連跑 2 次全過（另有一次 1 項失敗未擷取，重跑皆過）",
+      "npm run test:designers -- -t \"TASK-070\"（真實 Supabase）：7 項通過，無殘留",
+      "瀏覽器走查（__TEST__ 資料，已清除）：開關、重新整理保留、寫入中、失敗回復、新增服務 Toast"
+    ],
+    "findings": [
+      "delete 被 RLS 擋下時回成功但 0 列：改為要求剛好 1 列才成功（security M1／architect M1）",
+      "面板常駐掛載以便標籤數字在點進頁籤前就有（architect M3）"
+    ],
+    "residual": "關掉最後一位設計師時不提示（TASK-073 前收斂）；關閉與預約 insert 之間的競態；aal1 情境未測；實作後 security／test 審查未做。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前審查完成：architect（request changes，輕微）、security-reviewer（必須採納 5 項），採納事項已寫入任務卡「動工前審查定案」。實作與驗證完成，見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過。決定服務頁籤維持「開關即時儲存」；另開 TASK-081 處理後台表單的未儲存離開提示。"
     }
   ]
 }
