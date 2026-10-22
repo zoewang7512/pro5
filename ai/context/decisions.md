@@ -342,6 +342,14 @@
 影響與殘留：
   - Supabase 公開註冊開著（disable_signup: false），本 Epic 所有防線靠 is_admin()；建議關閉，列為
     合併 master 或套用 0018 的前置條件（待人工決定）。
+    **已決定（2026-10-22，TASK-077）：使用者決定關閉公開註冊。** 這是 Supabase 後台的設定（Authentication 的
+    「Allow new users to sign up」），不受版控，**本專案無法驗證是否已關閉**，由使用者在後台操作。關閉不影響現有功能：
+    應用程式碼從不呼叫 `signUp`，種子腳本與測試都用 service_role 的 `admin.createUser`。之後的 Demo 體驗帳戶也應走
+    伺服器端 service_role 建立，不依賴公開註冊。
+  - **已決定（2026-10-22，TASK-077）：designer001 先不啟用 MFA。** 使用者接受「唯一正式管理員只靠密碼保護」的殘留風險
+    （TASK-079 的 aal2 強制只對已啟用 MFA 的帳號生效）。本 Epic 新增的、只靠這組密碼保護的寫入面：公開 bucket 上傳、
+    可竄改前台設計師頁、關閉服務或標請假即可讓前台無法預約。與既有「管理員密碼外洩」同類風險，沒有新的攻擊類型；
+    建議確認 Supabase Auth 的外洩密碼防護與登入限流已開啟。日後想補強時再啟用 MFA，`test:mfa-rls` 不依賴 designer001。
   - 0017 重跑冪等與 0017_down 尚未在隔離環境實跑；is_admin() aal2 對新表寫入是「繼承」保護，
     test:mfa-rls 尚未涵蓋新表。
   - 既有整合測試套件結束時 signOut() 預設 global scope，會撤銷設計師帳號在所有裝置的登入；

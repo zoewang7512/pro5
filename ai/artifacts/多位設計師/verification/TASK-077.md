@@ -7,14 +7,20 @@
 - 驗證者：實作 agent（Claude Code）。動工前 architect、security-reviewer 的審查意見**不等同人工核准**；product／ui／architecture／security／
   test／code_review 關卡待人工核准。
 
-## 待人工處理（合併 master 前）
+## 使用者決定（2026-10-22）
+
+- **designer001 先不啟用 MFA**：接受唯一管理員只靠密碼保護的殘留風險（記錄於 `decisions.md`）。
+- **關閉 Supabase 公開註冊**：使用者決定關閉；這是後台設定、不受版控，**本專案無法驗證是否已關閉**，由使用者在 Supabase 後台操作。
+- **確認信實收截圖、合併 master 後的正式網址走查**：等使用者合併到 master 後再由 agent 提醒執行（見下方 #4、#5）。
+
+## 待人工處理（合併 master 前後）
 
 1. ~~**`proacl` 等 SQL 證據**~~ **已完成（2026-10-22）**：使用者在 SQL Editor 執行附錄 SQL 並貼回，`proacl`、`is_admin()` aal2、四張表 RLS 旗標、`storage.objects` 全部 policy 皆符合預期，見下方「合併前 SQL／資料檢查」。
-2. **designer001（唯一正式管理員）尚未啟用 MFA**：TASK-079（`is_admin()` 強制 aal2）**已完成並在 master**（`234e6f7`、`13d9970`、`b450c2b`，本分支已包含 master），
+2. ✅ **已決定（先不啟用）** ——**designer001（唯一正式管理員）尚未啟用 MFA**：TASK-079（`is_admin()` 強制 aal2）**已完成並在 master**（`234e6f7`、`13d9970`、`b450c2b`，本分支已包含 master），
    但它只對「已啟用 MFA」的帳號生效，所以目前這個唯一的管理員仍只靠密碼保護。本 Epic 新增了只靠這組密碼保護的寫入面（公開 bucket 上傳、可竄改前台設計師頁、
    關閉服務或標請假即可讓前台無法預約）。security-reviewer 評為中風險、與既有「管理員密碼外洩」同類，沒有新的攻擊類型。
    建議：為 designer001 啟用 MFA（`test:mfa-rls` 已改用拋棄式帳號，不依賴 designer001 的 MFA 狀態）；若暫不啟用，請明確記錄為接受的殘留風險，並確認 Supabase Auth 的外洩密碼防護與登入限流已開。
-3. **Supabase 公開註冊仍開著（`disable_signup: false`）**：`decisions.md` 與 TASK-067 驗證報告都把它列為「合併 master 或套用 0018 的前置條件（待人工決定）」。本 Epic 的防線全靠 `is_admin()`，建議關閉。
+3. ✅ **已決定（關閉；由使用者在後台操作，未經驗證）** ——**Supabase 公開註冊仍開著（`disable_signup: false`）**：`decisions.md` 與 TASK-067 驗證報告都把它列為「合併 master 或套用 0018 的前置條件（待人工決定）」。本 Epic 的防線全靠 `is_admin()`，建議關閉。
 4. **確認信實收截圖**：需要你的信箱。**注意正式 Vercel 目前仍是 master 的舊程式**，在合併部署前寄出的確認信不會有「設計師」一行；TASK-076 的實收證據只能在合併部署後取得。
    合併後請在正式網址照下方「走查守則」走一次前台預約，並用你自己的信箱收信截圖。
 5. **合併 master（觸發 Vercel 部署）與合併後正式網址走查**：等你人工驗收。

@@ -94,6 +94,11 @@
       "name": "使用者",
       "time": "2026-10-22",
       "text": "已在 SQL Editor 執行附錄 SQL 並貼回輸出（proacl、is_admin aal2、RLS 旗標、storage policy）"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "決定：designer001 先不啟用 MFA（接受殘留風險）；關閉 Supabase 公開註冊（由使用者在後台操作）；確認信實收截圖與合併後正式網址走查，等合併到 master 後再提醒。"
     }
   ]
 }
