@@ -40,7 +40,12 @@ import {
   isDateClosed,
   removeClosedDate,
 } from "../lib/admin/closed-dates";
-import { computeAvailableSlots, getBusinessHoursForWeekday, getOccupiedRangesForDate } from "../lib/admin/reschedule-slots";
+import {
+  computeAvailableSlots,
+  getBusinessHoursForWeekday,
+  getOccupiedRangesForDate,
+  isDesignerOnLeave,
+} from "../lib/admin/reschedule-slots";
 import { createAppointment, getAvailableSlots } from "../lib/booking/api";
 import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
@@ -1301,7 +1306,8 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
         serviceId: bufferServiceId,
       });
 
-      const rpcResult = await getAvailableSlots(anonClient, bufferServiceId, CROSS_VALIDATE_DATE);
+      // 兩邊都指定同一位測試設計師：RPC 與後台改期（只算該設計師的預約與請假日）才是同一個語意。
+      const rpcResult = await getAvailableSlots(anonClient, bufferServiceId, CROSS_VALIDATE_DATE, testDesignerId);
       expect(rpcResult.ok).toBe(true);
       if (!rpcResult.ok) return;
       expect(rpcResult.data.length).toBeGreaterThan(0);
@@ -1319,13 +1325,17 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
       expect(closedResult.ok).toBe(true);
       if (!closedResult.ok) return;
 
-      const occupiedResult = await getOccupiedRangesForDate(
-        designerClient,
-        CROSS_VALIDATE_DATE,
-        "00000000-0000-0000-0000-000000000000",
-      );
+      const occupiedResult = await getOccupiedRangesForDate(designerClient, {
+        date: CROSS_VALIDATE_DATE,
+        designerId: testDesignerId,
+        excludeAppointmentId: "00000000-0000-0000-0000-000000000000",
+      });
       expect(occupiedResult.ok).toBe(true);
       if (!occupiedResult.ok) return;
+
+      const leaveResult = await isDesignerOnLeave(designerClient, testDesignerId, CROSS_VALIDATE_DATE);
+      expect(leaveResult.ok).toBe(true);
+      if (!leaveResult.ok) return;
 
       // CROSS_VALIDATE_DATE 離今天 65 天以上，遠超過 RPC 的「提前 1 小時」門檻與
       // computeAvailableSlots 的「now 之後」門檻（見 lib/admin/reschedule-slots.ts 開頭
@@ -1341,6 +1351,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
         now: Date.now(),
         bufferMinutes: 30,
         isClosedDate: closedResult.data,
+        isDesignerLeaveDate: leaveResult.data,
       });
 
       const toEpochPairs = (slots: { start_at: string; end_at: string }[]) =>

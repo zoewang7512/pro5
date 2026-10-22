@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   countActiveServicesByDesigner,
   findAffectedAppointmentsForDesignerLeave,
+  getDesignerFilterOptions,
+  getDesignerLeavesInRange,
   isShopClosedDate,
   listDesignerLeaves,
   listDesigners,
@@ -31,7 +33,7 @@ describe("countActiveServicesByDesigner", () => {
 
 type QueryResult = { data: unknown; error: unknown };
 
-type Call = { table: string; method: "select" | "order" | "eq" | "in" | "gte" | "lt" | "limit"; args: unknown[] };
+type Call = { table: string; method: "select" | "order" | "eq" | "in" | "gte" | "lte" | "lt" | "limit"; args: unknown[] };
 
 // 每個 from(table) 回傳一條可 await 的鏈（select／order／eq 都回傳自己），依表名給對應結果，並
 // 記錄每次呼叫的參數，讓測試能斷言排序與過濾條件，而不是只驗證「回傳什麼」。
@@ -46,6 +48,7 @@ function fakeClient(results: Record<string, QueryResult>) {
         in: (...args: unknown[]) => (calls.push({ table, method: "in", args }), chain),
         gte: (...args: unknown[]) => (calls.push({ table, method: "gte", args }), chain),
         lt: (...args: unknown[]) => (calls.push({ table, method: "lt", args }), chain),
+        lte: (...args: unknown[]) => (calls.push({ table, method: "lte", args }), chain),
         limit: (...args: unknown[]) => (calls.push({ table, method: "limit", args }), chain),
         then: (resolve: (value: QueryResult) => unknown) => resolve(results[table]),
       };
@@ -262,5 +265,55 @@ describe("isShopClosedDate", () => {
     expect(isShopClosedDate("2026-10-26", hours.filter((row) => row.weekday !== 1), new Set())).toBe(true);
     expect(isShopClosedDate("2026-10-26", [{ ...open(1), open_time: null }, ...hours.filter((r) => r.weekday !== 1)], new Set())).toBe(true);
     expect(isShopClosedDate("2026-10-26", [{ ...open(1), close_time: null }, ...hours.filter((r) => r.weekday !== 1)], new Set())).toBe(true);
+  });
+});
+
+describe("getDesignerFilterOptions", () => {
+  const ROWS = [
+    { id: "d1", name: "林小美", avatar_url: null, is_active: true, sort_order: 0 },
+    { id: "d2", name: "陳阿傑", avatar_url: "https://x/y.webp", is_active: false, sort_order: 1 },
+  ];
+
+  it("不過濾 is_active（停用中的也要能被篩選），只選最小欄位，依 sort_order、created_at 排序", async () => {
+    const { client, calls } = fakeClient({ designers: { data: ROWS, error: null } });
+    expect(await getDesignerFilterOptions(client)).toEqual({ ok: true, data: ROWS });
+
+    expect(calls.find((c) => c.method === "select")?.args[0]).toBe("id, name, avatar_url, is_active, sort_order");
+    expect(calls.some((c) => c.method === "eq")).toBe(false);
+    expect(calls.filter((c) => c.method === "order").map((c) => c.args[0])).toEqual(["sort_order", "created_at"]);
+  });
+
+  it("查詢失敗回傳通用錯誤，不外洩原始錯誤訊息", async () => {
+    const { client } = fakeClient({ designers: { data: null, error: { message: "relation boom" } } });
+    expect(await getDesignerFilterOptions(client)).toEqual(GENERIC);
+  });
+});
+
+describe("getDesignerLeavesInRange", () => {
+  it("依日期範圍讀全部設計師的請假日（兩端含），只選 designer_id、date，日期由小到大", async () => {
+    const rows = [{ designer_id: "d1", date: "2026-10-23" }];
+    const { client, calls } = fakeClient({ designer_leaves: { data: rows, error: null } });
+    expect(await getDesignerLeavesInRange(client, "2026-10-19", "2026-10-25")).toEqual({ ok: true, data: rows });
+
+    expect(calls.find((c) => c.method === "select")?.args[0]).toBe("designer_id, date");
+    expect(calls.find((c) => c.method === "gte")?.args).toEqual(["date", "2026-10-19"]);
+    expect(calls.find((c) => c.method === "lte")?.args).toEqual(["date", "2026-10-25"]);
+    expect(calls.find((c) => c.method === "order")?.args).toEqual(["date", { ascending: true }]);
+    expect(calls.some((c) => c.method === "in")).toBe(false);
+  });
+
+  it.each([
+    ["today", "2026-10-25"],
+    ["2026-10-19", "infinity"],
+    ["2099-02-30", "2099-03-01"],
+  ])("日期 %s／%s 不合法時不送請求", async (start, end) => {
+    const { client, calls } = fakeClient({});
+    expect(await getDesignerLeavesInRange(client, start, end)).toEqual(GENERIC);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("查詢失敗回傳通用錯誤", async () => {
+    const { client } = fakeClient({ designer_leaves: { data: null, error: { message: "boom" } } });
+    expect(await getDesignerLeavesInRange(client, "2026-10-19", "2026-10-25")).toEqual(GENERIC);
   });
 });

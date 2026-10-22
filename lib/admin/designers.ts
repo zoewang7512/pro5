@@ -655,7 +655,7 @@ export async function removePortfolioFile(
 
 const LEAVE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-function isRealDate(date: string): boolean {
+export function isRealDate(date: string): boolean {
   if (!LEAVE_DATE_PATTERN.test(date)) return false;
   const parsed = new Date(`${date}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
@@ -672,6 +672,56 @@ export async function listDesignerLeaves(supabase: SupabaseClient, designerId: s
       .order("date", { ascending: true });
     if (error || !data) return { ok: false, error: INTERNAL_ERROR };
     return { ok: true, data: (data as Array<{ date: string }>).map((row) => row.date) };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+// 預約週曆的設計師篩選列（TASK-075）：只讀篩選需要的最小欄位（不帶 bio、IG），不過濾 is_active——停用中但本週
+// 還有預約的設計師也要能被篩選出來，是否出現由 buildDesignerChips 決定。
+export type DesignerFilterOption = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
+const FILTER_OPTION_COLUMNS = "id, name, avatar_url, is_active, sort_order";
+
+export async function getDesignerFilterOptions(supabase: SupabaseClient): Promise<Result<DesignerFilterOption[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("designers")
+      .select(FILTER_OPTION_COLUMNS)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: data as DesignerFilterOption[] };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+export type DesignerLeaveEntry = { designer_id: string; date: string };
+
+// 週曆標示用：依日期範圍讀全部設計師的請假日，由畫面依勾選的設計師過濾（不用 .in() 傳 id 清單）。
+// 日期先過嚴格檢查（Postgres date 會接受 `today`、`infinity`），不通過不送請求。
+export async function getDesignerLeavesInRange(
+  supabase: SupabaseClient,
+  startDate: string,
+  endDate: string,
+): Promise<Result<DesignerLeaveEntry[]>> {
+  if (!isRealDate(startDate) || !isRealDate(endDate)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase
+      .from("designer_leaves")
+      .select("designer_id, date")
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .order("date", { ascending: true });
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: data as DesignerLeaveEntry[] };
   } catch {
     return { ok: false, error: INTERNAL_ERROR };
   }

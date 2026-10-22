@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   cancelAppointment,
+  getAppointmentDetail,
+  getAppointmentsForWeek,
   getAvailableActions,
   markAppointmentCompleted,
   rescheduleAppointment,
@@ -146,5 +148,88 @@ describe("rescheduleAppointment", () => {
     const { client, update } = fakeUpdateClient({ data: [{ id: "appt-1" }], error: null });
     await rescheduleAppointment(client, "appt-1", currentStartAt, newStartAt, newEndAt);
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ reminder_sent_at: null }));
+  });
+});
+
+// ---- TASK-075：整週與詳情查詢帶出設計師 ----
+
+type QueryResult = { data: unknown; error: unknown };
+type SelectCall = { method: string; args: unknown[] };
+
+function fakeSelectClient(result: QueryResult) {
+  const calls: SelectCall[] = [];
+  const chain: Record<string, unknown> = {};
+  for (const method of ["select", "gte", "lt", "order", "eq", "maybeSingle"]) {
+    chain[method] = (...args: unknown[]) => (calls.push({ method, args }), chain);
+  }
+  chain.then = (resolve: (value: QueryResult) => unknown) => resolve(result);
+  const from = vi.fn(() => chain);
+  return { client: { from } as unknown as SupabaseClient, calls };
+}
+
+const DESIGNER_ID = "11111111-1111-4111-8111-111111111111";
+const WEEK_ROW = {
+  id: "a1",
+  customer_name: "王小姐",
+  start_at: "2026-10-21T03:00:00+00:00",
+  end_at: "2026-10-21T04:00:00+00:00",
+  status: "confirmed",
+  designer_id: DESIGNER_ID,
+  designers: { id: DESIGNER_ID, name: "林小美", avatar_url: null },
+  services: { name: "韓系剪髮", duration_minutes: 60, buffer_minutes: 15 },
+};
+
+describe("getAppointmentsForWeek 設計師欄位", () => {
+  it("select 帶 designer_id 與 designers(id, name, avatar_url)，不用 *、不用 !inner，也不帶電話、email", async () => {
+    const { client, calls } = fakeSelectClient({ data: [], error: null });
+    await getAppointmentsForWeek(client, "2026-10-19", "2026-10-25");
+    const columns = String(calls.find((c) => c.method === "select")?.args[0]);
+    expect(columns).toContain("designer_id");
+    expect(columns).toContain("designers(id, name, avatar_url)");
+    expect(columns).not.toContain("*");
+    expect(columns).not.toContain("!inner");
+    expect(columns).not.toMatch(/customer_phone|customer_email|access_token/);
+  });
+
+  it("把 designer_id 與 embed 的設計師攤平到每筆預約", async () => {
+    const { client } = fakeSelectClient({ data: [WEEK_ROW], error: null });
+    const result = await getAppointmentsForWeek(client, "2026-10-19", "2026-10-25");
+    expect(result.ok && result.data[0]).toMatchObject({
+      designer_id: DESIGNER_ID,
+      designer: { id: DESIGNER_ID, name: "林小美", avatar_url: null },
+      service_name: "韓系剪髮",
+      buffer_minutes: 15,
+    });
+  });
+
+  it("designers embed 為陣列時取第一個；為 null（被擋或缺漏）時 designer 為 null，預約仍保留", async () => {
+    const { client } = fakeSelectClient({
+      data: [
+        { ...WEEK_ROW, id: "a2", designers: [WEEK_ROW.designers] },
+        { ...WEEK_ROW, id: "a3", designers: null },
+      ],
+      error: null,
+    });
+    const result = await getAppointmentsForWeek(client, "2026-10-19", "2026-10-25");
+    expect(result.ok && result.data.map((a) => [a.id, a.designer?.name ?? null, a.designer_id])).toEqual([
+      ["a2", "林小美", DESIGNER_ID],
+      ["a3", null, DESIGNER_ID],
+    ]);
+  });
+});
+
+describe("getAppointmentDetail 設計師欄位", () => {
+  it("詳情查詢同樣帶設計師（與整週查詢共用欄位），並保留電話", async () => {
+    const { client, calls } = fakeSelectClient({ data: { ...WEEK_ROW, customer_phone: "0912345678" }, error: null });
+    const result = await getAppointmentDetail(client, "a1");
+
+    const columns = String(calls.find((c) => c.method === "select")?.args[0]);
+    expect(columns).toContain("customer_phone");
+    expect(columns).toContain("designer_id, designers(id, name, avatar_url)");
+    expect(result.ok && result.data).toMatchObject({
+      customer_phone: "0912345678",
+      designer_id: DESIGNER_ID,
+      designer: { name: "林小美" },
+    });
   });
 });

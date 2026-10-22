@@ -11,9 +11,26 @@ import { createClient } from "@/lib/supabase/client";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getAllBusinessHours } from "@/lib/admin/business-hours";
 import { getClosedDatesInRange } from "@/lib/admin/closed-dates";
+import {
+  getDesignerFilterOptions,
+  getDesignerLeavesInRange,
+  type DesignerFilterOption,
+  type DesignerLeaveEntry,
+} from "@/lib/admin/designers";
+import {
+  buildDesignerChips,
+  buildLeaveLabels,
+  countActiveAppointments,
+  filterAppointments,
+  formatFilteredEmptyTitle,
+  resolveEffectiveSelection,
+  shouldShowDesignerRow,
+  toggleDesigner,
+} from "@/lib/admin/designer-filter";
 import { WeekCalendar } from "./WeekCalendar";
 import { AppointmentListView } from "./AppointmentListView";
 import { AppointmentDetailDialog } from "./AppointmentDetailDialog";
+import { DesignerFilterChips } from "./DesignerFilterChips";
 import {
   cancelAppointment,
   getAppointmentsForWeek,
@@ -45,6 +62,11 @@ export function AdminDashboard() {
   const [result, setResult] = React.useState<AppointmentsResult | null>(null);
   const [closedWeekdays, setClosedWeekdays] = React.useState<Set<number>>(() => new Set());
   const [closedDates, setClosedDates] = React.useState<Set<string>>(() => new Set());
+  // 設計師篩選：勾選只存在記憶體（切週、切檢視保留，重新整理重設為「全部」），空陣列＝全部。
+  // 這裡存的是使用者的原始勾選，使用前一律經 resolveEffectiveSelection 與目前 chip 列取交集。
+  const [selectedDesignerIds, setSelectedDesignerIds] = React.useState<string[]>([]);
+  const [designerOptions, setDesignerOptions] = React.useState<DesignerFilterOption[] | null>(null);
+  const [designerLeaves, setDesignerLeaves] = React.useState<DesignerLeaveEntry[]>([]);
 
   const [selectedAppointment, setSelectedAppointment] = React.useState<WeekAppointment | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
@@ -112,9 +134,59 @@ export function AdminDashboard() {
     };
   }, [supabase, weekRange.weekStart, weekRange.weekEnd]);
 
+  // 設計師清單掛載時查一次（比照 closedWeekdays；另一個分頁新增或停用設計師要重新整理才看得到）。
+  // 失敗時視為沒有任何 chip（等同「全部」），不阻擋週曆渲染。
+  React.useEffect(() => {
+    let cancelled = false;
+
+    getDesignerFilterOptions(supabase).then((res) => {
+      if (cancelled) return;
+      setDesignerOptions(res.ok ? res.data : []);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  // 請假日跟著週次重新查詢，寫法比照上方 closedDates：失敗時維持既有值、不跳錯誤 Toast（標示是次要輔助資訊）。
+  React.useEffect(() => {
+    let cancelled = false;
+
+    getDesignerLeavesInRange(supabase, weekRange.weekStart, weekRange.weekEnd).then((res) => {
+      if (cancelled || !res.ok) return;
+      setDesignerLeaves(res.data);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, weekRange.weekStart, weekRange.weekEnd]);
+
   const matchesRequest = result?.key === weekRange.weekStart;
   const status: "loading" | "loaded" | "error" = matchesRequest ? result!.status : "loading";
-  const appointments = matchesRequest ? result!.appointments : [];
+  const appointments = React.useMemo(() => (matchesRequest ? result!.appointments : []), [matchesRequest, result]);
+
+  const designerChips = React.useMemo(
+    () => buildDesignerChips(designerOptions ?? [], appointments),
+    [designerOptions, appointments],
+  );
+  const effectiveDesignerIds = React.useMemo(
+    () => resolveEffectiveSelection(selectedDesignerIds, designerChips),
+    [selectedDesignerIds, designerChips],
+  );
+  const visibleAppointments = React.useMemo(
+    () => filterAppointments(appointments, effectiveDesignerIds),
+    [appointments, effectiveDesignerIds],
+  );
+  const leaveLabels = React.useMemo(
+    () => buildLeaveLabels(designerLeaves, effectiveDesignerIds, designerChips),
+    [designerLeaves, effectiveDesignerIds, designerChips],
+  );
+  const filteredEmptyTitle =
+    status === "loaded" && effectiveDesignerIds.length > 0 && appointments.length > 0 && visibleAppointments.length === 0
+      ? formatFilteredEmptyTitle(effectiveDesignerIds, designerChips)
+      : null;
 
   // 切換週次時關閉任何開啟中的 Modal／確認框，避免使用者看著上一週的預約詳情
   // 卻已經不在目前顯示的週次範圍內。
@@ -236,18 +308,36 @@ export function AdminDashboard() {
           </ToggleButtonGroup>
         </Stack>
 
+        <DesignerFilterChips
+          loading={designerOptions === null || status === "loading"}
+          chips={designerChips}
+          selectedIds={effectiveDesignerIds}
+          totalCount={countActiveAppointments(appointments)}
+          // 以有效選取為基礎切換，順手清掉殘留的（已不在 chip 列的）id。
+          onToggle={(designerId) => setSelectedDesignerIds(toggleDesigner(effectiveDesignerIds, designerId))}
+          onClear={() => setSelectedDesignerIds([])}
+        />
+
         {viewMode === "calendar" ? (
           <WeekCalendar
             weekDays={weekDays}
             todayDate={todayDate}
             status={status}
-            appointments={appointments}
+            appointments={visibleAppointments}
             closedWeekdays={closedWeekdays}
             closedDates={closedDates}
             onEventClick={handleEventClick}
+            showDesignerRow={shouldShowDesignerRow(effectiveDesignerIds)}
+            leaveLabels={leaveLabels}
+            filteredEmptyTitle={filteredEmptyTitle}
           />
         ) : (
-          <AppointmentListView status={status} appointments={appointments} onRowClick={handleEventClick} />
+          <AppointmentListView
+            status={status}
+            appointments={visibleAppointments}
+            onRowClick={handleEventClick}
+            filteredEmptyTitle={filteredEmptyTitle}
+          />
         )}
       </Box>
 

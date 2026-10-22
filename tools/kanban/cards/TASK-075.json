@@ -2,7 +2,7 @@
   "id": "TASK-075",
   "title": "多位設計師 後台週曆／列表設計師標示與多選篩選、詳情顯示設計師、改期依原設計師",
   "content": "多選 Chip 篩選（規則見 mockup-decision）、請假標示、列表設計師欄、詳情設計師列；reschedule-slots 依 designer_id 與請假日計算。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -38,7 +38,7 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-預約週曆設計師篩選.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-預約週曆設計師篩選.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-075.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-075.md",
     "pr": ""
   },
   "refs": [
@@ -49,18 +49,45 @@
     "app/admin/_components/WeekCalendar.tsx",
     "app/admin/_components/AppointmentListView.tsx",
     "app/admin/_components/AppointmentDetailDialog.tsx",
-    "app/admin/_components/DesignerFilterChips.tsx"
+    "app/admin/_components/DesignerFilterChips.tsx",
+    "lib/admin/designers.ts",
+    "tests/business-hours.integration.test.ts",
+    "lib/admin/designer-filter.ts",
+    "vitest.admin-booking.config.ts",
+    "vitest.business-hours.config.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：通過",
+      "npm run build：通過",
+      "npx vitest run --maxWorkers=3：1026/1030（4 項為 account-settings-view／designer-picker-section 的 5 秒逾時，未改動檔案，單獨重跑 56/56 通過）",
+      "npm run test:admin-booking（真實 Supabase）：16/16 通過",
+      "npm run test:business-hours -- -t 後台改期表單（真實 Supabase）：1/1 通過",
+      "瀏覽器走查（正式資料庫，__TEST__ 資料，已清除）：篩選單選／多選／清除、請假標示、列表、空狀態、詳情、改期（同時段別位設計師不排除、請假日無時段、實際改期成功）、亮暗色"
+    ],
+    "findings": [
+      "長名稱或已停用的 Chip 計數被裁掉，已修",
+      "窄欄時請假標示的「請假」兩字被省略號吃掉，已修",
+      "整合測試 vitest 設定缺 @ 別名，已補到 test:admin-booking／test:business-hours 兩個 config（範圍外的必要連動）"
+    ],
+    "residual": "停用設計師／沒開服務／請假日改期只在前端檢查（資料庫不強制），TASK-072 殘留改為「改期請假檢查只在前端」；options 掛載時只查一次；顧客名稱方向控制字元為既有風險；未做實作後 subagent 審查；mfa-rls 未涵蓋 designer_leaves"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前 architect／security-reviewer 審查完成並採納（見任務卡「動工前審查定案」）；範圍補列 lib/admin/designers.ts、tests/business-hours.integration.test.ts 已由使用者同意。開始實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。"
     }
   ]
 }

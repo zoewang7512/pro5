@@ -23,6 +23,8 @@ import {
   markAppointmentCompleted,
   rescheduleAppointment,
 } from "../lib/admin/appointments";
+import { getDesignerLeavesInRange } from "../lib/admin/designers";
+import { getOccupiedRangesForDate, isDesignerOnLeave } from "../lib/admin/reschedule-slots";
 import { getWeekRange } from "../lib/admin/week-range";
 import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
@@ -105,9 +107,12 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
   let testServiceId: string;
   // 0018 起預約依設計師計算、appointments.designer_id 為 not null：fixture 預約要帶測試設計師。
   let testDesignerId: string;
+  let testDesignerName: string;
+  // TASK-075：第二位測試設計師，驗證改期時段只算「該預約的設計師」。名稱前綴 __TEST__fx-，只對 __TEST__ 服務開啟。
+  let secondDesignerId: string;
 
-  const OPEN_DATES = generateOpenWeekdays(4, 40);
-  const [READ_DATE, STATUS_DATE, RESCHEDULE_DATE, RLS_WRITE_DATE] = OPEN_DATES;
+  const OPEN_DATES = generateOpenWeekdays(6, 40);
+  const [READ_DATE, STATUS_DATE, RESCHEDULE_DATE, RLS_WRITE_DATE, DESIGNER_DATE, LEAVE_DATE] = OPEN_DATES;
 
   beforeAll(async () => {
     serviceRoleClient = createClient(url!, serviceRoleKey!, {
@@ -138,7 +143,13 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       .single();
     if (serviceError) throw serviceError;
     testServiceId = service.id;
-    testDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "admbook", serviceIds: [testServiceId] })).id;
+    const firstDesigner = await createTestDesigner(serviceRoleClient, { tag: "admbook", serviceIds: [testServiceId] });
+    testDesignerId = firstDesigner.id;
+    testDesignerName = firstDesigner.name;
+    // 另一位測試設計師的建立失敗時，第一位已經存在：afterAll 仍會清除（secondDesignerId 為 undefined 時略過）。
+    secondDesignerId = (
+      await createTestDesigner(serviceRoleClient, { tag: "admbook2", serviceIds: [testServiceId], sortOrder: 1 })
+    ).id;
   });
 
   afterAll(async () => {
@@ -159,9 +170,19 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
         .eq("service_id", testServiceId);
       if (deleteRemainingError) cleanupErrors.push(deleteRemainingError);
 
-      if (testDesignerId) {
+      // 請假列明確先刪（designer_leaves 雖會隨設計師 cascade 刪除，仍先刪再由 cleanupTestDesigners 驗證）。
+      if (secondDesignerId) {
+        const { error: deleteLeavesError } = await serviceRoleClient
+          .from("designer_leaves")
+          .delete()
+          .eq("designer_id", secondDesignerId);
+        if (deleteLeavesError) cleanupErrors.push(deleteLeavesError);
+      }
+
+      const designerIds = [testDesignerId, secondDesignerId].filter(Boolean);
+      if (designerIds.length > 0) {
         try {
-          await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+          await cleanupTestDesigners(serviceRoleClient, designerIds);
         } catch (error) {
           cleanupErrors.push(error);
         }
@@ -183,12 +204,14 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
     startAt: string;
     endAt: string;
     status?: "pending" | "confirmed" | "completed" | "cancelled";
+    designerId?: string;
   }): Promise<string> {
+    // customer_email 一律不填（null）：0012 的 Database Webhook 在 email 非 null 時才會寄信，絕不能對測試資料觸發。
     const { data, error } = await serviceRoleClient
       .from("appointments")
       .insert({
         service_id: testServiceId,
-        designer_id: testDesignerId,
+        designer_id: params.designerId ?? testDesignerId,
         customer_name: `${TEST_MARKER} ${params.name}`,
         customer_phone: testPhone(),
         start_at: params.startAt,
@@ -237,6 +260,9 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       expect(found!.customer_name).toBe(`${TEST_MARKER} read-fixture`);
       expect(found!.service_name).toBe(`${TEST_MARKER} service`);
       expect(found!.duration_minutes).toBe(30);
+      // TASK-075：週曆查詢帶出設計師（embed designers 在 authenticated 欄位層級授權下可讀）。
+      expect(found!.designer_id).toBe(testDesignerId);
+      expect(found!.designer).toEqual({ id: testDesignerId, name: testDesignerName, avatar_url: null });
       expect(epoch(found!.start_at)).toBe(epoch(startAt));
       expect(epoch(found!.end_at)).toBe(epoch(endAt));
     });
@@ -378,6 +404,117 @@ describe("預約管理後台整合測試（真實 Supabase 專案）", () => {
       const timing = await fetchTiming(appointmentId);
       expect(epoch(timing.start_at)).toBe(epoch(originalStart));
       expect(epoch(timing.end_at)).toBe(epoch(originalEnd));
+    });
+  });
+
+  describe("TASK-075：改期只看該預約的設計師（佔用時段、請假日）", () => {
+    it("getOccupiedRangesForDate 只回傳該設計師的預約（正向對照：自己的預約確實被回傳，別位的不在其中）", async () => {
+      const aId = await insertFixture({
+        name: "occupied-a",
+        startAt: isoAt(DESIGNER_DATE, 10, 0),
+        endAt: isoAt(DESIGNER_DATE, 10, 30),
+      });
+      await insertFixture({
+        name: "occupied-b",
+        startAt: isoAt(DESIGNER_DATE, 11, 0),
+        endAt: isoAt(DESIGNER_DATE, 11, 30),
+        designerId: secondDesignerId,
+      });
+      const noExclude = "00000000-0000-0000-0000-000000000000";
+
+      const forA = await getOccupiedRangesForDate(designerClient, {
+        date: DESIGNER_DATE,
+        designerId: testDesignerId,
+        excludeAppointmentId: noExclude,
+      });
+      expect(forA.ok).toBe(true);
+      if (!forA.ok) return;
+      const aStarts = forA.data.map((range) => epoch(range.start_at));
+      // 正向對照：查詢確實有回傳資料列，且包含 A 自己的預約；這樣「不含 B」才不是 RLS 回空造成的恆真斷言。
+      expect(aStarts).toContain(epoch(isoAt(DESIGNER_DATE, 10, 0)));
+      expect(aStarts).not.toContain(epoch(isoAt(DESIGNER_DATE, 11, 0)));
+
+      const forB = await getOccupiedRangesForDate(designerClient, {
+        date: DESIGNER_DATE,
+        designerId: secondDesignerId,
+        excludeAppointmentId: noExclude,
+      });
+      expect(forB.ok).toBe(true);
+      if (!forB.ok) return;
+      const bStarts = forB.data.map((range) => epoch(range.start_at));
+      expect(bStarts).toContain(epoch(isoAt(DESIGNER_DATE, 11, 0)));
+      expect(bStarts).not.toContain(epoch(isoAt(DESIGNER_DATE, 10, 0)));
+
+      // 排除正在改期的這筆：A 自己的預約被排除、別位的仍不在其中。
+      const excluded = await getOccupiedRangesForDate(designerClient, {
+        date: DESIGNER_DATE,
+        designerId: testDesignerId,
+        excludeAppointmentId: aId,
+      });
+      expect(excluded.ok && excluded.data.map((range) => epoch(range.start_at))).not.toContain(
+        epoch(isoAt(DESIGNER_DATE, 10, 0)),
+      );
+    });
+
+    it("兩位設計師同時段各有預約，各自改期互不影響；撞到自己的預約回 SLOT_CONFLICT，撞到別位的則可以", async () => {
+      const sameStart = isoAt(DESIGNER_DATE, 13, 0);
+      const sameEnd = isoAt(DESIGNER_DATE, 13, 30);
+      // 同一時段、不同設計師：自 0018 起 appointments_no_overlap 只管「同一位設計師」。
+      const aId = await insertFixture({ name: "both-a", startAt: sameStart, endAt: sameEnd });
+      const bId = await insertFixture({ name: "both-b", startAt: sameStart, endAt: sameEnd, designerId: secondDesignerId });
+
+      const targetStart = isoAt(DESIGNER_DATE, 14, 0);
+      const targetEnd = isoAt(DESIGNER_DATE, 14, 30);
+
+      const aResult = await rescheduleAppointment(designerClient, aId, sameStart, targetStart, targetEnd);
+      expect(aResult.ok).toBe(true);
+      // B 改到「A 剛搬進去的同一個時段」：不同設計師，不衝突。
+      const bResult = await rescheduleAppointment(designerClient, bId, sameStart, targetStart, targetEnd);
+      expect(bResult.ok).toBe(true);
+
+      for (const id of [aId, bId]) {
+        const timing = await fetchTiming(id);
+        expect(epoch(timing.start_at)).toBe(epoch(targetStart));
+        expect(epoch(timing.end_at)).toBe(epoch(targetEnd));
+      }
+
+      // 同設計師撞時段：A 另有一筆 16:00，改到 A 自己剛搬進去的 14:00 一定衝突。
+      const a2Id = await insertFixture({
+        name: "both-a2",
+        startAt: isoAt(DESIGNER_DATE, 16, 0),
+        endAt: isoAt(DESIGNER_DATE, 16, 30),
+      });
+      const conflict = await rescheduleAppointment(
+        designerClient,
+        a2Id,
+        isoAt(DESIGNER_DATE, 16, 0),
+        targetStart,
+        targetEnd,
+      );
+      expect(conflict.ok).toBe(false);
+      if (conflict.ok) return;
+      expect(conflict.error.code).toBe("SLOT_CONFLICT");
+    });
+
+    it("isDesignerOnLeave／getDesignerLeavesInRange：admin 讀得到請假日（RLS 路徑），只算指定的設計師，anon 讀不到", async () => {
+      const { error: insertError } = await serviceRoleClient
+        .from("designer_leaves")
+        .insert({ designer_id: secondDesignerId, date: LEAVE_DATE });
+      if (insertError) throw insertError;
+
+      const onLeave = await isDesignerOnLeave(designerClient, secondDesignerId, LEAVE_DATE);
+      expect(onLeave).toEqual({ ok: true, data: true });
+      // 別位設計師同一天、同一位設計師別天：都不算請假。
+      expect(await isDesignerOnLeave(designerClient, testDesignerId, LEAVE_DATE)).toEqual({ ok: true, data: false });
+      expect(await isDesignerOnLeave(designerClient, secondDesignerId, OPEN_DATES[0])).toEqual({ ok: true, data: false });
+
+      const inRange = await getDesignerLeavesInRange(designerClient, LEAVE_DATE, LEAVE_DATE);
+      expect(inRange.ok && inRange.data).toContainEqual({ designer_id: secondDesignerId, date: LEAVE_DATE });
+
+      // anon 對 designer_leaves 沒有任何授權：查詢失敗（fail-closed），不是回「沒請假」。
+      const anonResult = await isDesignerOnLeave(anonClient, secondDesignerId, LEAVE_DATE);
+      expect(anonResult.ok).toBe(false);
+      expect((await getDesignerLeavesInRange(anonClient, LEAVE_DATE, LEAVE_DATE)).ok).toBe(false);
     });
   });
 
