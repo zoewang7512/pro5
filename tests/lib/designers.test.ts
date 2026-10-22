@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   designerInitial,
+  instagramProfileUrl,
+  isDesignerId,
+  normalizeDesignerBio,
   normalizeInstagramHandle,
   normalizeSpecialties,
   resolveDesignerAssetUrl,
@@ -209,4 +212,59 @@ describe("normalizeInstagramHandle／validateInstagramHandle", () => {
     expect(validateInstagramHandle("javascript:alert(1)")).toBe(message);
     expect(validateInstagramHandle("@@mei")).toBe(message);
   });
+});
+
+describe("validateDesignerBio 控制／方向字元（TASK-069）", () => {
+  it("允許換行（\n、\r\n）", () => {
+    expect(validateDesignerBio("第一行\n第二行")).toBeNull();
+    expect(validateDesignerBio("第一行\r\n第二行")).toBeNull();
+  });
+  it.each([
+    ["Tab", "a\tb"],
+    ["NUL", "a\u0000b"],
+    ["右至左覆寫 U+202E", "a‮b"],
+    ["零寬空白 U+200B", "a​b"],
+    ["方向隔離 U+2066", "a⁦b"],
+  ])("含有 %s 回傳錯誤", (_label, bio) => {
+    expect(validateDesignerBio(bio)).toBe("簡介含有不允許的字元");
+  });
+});
+
+describe("normalizeDesignerBio", () => {
+  it("換行統一成 \n、去前後空白", () => {
+    expect(normalizeDesignerBio("  第一行\r\n第二行\r第三行  ")).toBe("第一行\n第二行\n第三行");
+  });
+  it("空白視為未填（null）", () => {
+    expect(normalizeDesignerBio("")).toBeNull();
+    expect(normalizeDesignerBio("  \n  ")).toBeNull();
+  });
+  it("NFC 正規化", () => {
+    expect(normalizeDesignerBio("é")).toBe("é");
+  });
+});
+
+describe("instagramProfileUrl", () => {
+  it("合法帳號組出固定網域的個人頁網址", () => {
+    expect(instagramProfileUrl("mei.hair_01")).toBe("https://www.instagram.com/mei.hair_01/");
+  });
+  it("null 或格式不符不給連結", () => {
+    expect(instagramProfileUrl(null)).toBeNull();
+    expect(instagramProfileUrl("")).toBeNull();
+    expect(instagramProfileUrl("a/b")).toBeNull();
+    expect(instagramProfileUrl("javascript:alert(1)")).toBeNull();
+    expect(instagramProfileUrl("a".repeat(31))).toBeNull();
+  });
+});
+
+describe("isDesignerId", () => {
+  it("標準 uuid（大小寫皆可）通過", () => {
+    expect(isDesignerId("3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6b")).toBe(true);
+    expect(isDesignerId("3F2B8C1E-9D4A-4E6F-8A7B-1C2D3E4F5A6B")).toBe(true);
+  });
+  it.each(["", "abc", "new", "3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6", "3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6bz", "../etc"])(
+    "%j 不通過",
+    (id) => {
+      expect(isDesignerId(id)).toBe(false);
+    },
+  );
 });

@@ -74,9 +74,22 @@ export function validateDesignerName(name: string): string | null {
   return null;
 }
 
+// 簡介允許換行（\n、\r），其餘控制字元與方向／零寬字元同樣禁止。資料庫只檢查簡介長度
+// （designers_bio_length），這裡是唯一一道擋住在公開頁偽造文字顯示方向的防線
+// （security-reviewer TASK-069 審查 L2）；資料庫 constraint 另開卡補。
+const BIO_FORBIDDEN_CHARS = /[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/;
+
 // 簡介：選填，200 字以內（對齊 designers_bio_length）。
 export function validateDesignerBio(bio: string): string | null {
-  return Array.from(bio).length <= DESIGNER_BIO_MAX_LENGTH ? null : `${DESIGNER_BIO_MAX_LENGTH} 字以內`;
+  if (Array.from(bio).length > DESIGNER_BIO_MAX_LENGTH) return `${DESIGNER_BIO_MAX_LENGTH} 字以內`;
+  if (BIO_FORBIDDEN_CHARS.test(bio)) return "簡介含有不允許的字元";
+  return null;
+}
+
+// 送出前的簡介清理：換行統一成 \n、NFC 正規化、去前後空白；空白視為未填（null）。
+export function normalizeDesignerBio(bio: string): string | null {
+  const normalized = bio.replace(/\r\n?/g, "\n").normalize("NFC").trim();
+  return normalized.length === 0 ? null : normalized;
 }
 
 // 專長標籤：0～5 個，每個 1～12 字，不可重複（對齊 designer_specialties_valid）。比對重複時
@@ -111,4 +124,19 @@ export function validateInstagramHandle(raw: string): string | null {
   const handle = normalizeInstagramHandle(raw);
   if (handle === null) return null;
   return INSTAGRAM_HANDLE_PATTERN.test(handle) ? null : "只能使用英文、數字、底線和句點";
+}
+
+// 由帳號名稱組出固定網域的個人頁網址（資料庫不存網址，杜絕 javascript: 與釣魚網址）。渲染前再驗證
+// 一次格式，不通過就不給連結；連結請搭配 target="_blank" rel="noopener noreferrer"。
+export function instagramProfileUrl(handle: string | null): string | null {
+  if (handle === null || !INSTAGRAM_HANDLE_PATTERN.test(handle)) return null;
+  return `https://www.instagram.com/${encodeURIComponent(handle)}/`;
+}
+
+const DESIGNER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// 來自網址的設計師 id 先過這一關：格式錯誤的 id 送進 PostgREST 會得到 22P02，和真正的讀取失敗
+// 分不出來。大小寫皆可通過（查詢用），但組 Storage 路徑時必須改用資料庫回傳的小寫 id。
+export function isDesignerId(id: string): boolean {
+  return DESIGNER_ID_PATTERN.test(id);
 }

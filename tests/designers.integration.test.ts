@@ -25,8 +25,36 @@
 // 到 Authentication → Users 刪除。）
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { listDesigners } from "@/lib/admin/designers";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  countFutureAppointmentsForDesigner,
+  createDesigner as createDesignerAdmin,
+  listDesigners,
+  removeDesignerAvatar,
+  setDesignerActive,
+  swapDesignerOrder,
+  updateDesignerBasicInfo,
+  uploadDesignerAvatar,
+} from "@/lib/admin/designers";
+
+// Node 環境沒有 canvas／createImageBitmap：重新編碼本身有單元測試（tests/lib/image-reencode.test.ts），
+// 這裡只替換成固定輸出（1x1 PNG），讓上傳流程（Storage policy、CAS、刪舊檔）打真實專案。
+vi.mock("@/lib/admin/image-reencode", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/admin/image-reencode")>()),
+  reencodeImage: vi.fn(async () => ({
+    ok: true as const,
+    blob: new Blob(
+      [
+        Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+          "base64",
+        ),
+      ],
+      { type: "image/png" },
+    ),
+    extension: "png",
+  })),
+}));
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -2220,6 +2248,257 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       const activeIds = new Set((activeServices ?? []).map((s) => s.id));
       const expectedCount = (links ?? []).filter((l) => activeIds.has(l.service_id)).length;
       expect(designers.find((d) => d.id === defaultDesigner!.id)?.service_count).toBe(expectedCount);
+    });
+  });
+
+  // TASK-069：後台寫入函式，用真實 admin session 打真實專案。隔離規則：只建立／修改本檔案的 `__TEST__dz-`
+  // 設計師；排序只傳入本檔案建立的設計師清單（絕不把預設設計師放進去，否則「有重複值時整份重新編號」會改到他）；
+  // 不建立任何 appointments。
+  describe("TASK-069：後台設計師寫入函式（真實 admin session）", () => {
+    const VALID = { name: "", instagram: "", specialties: [] as string[], bio: "" };
+
+    async function readDesigner(id: string) {
+      const { data, error } = await serviceRoleClient
+        .from("designers")
+        .select("name, bio, specialties, instagram_handle, avatar_url, is_active, sort_order")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function defaultDesignerSnapshot() {
+      const { data, error } = await serviceRoleClient
+        .from("designers")
+        .select("id, sort_order, is_active, avatar_url, name")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(1)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function statusOf(fileUrl: string): Promise<number> {
+      const res = await fetch(fileUrl);
+      await res.arrayBuffer();
+      return res.status;
+    }
+
+    it("createDesigner：sort_order 排在目前最大值之後、預設啟用，欄位依規則清理（去 @、去空白、簡介空白轉 null）", async () => {
+      const { data: last } = await serviceRoleClient
+        .from("designers")
+        .select("sort_order")
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single();
+
+      const result = await createDesignerAdmin(adminClient, {
+        name: `  ${TEST_MARKER}-w1  `,
+        instagram: " @mei.hair_01 ",
+        specialties: [" 韓系剪髮 ", "漸層染"],
+        bio: "  ",
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      track(result.data.id);
+
+      expect(await readDesigner(result.data.id)).toMatchObject({
+        name: `${TEST_MARKER}-w1`,
+        instagram_handle: "mei.hair_01",
+        specialties: ["韓系剪髮", "漸層染"],
+        bio: null,
+        avatar_url: null,
+        is_active: true,
+        sort_order: (last!.sort_order as number) + 1,
+      });
+    });
+
+    it("createDesigner：資料庫 check constraint 擋下繞過前端的非法值（名稱空白、IG 含空白、標籤重複），回傳通用錯誤", async () => {
+      const before = (await serviceRoleClient.from("designers").select("id")).data?.length;
+      for (const bad of [
+        { ...VALID, name: "   " },
+        { ...VALID, name: `${TEST_MARKER}-bad`, instagram: "mei hair" },
+        { ...VALID, name: `${TEST_MARKER}-bad`, specialties: ["重複", "重複"] },
+        { ...VALID, name: `${TEST_MARKER}-bad`, specialties: ["1", "2", "3", "4", "5", "6"] },
+        { ...VALID, name: `${TEST_MARKER}-bad`, bio: "字".repeat(201) },
+      ]) {
+        const result = await createDesignerAdmin(adminClient, bad);
+        if (result.ok) track(result.data.id);
+        expect(result.ok, JSON.stringify(bad)).toBe(false);
+        if (!result.ok) expect(result.error.message).toBe("發生未預期的錯誤，請稍後再試。");
+      }
+      expect((await serviceRoleClient.from("designers").select("id")).data?.length).toBe(before);
+    });
+
+    it("createDesigner：非管理員被 RLS 擋下", async () => {
+      const result = await createDesignerAdmin(nonAdminClient, { ...VALID, name: `${TEST_MARKER}-nonadmin-create` });
+      if (result.ok) track(result.data.id);
+      expect(result.ok).toBe(false);
+    });
+
+    it("updateDesignerBasicInfo：admin 可更新；只動基本資料欄位，不動頭像／啟用／順序", async () => {
+      const id = await createDesigner({ sort_order: 190, avatar_url: null });
+      const result = await updateDesignerBasicInfo(adminClient, id, {
+        name: `${TEST_MARKER}-w2`,
+        instagram: "@new.handle",
+        specialties: ["燙髮"],
+        bio: "第一行\r\n第二行",
+      });
+      expect(result.ok).toBe(true);
+      expect(await readDesigner(id)).toMatchObject({
+        name: `${TEST_MARKER}-w2`,
+        instagram_handle: "new.handle",
+        specialties: ["燙髮"],
+        bio: "第一行\n第二行",
+        is_active: true,
+        sort_order: 190,
+        avatar_url: null,
+      });
+    });
+
+    it("updateDesignerBasicInfo：非管理員被擋下（0 列），資料不變；非法值被資料庫擋下", async () => {
+      const before = await readDesigner(activeDesignerId);
+      const blocked = await updateDesignerBasicInfo(nonAdminClient, activeDesignerId, {
+        ...VALID,
+        name: `${TEST_MARKER}-hacked`,
+      });
+      expect(blocked.ok).toBe(false);
+      expect(await readDesigner(activeDesignerId)).toEqual(before);
+
+      const invalid = await updateDesignerBasicInfo(adminClient, activeDesignerId, {
+        ...VALID,
+        name: `${TEST_MARKER}-ok`,
+        instagram: "bad handle",
+      });
+      expect(invalid.ok).toBe(false);
+      expect(await readDesigner(activeDesignerId)).toEqual(before);
+    });
+
+    it("setDesignerActive：admin 可停用再重新啟用；非管理員不能", async () => {
+      const id = await createDesigner();
+      expect((await setDesignerActive(adminClient, id, false)).ok).toBe(true);
+      expect((await readDesigner(id)).is_active).toBe(false);
+      expect((await setDesignerActive(adminClient, id, true)).ok).toBe(true);
+      expect((await readDesigner(id)).is_active).toBe(true);
+
+      expect((await setDesignerActive(nonAdminClient, id, false)).ok).toBe(false);
+      expect((await readDesigner(id)).is_active).toBe(true);
+    });
+
+    it("countFutureAppointmentsForDesigner：新設計師為 0；欄位層級授權下 head count 可用（不是 42501）", async () => {
+      const id = await createDesigner();
+      expect(await countFutureAppointmentsForDesigner(adminClient, id)).toEqual({ ok: true, data: 0 });
+
+      // 對預設設計師只做唯讀查詢，確認真實資料上的查詢也能執行。
+      const defaultDesigner = await defaultDesignerSnapshot();
+      const real = await countFutureAppointmentsForDesigner(adminClient, defaultDesigner.id as string);
+      expect(real.ok).toBe(true);
+    });
+
+    it("swapDesignerOrder：交換相鄰兩位；第一位上移、最後一位下移不變；預設設計師完全不受影響", async () => {
+      const a = await createDesigner({ sort_order: 201 });
+      const b = await createDesigner({ sort_order: 202 });
+      const c = await createDesigner({ sort_order: 203 });
+      const defaultBefore = await defaultDesignerSnapshot();
+      // 只傳入本檔案建立的設計師，不含預設設計師。
+      const list = [
+        { id: a, sort_order: 201 },
+        { id: b, sort_order: 202 },
+        { id: c, sort_order: 203 },
+      ];
+
+      expect((await swapDesignerOrder(adminClient, list, 1, "up")).ok).toBe(true);
+      expect([(await readDesigner(a)).sort_order, (await readDesigner(b)).sort_order]).toEqual([202, 201]);
+      expect((await readDesigner(c)).sort_order).toBe(203);
+
+      const unchanged = [
+        { id: b, sort_order: 201 },
+        { id: a, sort_order: 202 },
+        { id: c, sort_order: 203 },
+      ];
+      expect((await swapDesignerOrder(adminClient, unchanged, 0, "up")).ok).toBe(true);
+      expect((await swapDesignerOrder(adminClient, unchanged, 2, "down")).ok).toBe(true);
+      expect([(await readDesigner(a)).sort_order, (await readDesigner(b)).sort_order, (await readDesigner(c)).sort_order]).toEqual([202, 201, 203]);
+
+      expect(await defaultDesignerSnapshot()).toEqual(defaultBefore);
+    });
+
+    it("swapDesignerOrder：非管理員被擋下，順序不變", async () => {
+      const a = await createDesigner({ sort_order: 211 });
+      const b = await createDesigner({ sort_order: 212 });
+      const result = await swapDesignerOrder(
+        nonAdminClient,
+        [
+          { id: a, sort_order: 211 },
+          { id: b, sort_order: 212 },
+        ],
+        0,
+        "down",
+      );
+      expect(result.ok).toBe(false);
+      expect([(await readDesigner(a)).sort_order, (await readDesigner(b)).sort_order]).toEqual([211, 212]);
+    });
+
+    it("頭像：上傳 → 更換（舊檔真的被刪）→ 移除（檔案真的被刪），資料列隨之更新", async () => {
+      const id = await createDesigner();
+      const png = () => new File([TINY_PNG], "a.png", { type: "image/png" });
+
+      const first = await uploadDesignerAvatar(adminClient, id, png());
+      expect(first.ok).toBe(true);
+      if (!first.ok) return;
+      expect(first.data.cleanupWarning).toBe(false);
+      expect(first.data.url).toContain(`/designer-assets/avatar/${id}/`);
+      expect((await readDesigner(id)).avatar_url).toBe(first.data.url);
+      expect(await listFolder(`avatar/${id}`)).toHaveLength(1);
+
+      // 注意：不要在刪除前對「預期被刪的網址」發請求——CDN 會快取 200（TASK-067 已記載的殘留），
+      // 之後的 400／404 斷言就會因快取而失敗。公開讀取成功的證據在最後一個案例。
+      const second = await uploadDesignerAvatar(adminClient, id, png());
+      expect(second.ok).toBe(true);
+      if (!second.ok) return;
+      expect(second.data.url).not.toBe(first.data.url);
+      expect(second.data.cleanupWarning).toBe(false);
+      expect((await readDesigner(id)).avatar_url).toBe(second.data.url);
+      // 舊檔真的被刪：資料夾只剩新檔，舊網址回 400／404。
+      expect(await listFolder(`avatar/${id}`)).toEqual([`avatar/${id}/${second.data.url.split("/").pop()}`]);
+      expect([400, 404]).toContain(await statusOf(first.data.url));
+
+      const removed = await removeDesignerAvatar(adminClient, id);
+      expect(removed).toEqual({ ok: true, data: { cleanupWarning: false } });
+      expect((await readDesigner(id)).avatar_url).toBeNull();
+      expect([400, 404]).toContain(await statusOf(second.data.url));
+      expect(await listFolder(`avatar/${id}`)).toEqual([]);
+    });
+
+    it("頭像：非管理員上傳被 Storage policy 擋下，資料列不變、不留下檔案", async () => {
+      const before = await readDesigner(activeDesignerId);
+      const result = await uploadDesignerAvatar(
+        nonAdminClient,
+        activeDesignerId,
+        new File([TINY_PNG], "a.png", { type: "image/png" }),
+      );
+      expect(result.ok).toBe(false);
+      expect(await readDesigner(activeDesignerId)).toEqual(before);
+      expect(await listFolder(`avatar/${activeDesignerId}`)).toEqual([]);
+    });
+
+    it("頭像：舊網址被手動改成其他設計師的檔案時，只更新資料列、不會刪到別人的檔案（回傳警告）", async () => {
+      const victim = await createDesigner();
+      const owner = await createDesigner();
+      const victimUpload = await uploadDesignerAvatar(adminClient, victim, new File([TINY_PNG], "a.png", { type: "image/png" }));
+      expect(victimUpload.ok).toBe(true);
+      if (!victimUpload.ok) return;
+
+      // 模擬資料被竄改：owner 的 avatar_url 指向 victim 的檔案。
+      const { error } = await serviceRoleClient.from("designers").update({ avatar_url: victimUpload.data.url }).eq("id", owner);
+      expect(error).toBeNull();
+
+      const replaced = await uploadDesignerAvatar(adminClient, owner, new File([TINY_PNG], "b.png", { type: "image/png" }));
+      expect(replaced.ok).toBe(true);
+      if (!replaced.ok) return;
+      expect(replaced.data.cleanupWarning).toBe(true);
+      expect(await statusOf(victimUpload.data.url)).toBe(200);
     });
   });
 });

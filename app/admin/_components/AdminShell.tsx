@@ -105,12 +105,19 @@ const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean; icon: 
   { label: "帳號設定", href: "/admin/account", icon: <UserCircleIcon /> },
 ];
 
+// 子路徑（例如 /admin/designers/new、/admin/designers/<id>）也算該導覽項目使用中；「預約」的
+// /admin 是所有後台頁面的前綴，只能完全比對。
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/admin") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { displayName, avatarUrl } = useAdminProfile();
   const items: SidebarItem[] = NAV_ITEMS.map((item) => ({
     ...item,
-    active: pathname === item.href,
+    active: isNavItemActive(pathname, item.href),
   }));
 
   return (

@@ -2,7 +2,7 @@
   "id": "TASK-069",
   "title": "多位設計師 後台設計師列表操作與「基本資料」頁籤",
   "content": "新增、停用／重新啟用（含未來預約警告）、上下箭頭排序；/admin/designers/[id] 四頁籤框架與基本資料（名稱、IG、專長、簡介、頭像）。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -37,7 +37,7 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-069.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-069.md",
     "pr": ""
   },
   "refs": [
@@ -50,15 +50,30 @@
     "app/admin/_components/DesignersTable.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：通過",
+      "npm run build：通過（出現 /admin/designers、/admin/designers/[id]、/admin/designers/new）",
+      "npx vitest run --maxWorkers=3：52 檔 690 項通過（預設並行度下曾有無關檔案逾時，單獨跑通過）",
+      "npm run test:designers -- -t \"TASK-069\"：12 項通過（真實專案，只動 __TEST__ 設計師，無殘留）",
+      "瀏覽器走查（正式資料庫）：新增、驗證錯誤、頭像上傳（1.8MB PNG→1024×768 webp 8KB）、排序、停用／啟用、儲存、亮色／768px；走查後以 service_role 清除，預設設計師未變"
+    ],
+    "findings": [
+      "動工前 architect／security-reviewer 皆 Approve with changes，採納事項見任務卡「動工前審查定案」",
+      "尚未做實作後的 security／test 審查"
+    ],
+    "residual": "排序重新編號分支不補償；最後一位啟用中以前端列表判斷；孤兒檔可能殘留；簡介字元只有前端擋（DB 需另開卡）；5MB 前置上限；全套測試預設並行度下的無關逾時。詳見驗證報告。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前審查完成：architect（Approve with changes）、security-reviewer（Approve with changes），採納事項已寫入任務卡「動工前審查定案」。使用者於對話中決定：擴充 ImageUploadField（選填 onUpload/onRemove＋shape=circle）、一併修 AdminShell 側邊欄高亮。"
     }
   ]
 }
