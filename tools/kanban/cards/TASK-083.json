@@ -1,0 +1,60 @@
+{
+  "id": "TASK-083",
+  "title": "UI 設計系統 後台「未儲存變更」離開提示：設計師基本資料、頁籤圓點、服務項目對話框",
+  "content": "設計師基本資料（含新增模式、專長標籤輸入中）、麵包屑攔截、「基本資料」頁籤未儲存圓點（變體 B，MUI Badge variant=dot）、服務項目新增／編輯對話框（背景／Esc／取消）。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-22",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-081"
+  ],
+  "order": 83,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/專案設置/feature-spec-未儲存變更離開提示.md",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-未儲存變更離開提示.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-未儲存變更離開提示.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-083.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/DesignerBasicInfoForm.tsx",
+    "app/admin/_components/DesignerEditView.tsx",
+    "app/admin/_components/ServiceFormDialog.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "implementation-plan 產出。計畫待人工核准；前置卡完成後才可就緒。"
+    }
+  ]
+}

@@ -2,69 +2,159 @@
 
 ## Metadata
 
-- 任務：UI 設計系統 後台表單「未儲存變更」離開提示
-- 上層規格：[`feature-spec-未儲存變更離開提示.md`](../feature-spec-未儲存變更離開提示.md)（草稿，待人工核准）
+- 任務：UI 設計系統 後台「未儲存變更」離開提示：共用機制＋預約規則表單（試點）
+- 上層規格：[`feature-spec-未儲存變更離開提示.md`](../feature-spec-未儲存變更離開提示.md)（人工已核准 2026-10-22）
+- 畫面規格／mockup：[`screen-spec-未儲存變更離開提示.md`](../screen-spec-未儲存變更離開提示.md)、[`mockup-decision-未儲存變更離開提示.md`](../mockup-decision-未儲存變更離開提示.md)（人工已選定變體 B，2026-10-22）
 - 上層 Epic：專案設置
 - 上層 User Story：UI 設計系統
-- 分軌：前端（共用 hook／元件，再逐一套用到各表單）
-- 前置任務（dependsOn）：TASK-072（TASK-071／072 會修改 `DesignerEditView.tsx`，本卡也要改它的頁籤切換，排在其後避免同時改同一個檔案；若人工決定不含設計師編輯頁，可移除這條相依）
-- 狀態：**規格書草稿待人工核准**（2026-10-22 已完成需求釐清；核准規格後走 `ui-mockup-gate`、`implementation-plan`；**實作須等多位設計師合併 master 後再從 master 開分支**；不可進入就緒）
-- 風險等級：中（只影響前端互動，不碰資料與權限；但攔截導覽的做法若不當，可能讓使用者「離不開頁面」）
+- 分軌：前端
+- 前置任務（dependsOn）：TASK-072（已完成）
+- 後續卡：TASK-082、TASK-083（皆依賴本卡的共用機制）
+- 狀態：**計畫待人工核准**（2026-10-22 已拆卡；核准後才可進入就緒與實作）
+- 風險等級：中（只影響前端互動，不碰資料與權限；但攔截導覽若不當，可能讓使用者「離不開頁面」）
 - Agent owner：Claude Code
 - 人工核准者：使用者
+- 分支：`feat/task-081-unsaved-changes-guard`（從 master 開出；TASK-081／082／083 **同一分支依序實作**，每張一個實作 commit＋一個驗收 commit，三張都完成後再合併 master）
 
 ## 目標
 
-讓店長在後台「有儲存按鈕的表單」改了內容卻還沒儲存時，如果要離開（切頁籤、點側邊欄連結、關閉或重新整理頁面、關閉對話框），
-先跳出提示，避免輸入的內容在沒有警告的情況下消失。
-
-## 背景
-
-- 來源：TASK-070 驗收時，使用者詢問「提供服務頁籤是否要有存檔按鈕與未存檔提示」。該頁籤是已核准的「開關即時儲存」設計，
-  不適用；但同時發現整個後台**沒有任何**未儲存離開提示（`app/` 下沒有 `beforeunload` 或 dirty 追蹤），連有儲存按鈕的
-  「基本資料」頁籤也沒有。
-- 現況：`DesignerEditView.tsx` 的「基本資料」面板切頁籤時用 `hidden` 保持掛載，只保住「切頁籤」這一種情況；點側邊欄、
-  關頁面、重新整理仍會丟掉輸入。
+做出「未儲存變更離開提示」的**共用機制**，並套用到「預約規則」表單作為第一條完整的垂直切片：
+有未儲存變更時，點側邊欄、登出、或關閉／重新整理頁面，都會先提示；沒有變更時完全不打擾。
+其他表單由 TASK-082、TASK-083 套用同一機制。
 
 ## 情境包（Context Pack）
 
-- 候選涵蓋的表單（需人工決定範圍）：
-  - `DesignerBasicInfoForm.tsx`（設計師基本資料，含新增模式）
-  - `StoreSettingsForm.tsx`（商店基本資料）
-  - `BookingPolicyForm.tsx`（預約規則）
-  - `BusinessHoursForm.tsx`（營業時間，一次儲存全週）
-  - `AccountSettingsView.tsx`（帳號設定各區塊）
-  - `ServiceFormDialog.tsx` 等對話框（點背景或按 Esc 會直接關閉，輸入遺失）
-- 明確不在範圍：即時儲存的控制項（例如設計師「提供服務」的 Switch、作品集上傳、請假日新增刪除）；自動草稿儲存。
-- 既有可重用：`components/ui/ConfirmDialog.tsx`（二次確認對話框）。
-- 未知事項（開工前必須先走 `spec-interrogation`，以下是阻擋性問題）：
-  - **範圍**：上列哪些表單要納入？對話框要不要？
-  - **攔截哪些離開方式**：
-    - 瀏覽器層（關閉分頁、重新整理）：用 `beforeunload`，文案由瀏覽器決定，無法自訂。
-    - 站內導覽（側邊欄連結、麵包屑、瀏覽器上一頁）：Next.js App Router 沒有官方的離開攔截 API，要自行攔截連結點擊與
-      `popstate`，做法與副作用（上一頁的歷史紀錄錯位）需評估，也要先查是否有成熟的現成函式庫（依 `ai/process/workflow.md`
-      Phase 6，有 2-3 種可行做法時要請使用者選）。
-    - 站內切換（頁籤）：可自行以確認對話框處理。
-  - **提示文案與按鈕**：例如「有尚未儲存的變更，確定要離開？」「繼續編輯／放棄變更」；是否提供「儲存並離開」。
-  - **dirty 的判定**：與載入時的值比對（改回原值就不算變更）或只要動過就算？「專長標籤」輸入中尚未按 Enter 的內容算不算？
-  - **新增模式**（`/admin/designers/new`）建立成功後的 `router.replace` 不應被攔截。
-  - 這是 UI 變更，需產出畫面規格與 mockup 決策紀錄（`ui-mockup-gate`），先對照 `ai/context/design-system.md`。
-- 允許變更的檔案：需求釐清後於本卡補齊。
-- 不得觸碰：即時儲存控制項的行為；各表單的儲存邏輯與資料層。
+- 相關檔案（已讀過）：
+  - `components/ui/ConfirmDialog.tsx`（重用；需新增預設焦點選用 prop）
+  - `components/ui/Sidebar.tsx`（導覽項目是 `next/link` 的 `ListItemButton`；需新增選用的點擊攔截 prop）
+  - `app/admin/_components/AdminShell.tsx`（掛 Sidebar 的地方，`usePathname()` 推導 active；共用機制 Provider 放這裡）
+  - `app/admin/logout-button.tsx`（`handleLogout` 直接 `signOut()` 後 `router.replace`）
+  - `app/admin/_components/BookingPolicyForm.tsx`（`PolicyCard` 已有 `hasChanges`＝`fields` 與 `savedFields` 比對）
+  - `app/admin/layout.tsx`（`AdminProfileProvider` → `AdminShell`，Provider 掛載順序參考）
+  - 既有同類慣例：`app/admin/_components/AdminProfileContext.tsx`（context＋hook 的寫法）、`lib/admin/*.ts`（純函式放 `lib/admin/`）
+  - 既有測試：`tests/components/confirm-dialog.test.tsx`、`sidebar.test.tsx`、`admin-shell.test.tsx`
+- 既有模式：
+  - 後台元件是 client component，純邏輯拆成 `lib/admin/*.ts` 方便單元測試。
+  - lint 規則 `react-hooks/set-state-in-effect` 禁止在 effect 主體同步呼叫 React `setState`（見 `BusinessHoursForm.tsx` 的說明）；本機制的 hook 在 effect 裡呼叫的是外部 store，不是 React state，不觸發該規則。
+  - 既有表單測試是「不包 Provider 直接 render」，所以 hook **在沒有 Provider 時必須是安全的 no-op**。
+- 假設：已核准規格的 A1～A5（見規格書「假設」）；`ConfirmDialog` 的 MUI `Dialog` 在後開的疊在上層（`zIndex.modal`）。
+- 未知事項：無阻擋性問題（範圍、攔截方式、按鈕、分支均已由使用者決定）。
+- 允許變更的檔案：
+  - 新增 `lib/admin/unsaved-changes.ts`（純 store，無 React 依賴）
+  - 新增 `app/admin/_components/UnsavedChangesProvider.tsx`（Provider、hook、提示對話框、`beforeunload`）
+  - 修改 `components/ui/ConfirmDialog.tsx`（新增選用 `autoFocusCancel`）
+  - 修改 `components/ui/Sidebar.tsx`（新增選用 `onItemClick`）
+  - 修改 `app/admin/_components/AdminShell.tsx`、`app/admin/logout-button.tsx`、`app/admin/_components/BookingPolicyForm.tsx`
+  - 新增／擴充測試：`tests/lib/unsaved-changes.test.ts`、`tests/components/unsaved-changes-provider.test.tsx`、`tests/components/confirm-dialog.test.tsx`、`tests/components/sidebar.test.tsx`、`tests/components/admin-shell.test.tsx`、`tests/components/booking-policy-form.test.tsx`（新增）
+  - `ai/context/design-system.md`（登記 `ConfirmDialog` 的擴充）、`ai/context/project-map.md`（新增檔案與機制說明）
+- 不得觸碰：任何表單的儲存邏輯、驗證規則與資料層（`lib/booking-policy.ts` 等）；其他表單（留給 TASK-082／083）；即時儲存控制項。
+
+## 架構筆記（TASK-081／082／083 共用）
+
+### 1. 狀態放在外部 store，不放 React state
+
+- `lib/admin/unsaved-changes.ts`：`createUnsavedChangesStore()` 回傳
+  `{ setDirty(key, dirty), clear(key), isDirty(key), hasUnsaved(), subscribe(listener) }`，內部是 `Map<string, true>`。
+  **只存「哪些 key 有變更」，不存、不記錄任何表單內容。**
+- 為什麼不用 React state／context value：每次按鍵都會讓整個後台殼層重新 render。外部 store 只在「布林值翻轉」時通知訂閱者；
+  需要反應式讀取的地方（提示對話框、`beforeunload`、頁籤圓點）用 `useSyncExternalStore` 訂閱。
+- Store 在 Provider 內以 `useRef`／`useState(() => create…)` 建立一次（每個 Provider 實例一個，測試之間不共用）。
+
+### 2. Hook API（公開契約）
+
+```text
+useUnsavedChangesGuard(key: string, isDirty: boolean): void
+  effect：isDirty 變化時 store.setDirty(key, isDirty)；卸載時 store.clear(key)。
+  沒有 Provider 時為 no-op。
+
+useUnsavedChanges(): {
+  hasUnsaved: boolean                       // 訂閱 store
+  isDirty(key: string): boolean            // 訂閱 store（給頁籤圓點用，TASK-083）
+  confirmIfDirty(action: () => void): void  // 無變更：立刻執行；有變更：開提示，選「放棄變更」才執行
+  guardLinkClick(event, href): void         // 供 <Link onClick> 使用，見下方規則
+}
+```
+
+- 沒有 Provider 時：`hasUnsaved=false`、`isDirty=()=>false`、`confirmIfDirty(a)=a()`、`guardLinkClick` 不攔截。
+
+### 3. 攔截規則
+
+- **站內連結**（`guardLinkClick`）：以下情況**不攔截**，維持瀏覽器預設——按住 Ctrl／Cmd／Shift／Alt、非左鍵、`target="_blank"`、目標與目前路徑相同（沒有實際導覽）、沒有未儲存變更。
+  其餘有變更時 `preventDefault()`，再 `confirmIfDirty(() => router.push(href))`。
+- **登出**：`confirmIfDirty(doLogout)`；登出本身的 `router.replace("/login")` 是程式化導覽，不再攔截。
+- **程式化導覽不攔截**（例如新增設計師成功後的 `router.replace`、儲存後的 `router.refresh()`）。
+- **關頁／重新整理**：Provider 內 `useEffect` 依 `hasUnsaved` 註冊／移除 `beforeunload`（`event.preventDefault(); event.returnValue = ""`）；沒有變更時**不註冊**。文案由瀏覽器決定。
+- **瀏覽器上一頁／下一頁：不攔截**（已知限制，已決定）。
+
+### 4. 提示對話框
+
+- 由 Provider 渲染，重用 `ConfirmDialog`：`title="有尚未儲存的變更"`、`description="離開後，你輸入的內容會消失。"`、
+  `cancelLabel="繼續編輯"`、`confirmLabel="放棄變更"`、`confirmColor="error"`、`autoFocusCancel`。
+- `onClose`（Esc、點背景）與「繼續編輯」相同：關閉並清掉待執行動作。「放棄變更」：先關閉對話框，再執行待執行動作。
+- **「放棄變更」永遠可用、不依賴任何非同步結果**；待執行動作丟例外時，對話框仍已關閉、攔截狀態不殘留。
+
+### 5. `ConfirmDialog` 小幅擴充
+
+- 新增選用 `autoFocusCancel?: boolean`，為 `true` 時取消鈕加 `autoFocus`，讓 Enter 不會誤觸破壞性按鈕。預設 `false`，既有呼叫端行為不變。
+- 同步更新 `design-system.md` inventory 的 Modal/Dialog 列與單元測試。
+
+### 6. `Sidebar` 小幅擴充
+
+- 新增選用 `onItemClick?: (href: string, event: React.MouseEvent<HTMLElement>) => void`，在每個未停用項目的 `onClick` 呼叫；不傳時行為不變。`Sidebar` 是跨頁共用的通用元件，不認識「未儲存變更」。
+- `AdminShell` 把 `guardLinkClick` 接進去。
+
+### 7. dirty 判定（各卡共同規則）
+
+- 與「載入時或最近一次儲存成功的值」比對；改回原值＝沒變更；儲存成功立即乾淨；儲存失敗維持有變更。
+- 每個表單用固定 key 呼叫 `useUnsavedChangesGuard`：`booking-policy`（081）、`store-basic-info`／`account-name`／`account-email`／`business-hours`（082）、
+  `designer-basic-info`／`service-form`（083）。
+
+### 8. 回滾
+
+純增量、不碰資料與權限：還原 commit 即可。`onItemClick`、`autoFocusCancel` 都是選用 prop，既有呼叫端不受影響。
 
 ## 需求
 
-- 待 `spec-interrogation` 完成後補齊。
+- WHEN 預約規則表單有未儲存變更，且使用者點擊側邊欄任一導覽項目 THE SYSTEM SHALL 攔截並顯示「有尚未儲存的變更」提示，不導覽。
+- WHEN 使用者選「繼續編輯」、按 Esc 或點背景 THE SYSTEM SHALL 關閉提示並停留，輸入內容與表單狀態不變。
+- WHEN 使用者選「放棄變更」THE SYSTEM SHALL 關閉提示並導覽到被攔截的目標。
+- WHEN 預約規則表單有未儲存變更，且使用者點登出 THE SYSTEM SHALL 先提示；選「放棄變更」才登出。
+- WHEN 有未儲存變更 THE SYSTEM SHALL 註冊 `beforeunload`；WHEN 沒有 THE SYSTEM SHALL 不註冊（也不殘留）。
+- WHEN 使用者以 Ctrl／Cmd／Shift 點擊、非左鍵點擊、或點擊目前所在頁 THE SYSTEM SHALL 不攔截。
+- WHEN 儲存成功、或輸入改回原值 THE SYSTEM SHALL 視為沒有變更，不提示。
+- WHEN 預約規則元件卸載 THE SYSTEM SHALL 清除它登記的 dirty 狀態（不可殘留造成「離不開頁面」）。
+- 沒有 Provider 時（既有測試、其他頁面）所有 hook 為安全的 no-op。
+- `ConfirmDialog` 的 `autoFocusCancel` 為 `true` 時，取消鈕取得預設焦點；預設值不影響既有行為。
 
 ## 驗收標準
 
-- 待需求釐清後補齊。方向：表單有未儲存變更時，離開會先提示；沒有變更時完全不打擾；儲存成功後不再提示；
-  取消離開後輸入內容保持不變。
+- 預約規則：改任一欄位 → 點側邊欄／登出 → 出現提示；「繼續編輯」後輸入不變；「放棄變更」後完成導覽或登出。
+- 沒改、改回原值、儲存成功後 → 完全不提示。
+- 有變更時 `beforeunload` 已註冊，無變更時未註冊（單元測試驗證 listener 的加入與移除）。
+- 修飾鍵點擊、同頁點擊不被攔截。
+- 提示的預設焦點在「繼續編輯」，Esc 等同「繼續編輯」。
+- 提示在亮色與暗色模式的外觀與已核准的 mockup（變體 B 的對話框）一致，使用既有 `ConfirmDialog` 排版與 token，沒有硬寫的一次性數值。
+- 不新增 npm 依賴；既有表單與測試不受影響（沒有 Provider 時行為不變）。
+- 已知限制（瀏覽器上一頁不攔截）記入驗證報告。
+
+## 實作備註
+
+- 實作順序：store 與單元測試 → Provider／hook／對話框 → `ConfirmDialog`、`Sidebar` 擴充 → `AdminShell`／登出接線 → `BookingPolicyForm` 套用 → Browser 走查。
+- 寫新程式碼前已確認不需要第三方函式庫（使用者已決定自製攔截、不新增套件）。
+- 套用 `ai/skills/design-craft.md` 與 `ai/checklists/design-review-checklist.md`；套用 `ai/checklists/security-checklist.md`（本機制不保存表單內容、不記錄 log）。
 
 ## 驗證契約
 
-- 待補齊。預期包含：元件／hook 單元測試（dirty 判定、各種離開方式）、Browser 走查（每個納入的表單）、
-  `npx tsc --noEmit`、`npm run lint`、`npm run build`、螢幕截圖（提示對話框）。
+- 單元測試：
+  - `tests/lib/unsaved-changes.test.ts`：store（多 key、翻轉才通知、`clear`、`hasUnsaved`、取消訂閱）。
+  - `tests/components/unsaved-changes-provider.test.tsx`：無 Provider 的 no-op；`confirmIfDirty` 有／無變更；繼續編輯／放棄變更／Esc；`beforeunload` 註冊與移除；`guardLinkClick` 的修飾鍵、非左鍵、同頁、`target=_blank` 例外；卸載清除；待執行動作丟例外時對話框已關閉。
+  - `confirm-dialog.test.tsx`（`autoFocusCancel`）、`sidebar.test.tsx`（`onItemClick`、停用項目不觸發）、`admin-shell.test.tsx`（接線）、`booking-policy-form.test.tsx`（改欄位→dirty、改回原值→乾淨、儲存成功→乾淨）。
+- 整合測試：不涉及資料層；既有整合套件不需重跑（本卡不動 migration、RPC、lib 資料層）。
+- E2E 測試：Browser 走查預約規則：改→點側邊欄（繼續編輯／放棄變更）、改→登出提示、改回原值不提示、儲存後不提示、Ctrl 點擊不攔截；暗色與亮色；`beforeunload` 為手動項目。
+- 型別檢查／Lint／Build：`npx tsc --noEmit`、`npm run lint`、`npm run build`（build 前先停 dev server）。
+- 螢幕截圖：提示對話框（亮色、暗色）。
+- 安全性檢查：機制只存 key 與布林，不存表單內容；無新的資料流、無新依賴。
+- 審查關卡：architect（跨切面導覽攔截）；其餘依風險「中」。
 
 ## 完成證據
 
@@ -72,5 +162,5 @@
 - 執行過的指令：
 - 測試輸出：
 - 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 已知限制：瀏覽器上一頁／下一頁不攔截。
+- 後續任務：TASK-082、TASK-083
