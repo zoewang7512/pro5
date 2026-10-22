@@ -137,6 +137,10 @@
 
 ## TASK-022～027（營業時間與可預約時段管理，第二批次）：緩衝時間不做資料庫層級約束，只在 `get_available_slots`／改期表單做候選時段過濾
 
+> **部分被取代（2026-10-22，TASK-068）**：下文以「單一設計師、低並發」為由的部分已不成立——現在有多位設計師，且 `create_appointment`
+> 也會經由共用的 `_designer_is_free` 檢查緩衝（人工 2026-10-21 決定，見下方「TASK-068」）。「不把緩衝做成 exclusion constraint」的決定本身仍有效，
+> 併發時兩筆相鄰預約仍可能吃掉緩衝，屬已知殘留。
+
 > **部分被取代（2026-10-21，TASK-068，人工決定）**：`create_appointment` 現在也檢查 buffer（指定與不指定兩條
 > 路徑都是）——緩衝不再只是「畫面上的排程偏好」，直接呼叫 API 擠進既有預約的 buffer 會回 `SLOT_CONFLICT`。
 > exclusion constraint 仍然不含 buffer（見下方「TASK-068」的殘留）。

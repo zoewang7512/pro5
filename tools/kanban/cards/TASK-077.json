@@ -2,7 +2,7 @@
   "id": "TASK-077",
   "title": "多位設計師 前後端串接驗證、端到端走查與文件同步",
   "content": "逐條對照 feature-spec 驗收標準、跑全部測試套件、完整走查、更新 project-map／decisions／design-system／README，人工驗收後合併 master。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -46,7 +46,7 @@
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-077.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-077.md",
     "pr": ""
   },
   "refs": [
@@ -54,18 +54,40 @@
     "ai/context/project-map.md",
     "ai/context/decisions.md",
     "ai/context/design-system.md",
-    "README.md"
+    "README.md",
+    "tests/designers.integration.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過",
+      "npx vitest run --maxWorkers=3：1070/1072（2 項為 account-settings-view 的 5 秒逾時，單獨重跑 33/33 通過）",
+      "整合測試依序執行（共 304 項）：rls 18、designers 122（修正後）、booking 23、admin-booking 16、services 17、booking-policy 7、business-hours 33、store-settings 11、account 17、mfa-rls 20、notifications 20，全數通過",
+      "測前測後設定表快照與殘留比對：business_hours／closed_dates／admins 一致；__TEST__ 資料、孤兒檔、混接皆 0；auth 帳號 33 → 1",
+      "瀏覽器走查（正式資料庫，__TEST__ 資料，已清除）：新增設計師、開服務、上傳作品、前台指定與不指定各預約、聯集與自動指派、後台多選篩選、請假警告與標記、前台該日時段消失、停用、375px 與亮暗色"
+    ],
+    "findings": [
+      "test:designers 掃除 auth 帳號大小寫比對錯誤（TASK-067 引入），正式庫累積 32 個測試帳號，已修並清除",
+      "test:designers 頭像斷言與較早案例耦合（TASK-069 引入，當時只跑 -t 子集合），已修",
+      "驗收標準 #2 兩個資料庫層缺口：簡介控制字元、請假日今天以後只在前端或函式層擋",
+      "TASK-079 已完成並在 master（更正先前誤述）；designer001 未啟用 MFA；Supabase 公開註冊仍開著，皆待人工決定"
+    ],
+    "residual": "proacl 等 SQL 證據待使用者執行附錄 SQL；確認信實收截圖待合併部署後（正式 Vercel 目前仍是 master 舊程式）；booking_policy／store_settings 比對只存雜湊；cron 內嵌失敗整批不寄；UPDATE webhook 依賴不能改派；get_available_slots 無限流；未做實作後 subagent 審查"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前 architect／security-reviewer 審查完成並採納（見任務卡「動工前審查定案」）。開始驗證。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "驗證完成，轉 Verify，待人工驗收。合併 master 前仍有待人工處理事項，見驗證報告。"
     }
   ]
 }

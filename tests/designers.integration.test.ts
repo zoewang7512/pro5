@@ -187,7 +187,8 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
 
     const { data: users, error: usersError } = await serviceRoleClient.auth.admin.listUsers({ perPage: 200 });
     if (usersError) errors.push(usersError);
-    for (const user of (users?.users ?? []).filter((u) => u.email?.startsWith(prefix))) {
+    // Supabase 會把 email 轉成小寫，prefix 含大寫的 `__TEST__`，必須不分大小寫比對，否則永遠刪不到（TASK-077 發現）。
+    for (const user of (users?.users ?? []).filter((u) => u.email?.toLowerCase().startsWith(prefix.toLowerCase()))) {
       const { error } = await serviceRoleClient.auth.admin.deleteUser(user.id);
       if (error) errors.push(error);
     }
@@ -2485,6 +2486,8 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
 
     it("頭像：非管理員上傳被 Storage policy 擋下，資料列不變、不留下檔案", async () => {
       const before = await readDesigner(activeDesignerId);
+      // 同一位測試設計師的資料夾可能已有較早案例（TASK-067 的覆寫／搬移案例）留下的檔案，所以比對「前後不變」，不要求為空（TASK-077 發現）。
+      const filesBefore = await listFolder(`avatar/${activeDesignerId}`);
       const result = await uploadDesignerAvatar(
         nonAdminClient,
         activeDesignerId,
@@ -2492,7 +2495,7 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       );
       expect(result.ok).toBe(false);
       expect(await readDesigner(activeDesignerId)).toEqual(before);
-      expect(await listFolder(`avatar/${activeDesignerId}`)).toEqual([]);
+      expect(await listFolder(`avatar/${activeDesignerId}`)).toEqual(filesBefore);
     });
 
     it("頭像：舊網址被手動改成其他設計師的檔案時，只更新資料列、不會刪到別人的檔案（回傳警告）", async () => {
