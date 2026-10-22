@@ -2,7 +2,7 @@
   "id": "TASK-077",
   "title": "多位設計師 前後端串接驗證、端到端走查與文件同步",
   "content": "逐條對照 feature-spec 驗收標準、跑全部測試套件、完整走查、更新 project-map／decisions／design-system／README，人工驗收後合併 master。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -99,6 +99,11 @@
       "name": "使用者",
       "time": "2026-10-22",
       "text": "決定：designer001 先不啟用 MFA（接受殘留風險）；關閉 Supabase 公開註冊（由使用者在後台操作）；確認信實收截圖與合併後正式網址走查，等合併到 master 後再提醒。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }
