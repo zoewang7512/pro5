@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  addDesignerLeave,
   countFutureAppointmentsForDesigner,
   createDesigner,
   deletePortfolioImage,
@@ -11,6 +12,7 @@ import {
   parsePortfolioStoragePath,
   planDesignerOrderSwap,
   removeDesignerAvatar,
+  removeDesignerLeave,
   removePortfolioFile,
   setDesignerActive,
   setDesignerService,
@@ -22,6 +24,7 @@ import {
   validateDesignerImageFile,
 } from "@/lib/admin/designers";
 import { reencodeImage } from "@/lib/admin/image-reencode";
+import { getTaipeiToday } from "@/lib/admin/week-range";
 
 // TASK-069：設計師寫入函式。讀取函式（listDesigners）的測試在 designers.test.ts。
 
@@ -1046,5 +1049,105 @@ describe("removePortfolioFile", () => {
     expect((await removePortfolioFile(client, ID, `portfolio/${OTHER_ID}/${UUID}.webp`)).ok).toBe(false);
     expect((await removePortfolioFile(client, ID, `avatar/${ID}/${UUID}.webp`)).ok).toBe(false);
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+// TASK-072：請假日。authenticated 對 designer_leaves 沒有 update 權限，只能 insert／delete。
+describe("addDesignerLeave", () => {
+  const FUTURE = "2099-01-15";
+
+  it("insert 一列 {designer_id, date}，不用 upsert", async () => {
+    const { client, calls } = recordingClient({ designer_leaves: [{}] });
+    expect(await addDesignerLeave(client, ID, FUTURE)).toEqual({ ok: true, data: undefined });
+    expect(calls.map((c) => [c.table, c.method])).toEqual([["designer_leaves", "insert"]]);
+    expect(calls[0].args[0]).toEqual({ designer_id: ID, date: FUTURE });
+  });
+
+  it("今天（台北）可以標記", async () => {
+    const { client } = recordingClient({ designer_leaves: [{}] });
+    expect(await addDesignerLeave(client, ID, getTaipeiToday())).toEqual({ ok: true, data: undefined });
+  });
+
+  it("重複新增（主鍵衝突 23505）視為成功", async () => {
+    const { client } = recordingClient({ designer_leaves: [{ error: { code: "23505", message: "duplicate key" } }] });
+    expect(await addDesignerLeave(client, ID, FUTURE)).toEqual({ ok: true, data: undefined });
+  });
+
+  it.each(["23503", "42501", "PGRST301", "", undefined])("錯誤碼 %j 一律回通用失敗，不外洩原始訊息", async (code) => {
+    const { client } = recordingClient({
+      designer_leaves: [{ error: { code, message: 'violates foreign key constraint "designer_leaves_designer_id_fkey"' } }],
+    });
+    expect(await addDesignerLeave(client, ID, FUTURE)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+
+  it("拋出例外也回通用失敗", async () => {
+    const { client } = recordingClient({});
+    expect(await addDesignerLeave(client, ID, FUTURE)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+
+  it.each(["2000-01-01", "2099-02-30", "today", "infinity", "2099-2-1", "2099-01-15T00:00:00Z", ""])(
+    "日期 %j（過去或格式不合法）在送出請求前就被擋下",
+    async (date) => {
+      const { client, calls } = recordingClient({});
+      expect(await addDesignerLeave(client, ID, date)).toEqual({ ok: false, error: { message: GENERIC } });
+      expect(calls).toHaveLength(0);
+    },
+  );
+
+  it("designerId 不是 uuid 不送請求", async () => {
+    const { client, calls } = recordingClient({});
+    expect(await addDesignerLeave(client, "new", FUTURE)).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("removeDesignerLeave", () => {
+  const DATE = "2026-10-30";
+
+  it("delete 同時帶 designer_id 與 date 兩個 eq，並用 select 確認刪掉 1 列", async () => {
+    const { client, calls } = recordingClient({ designer_leaves: [{ data: [{ date: DATE }] }] });
+    expect(await removeDesignerLeave(client, ID, DATE)).toEqual({ ok: true, data: undefined });
+    expect(calls.map((c) => c.method)).toEqual(["delete", "eq", "eq", "select"]);
+    expect(calls.filter((c) => c.method === "eq").map((c) => c.args)).toEqual([
+      ["designer_id", ID],
+      ["date", DATE],
+    ]);
+    expect(calls.find((c) => c.method === "select")?.args[0]).toBe("date");
+  });
+
+  it("過去的請假日也可以移除（只擋新增，不擋移除）", async () => {
+    const { client } = recordingClient({ designer_leaves: [{ data: [{ date: "2000-01-01" }] }] });
+    expect(await removeDesignerLeave(client, ID, "2000-01-01")).toEqual({ ok: true, data: undefined });
+  });
+
+  it("回傳 null 或 2 列以上（少一個條件刪到整批的第二道防線）一律回失敗", async () => {
+    for (const data of [null, [{ date: DATE }, { date: DATE }]]) {
+      const { client } = recordingClient({ designer_leaves: [{ data }] });
+      expect(await removeDesignerLeave(client, ID, DATE)).toEqual({ ok: false, error: { message: GENERIC } });
+    }
+  });
+
+  it("0 列（別的分頁已移除，或被 RLS 擋下）回失敗，由呼叫端重讀", async () => {
+    const { client } = recordingClient({ designer_leaves: [{ data: [] }] });
+    expect(await removeDesignerLeave(client, ID, DATE)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+
+  it("寫入錯誤與例外都回通用失敗", async () => {
+    const failing = recordingClient({ designer_leaves: [{ error: { code: "42501", message: "denied" } }] });
+    expect(await removeDesignerLeave(failing.client, ID, DATE)).toEqual({ ok: false, error: { message: GENERIC } });
+    const throwing = recordingClient({});
+    expect(await removeDesignerLeave(throwing.client, ID, DATE)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+
+  it.each(["2099-02-30", "today", "infinity", "2099-2-1", ""])("日期 %j 在送出請求前就被擋下", async (date) => {
+    const { client, calls } = recordingClient({});
+    expect(await removeDesignerLeave(client, ID, date)).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("designerId 不是 uuid 不送請求（否則少一個條件會刪掉整批）", async () => {
+    const { client, calls } = recordingClient({});
+    expect(await removeDesignerLeave(client, "", DATE)).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(calls).toHaveLength(0);
   });
 });

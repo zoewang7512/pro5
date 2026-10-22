@@ -58,6 +58,16 @@ vi.mock("@/app/admin/_components/DesignerPortfolioTab", () => ({
   ),
 }));
 
+// 請假頁籤有自己的測試：這裡換成簡單替身，只驗證常駐掛載、傳入的名稱與頁籤標籤上的請假日數。
+vi.mock("@/app/admin/_components/DesignerLeavesTab", () => ({
+  DesignerLeavesTab: (props: { designerId: string; designerName: string; onCountChange: (count: number) => void }) => (
+    <div data-testid="leaves-tab">
+      <span>{`請假：${props.designerId}／${props.designerName}`}</span>
+      <button onClick={() => props.onCountChange(2)}>模擬回報兩天</button>
+    </div>
+  ),
+}));
+
 const ID = "3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6b";
 const DESIGNER: Designer = {
   id: ID,
@@ -114,7 +124,7 @@ describe("DesignerEditView", () => {
     expect(await screen.findByText("已停用")).toBeInTheDocument();
   });
 
-  it("切到「請假」頁籤顯示占位內容；「基本資料」面板保持掛載（未儲存的輸入不會不見）", async () => {
+  it("切到「請假」頁籤顯示請假面板；「基本資料」面板保持掛載（未儲存的輸入不會不見）", async () => {
     vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
     const user = userEvent.setup({ delay: null });
     render(<DesignerEditView designerId={ID} />);
@@ -122,7 +132,7 @@ describe("DesignerEditView", () => {
 
     await user.type(screen.getByLabelText("未儲存的輸入"), "草稿");
     await user.click(screen.getByRole("tab", { name: "請假" }));
-    expect(screen.getByText("請假日設定即將開放。")).toBeInTheDocument();
+    expect(screen.getByTestId("leaves-tab")).toBeVisible();
     expect(screen.getByTestId("basic-form")).not.toBeVisible();
 
     await user.click(screen.getByRole("tab", { name: "基本資料" }));
@@ -198,6 +208,37 @@ describe("DesignerEditView", () => {
     await user.click(screen.getByRole("button", { name: "模擬回報五項", hidden: true }));
     expect(screen.getByLabelText("已開啟 5 項")).toBeInTheDocument();
     expect(screen.getByLabelText("共 8 張作品")).toBeInTheDocument();
+  });
+
+  it("「請假」面板載入後常駐掛載（隱藏），傳入資料庫回傳的設計師 id 與名稱；切頁籤不卸載；新增模式不掛載", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    render(<DesignerEditView designerId={ID.toUpperCase()} />);
+
+    expect(await screen.findByText(`請假：${ID}／林小美`)).toBeInTheDocument();
+    expect(screen.getByTestId("leaves-tab")).not.toBeVisible();
+
+    await user.click(screen.getByRole("tab", { name: "請假" }));
+    expect(screen.getByTestId("leaves-tab")).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "基本資料" }));
+    expect(screen.getByTestId("leaves-tab")).toBeInTheDocument();
+
+    cleanup();
+    render(<DesignerEditView designerId={null} />);
+    expect(screen.queryByTestId("leaves-tab")).toBeNull();
+  });
+
+  it("「請假」頁籤標籤回報後顯示請假日數，無障礙名稱獨立，不影響其他頁籤的數字", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    render(<DesignerEditView designerId={ID} />);
+    await screen.findByText("表單：林小美");
+    expect(screen.queryByLabelText(/已排/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "模擬回報兩天", hidden: true }));
+    expect(screen.getByRole("tab", { name: /請假/ })).toHaveTextContent("請假2");
+    expect(screen.getByLabelText("已排 2 個請假日")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/已開啟|張作品/)).toBeNull();
   });
 
   it("基本資料儲存後，麵包屑與標題同步更新名稱", async () => {

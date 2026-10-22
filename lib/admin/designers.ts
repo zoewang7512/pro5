@@ -9,10 +9,12 @@ import {
   type Designer,
 } from "@/lib/designers";
 import type { Result } from "./appointments";
+import type { BusinessHoursRow } from "./business-hours";
+import { addDays, getTaipeiToday, getWeekday } from "./week-range";
 import { IMAGE_MAX_BYTES, PORTFOLIO_OUTPUT_MAX_DIMENSION, extensionForImageMime, reencodeImage } from "./image-reencode";
 
 // 設計師管理頁的資料存取，只給後台用（前台共用的型別與驗證在 lib/designers.ts）。TASK-067 建立讀取，
-// TASK-069 新增基本資料的寫入，TASK-070 新增設計師服務的開關，TASK-071 新增作品集（請假由 TASK-072 接續）。與前台不同：這裡不過濾
+// TASK-069 新增基本資料的寫入，TASK-070 新增設計師服務的開關，TASK-071 新增作品集，TASK-072 新增請假日。與前台不同：這裡不過濾
 // is_active，後台需要同時看到啟用中與停用中的設計師（RLS 對 is_admin() 放行全部）。
 //
 // 寫入一律走 supabase-js 直接操作資料表：RLS 的 is_admin()（要求 aal2）加欄位層級 GRANT 是權限邊界
@@ -643,4 +645,132 @@ export async function removePortfolioFile(
   return (await removeDesignerAssetObject(supabase, safePath))
     ? { ok: true, data: undefined }
     : { ok: false, error: INTERNAL_ERROR };
+}
+
+// ---------------------------------------------------------------------------------------------
+// 請假日（TASK-072）。designer_leaves 的 authenticated 只有 select／insert／delete（沒有 update），所以不能
+// upsert：新增＝insert（主鍵衝突 23505 視為成功）、移除＝delete。日期欄位型別是 Postgres date，會接受
+// `today`、`infinity` 這類字串，所以送出前一律先過嚴格的 YYYY-MM-DD 真實日期檢查，不通過就不送請求。
+// ---------------------------------------------------------------------------------------------
+
+const LEAVE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function isRealDate(date: string): boolean {
+  if (!LEAVE_DATE_PATTERN.test(date)) return false;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+}
+
+// 後台顯示全部（含過去）的請假日，由畫面自行篩出「今天以後」；月曆往前翻月時過去的請假日仍顯示為已標記。
+export async function listDesignerLeaves(supabase: SupabaseClient, designerId: string): Promise<Result<string[]>> {
+  if (!isDesignerId(designerId)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase
+      .from("designer_leaves")
+      .select("date")
+      .eq("designer_id", designerId)
+      .order("date", { ascending: true });
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: (data as Array<{ date: string }>).map((row) => row.date) };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+// 只接受今天（台北）以後的日期（資料庫沒有這道 check，函式層擋）。冪等只限主鍵衝突：RLS 的 WITH CHECK 先於唯一性
+// 檢查，看得到 23505 的一定是通過 is_admin() 的人；其餘錯誤碼（23503 外鍵、42501 RLS）一律失敗，只比對 code。
+export async function addDesignerLeave(
+  supabase: SupabaseClient,
+  designerId: string,
+  date: string,
+): Promise<Result<void>> {
+  if (!isDesignerId(designerId) || !isRealDate(date) || date < getTaipeiToday()) {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+  try {
+    const { error } = await supabase.from("designer_leaves").insert({ designer_id: designerId, date });
+    if (error && error.code !== "23505") return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+// delete 一定要同時帶兩個 eq（欄位名稱寫死）：少一個條件會刪掉這位設計師全部的請假日。被 RLS 擋下的 delete 不會
+// 報錯、只回 0 列，所以用 .select 確認剛好刪掉 1 列；0 列（別的分頁已移除，或權限不足）一律回失敗，由呼叫端重讀。
+export async function removeDesignerLeave(
+  supabase: SupabaseClient,
+  designerId: string,
+  date: string,
+): Promise<Result<void>> {
+  if (!isDesignerId(designerId) || !isRealDate(date)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase
+      .from("designer_leaves")
+      .delete()
+      .eq("designer_id", designerId)
+      .eq("date", date)
+      .select("date");
+    if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+export type LeaveAffectedAppointment = {
+  id: string;
+  customer_name: string;
+  start_at: string;
+  service_name: string;
+};
+
+// 明確欄位，不用 `*`（appointments 是欄位層級授權，也不要把電話、email、access_token 下載到瀏覽器）。
+const LEAVE_AFFECTED_COLUMNS = "id, customer_name, start_at, services(name)";
+const LEAVE_AFFECTED_LIMIT = 200;
+
+type RawLeaveAffectedRow = {
+  id: string;
+  customer_name: string;
+  start_at: string;
+  services: { name: string } | Array<{ name: string }> | null;
+};
+
+// 這位設計師在該日（台北時間）的 pending／confirmed 預約。刻意與 findAffectedAppointmentsForClosedDate 不同的兩點：
+// 不加 start_at > now、不含 completed——請假擋掉整天，當天稍早仍是 pending／confirmed 的預約本身就是異常，值得提醒。
+export async function findAffectedAppointmentsForDesignerLeave(
+  supabase: SupabaseClient,
+  designerId: string,
+  date: string,
+): Promise<Result<LeaveAffectedAppointment[]>> {
+  if (!isDesignerId(designerId) || !isRealDate(date)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select(LEAVE_AFFECTED_COLUMNS)
+      .eq("designer_id", designerId)
+      .in("status", ["pending", "confirmed"])
+      .gte("start_at", `${date}T00:00:00+08:00`)
+      .lt("start_at", `${addDays(date, 1)}T00:00:00+08:00`)
+      .order("start_at", { ascending: true })
+      .limit(LEAVE_AFFECTED_LIMIT);
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return {
+      ok: true,
+      data: (data as unknown as RawLeaveAffectedRow[]).map((row) => {
+        const service = Array.isArray(row.services) ? row.services[0] : row.services;
+        return { id: row.id, customer_name: row.customer_name, start_at: row.start_at, service_name: service?.name ?? "" };
+      }),
+    };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+// 全店公休（對所有設計師都生效，和個人請假疊加）：closed_dates 內的日期，或該週幾查不到營業時間列、標記公休、
+// 缺開／關店時間（判斷對齊 get_available_slots 與 isAppointmentOutsideHours）。TASK-075 若也需要可搬去共用。
+export function isShopClosedDate(date: string, businessHours: BusinessHoursRow[], closedDates: Set<string>): boolean {
+  if (closedDates.has(date)) return true;
+  const hours = businessHours.find((row) => row.weekday === getWeekday(date));
+  return !hours || hours.is_closed || !hours.open_time || !hours.close_time;
 }

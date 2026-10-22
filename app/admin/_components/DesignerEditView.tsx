@@ -19,18 +19,19 @@ import { isDesignerId, type Designer } from "@/lib/designers";
 import { DesignerBasicInfoForm } from "./DesignerBasicInfoForm";
 import { DesignerServicesTab } from "./DesignerServicesTab";
 import { DesignerPortfolioTab } from "./DesignerPortfolioTab";
+import { DesignerLeavesTab } from "./DesignerLeavesTab";
 
 // 設計師編輯頁（TASK-069）：麵包屑＋四頁籤「基本資料／提供服務／作品集／請假」。TASK-069 完成「基本資料」，
-// TASK-070 接上「提供服務」，TASK-071 接上「作品集」，「請假」放占位內容，由 TASK-072 接上（會修改這個檔案，不並行）。
+// TASK-070 接上「提供服務」，TASK-071 接上「作品集」，TASK-072 接上「請假」。
 // designerId 為 null 代表新增模式：其他頁籤停用，建立成功後 router.replace 到 /admin/designers/<id>。
 
 type TabValue = "basic" | "services" | "portfolio" | "leaves";
 
-const TABS: Array<{ value: TabValue; label: string; placeholder: string }> = [
-  { value: "basic", label: "基本資料", placeholder: "" },
-  { value: "services", label: "提供服務", placeholder: "" },
-  { value: "portfolio", label: "作品集", placeholder: "" },
-  { value: "leaves", label: "請假", placeholder: "請假日設定即將開放。" },
+const TABS: Array<{ value: TabValue; label: string }> = [
+  { value: "basic", label: "基本資料" },
+  { value: "services", label: "提供服務" },
+  { value: "portfolio", label: "作品集" },
+  { value: "leaves", label: "請假" },
 ];
 
 // 頁籤標籤上的數字（子面板載入完成後回報；沒有該項代表還不知道，不顯示）與各自的無障礙名稱。
@@ -38,6 +39,7 @@ const TABS: Array<{ value: TabValue; label: string; placeholder: string }> = [
 const TAB_COUNT_LABELS: Partial<Record<TabValue, (count: number) => string>> = {
   services: (count) => `已開啟 ${count} 項`,
   portfolio: (count) => `共 ${count} 張作品`,
+  leaves: (count) => `已排 ${count} 個請假日`,
 };
 
 type LoadState =
@@ -54,6 +56,7 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
   // 子面板各自傳入穩定的回呼，避免每次 render 都換新函式。
   const setServiceCount = React.useCallback((count: number) => setCounts((prev) => ({ ...prev, services: count })), []);
   const setPortfolioCount = React.useCallback((count: number) => setCounts((prev) => ({ ...prev, portfolio: count })), []);
+  const setLeaveCount = React.useCallback((count: number) => setCounts((prev) => ({ ...prev, leaves: count })), []);
   const [state, setState] = React.useState<LoadState>(
     designerId === null ? { status: "loading" } : isDesignerId(designerId) ? { status: "loading" } : { status: "not-found" },
   );
@@ -195,17 +198,17 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
             {designer && <DesignerPortfolioTab designerId={designer.id} onCountChange={setPortfolioCount} />}
           </Box>
 
-          {TABS.filter((item) => item.value === "leaves").map((item) => (
-            <Box
-              key={item.value}
-              role="tabpanel"
-              id={`designer-tabpanel-${item.value}`}
-              aria-labelledby={`designer-tab-${item.value}`}
-              hidden={tab !== item.value}
-            >
-              {tab === item.value && <Alert severity="info">{item.placeholder}</Alert>}
-            </Box>
-          ))}
+          {/* 「請假」面板同樣常駐掛載：頁籤標籤的請假日數要在點進來之前就有，寫入途中切走也不會中斷畫面狀態。 */}
+          <Box
+            role="tabpanel"
+            id="designer-tabpanel-leaves"
+            aria-labelledby="designer-tab-leaves"
+            hidden={tab !== "leaves"}
+          >
+            {designer && (
+              <DesignerLeavesTab designerId={designer.id} designerName={designer.name} onCountChange={setLeaveCount} />
+            )}
+          </Box>
         </>
       )}
     </Box>

@@ -17,11 +17,23 @@ export type MonthPickerProps = {
   month: number; // 1-12
   todayDate: string; // "YYYY-MM-DD"
   markedDates: Set<string>;
+  // 唯讀日期（例如設計師請假月曆上的全店公休日）：不可點，灰底加刪除線，優先於「已標記」樣式。省略時行為不變。
+  readOnlyDates?: Set<string>;
+  readOnlyLabel?: string; // 唯讀日期的無障礙說明，預設「不可選」
   onDayClick: (date: string) => void;
   onMonthChange: (year: number, month: number) => void;
 };
 
-export function MonthPicker({ year, month, todayDate, markedDates, onDayClick, onMonthChange }: MonthPickerProps) {
+export function MonthPicker({
+  year,
+  month,
+  todayDate,
+  markedDates,
+  readOnlyDates,
+  readOnlyLabel = "不可選",
+  onDayClick,
+  onMonthChange,
+}: MonthPickerProps) {
   const days = buildMonthDays(year, month);
   const leadingBlanks = days[0].weekday;
 
@@ -76,9 +88,10 @@ export function MonthPicker({ year, month, todayDate, markedDates, onDayClick, o
 
         {days.map((day) => {
           const isToday = day.date === todayDate;
-          const isMarked = markedDates.has(day.date);
+          const isReadOnly = readOnlyDates?.has(day.date) ?? false;
+          const isMarked = markedDates.has(day.date) && !isReadOnly;
           const isPast = day.date < todayDate;
-          const isDisabled = isPast;
+          const isDisabled = isPast || isReadOnly;
 
           const handleActivate = () => {
             if (!isDisabled) onDayClick(day.date);
@@ -91,6 +104,7 @@ export function MonthPicker({ year, month, todayDate, markedDates, onDayClick, o
               tabIndex={isDisabled ? -1 : 0}
               aria-disabled={isDisabled}
               aria-pressed={isMarked}
+              aria-label={isReadOnly ? `${day.day} 日，${readOnlyLabel}` : undefined}
               onClick={isDisabled ? undefined : handleActivate}
               onKeyDown={
                 isDisabled
@@ -111,14 +125,12 @@ export function MonthPicker({ year, month, todayDate, markedDates, onDayClick, o
                 justifyContent: "center",
                 fontSize: 12,
                 fontWeight: isToday || isMarked ? 700 : 400,
-                // 用 background.paper／text.disabled 而非 grey.100／grey.500：lib/theme/index.ts
-                // 的暗色 colorScheme 目前沒有覆寫 grey 色階（design-system.md 已記錄的既知
-                // 限制），grey.100／grey.500 在暗色模式下會 fallback 回 MUI 預設灰階，跟這個
-                // 專案暗色模式的 text.primary（近白）配色不搭，數字幾乎融進背景、看起來過淺。
-                // background.paper／text.disabled 兩個 slot 在 light／dark 都有明確定義，
-                // 語意上也更正確（「過去日期」本來就是停用狀態，理應用 text.disabled）。
-                bgcolor: isMarked ? "warning.light" : "background.paper",
-                color: isPast ? "text.disabled" : isMarked ? "warning.main" : "text.primary",
+                // 過去日期用 background.paper／text.disabled（語意上本來就是停用狀態）。唯讀日期（全店公休）
+                // 用 grey.200 加刪除線，與 WeekCalendar 的公休格同一個 token；暗色模式的 grey 色階已在
+                // lib/theme/index.ts 覆寫，不會 fallback 回 MUI 預設灰階。
+                bgcolor: isReadOnly ? "grey.200" : isMarked ? "warning.light" : "background.paper",
+                color: isPast || isReadOnly ? "text.disabled" : isMarked ? "warning.main" : "text.primary",
+                textDecoration: isReadOnly ? "line-through" : "none",
                 cursor: isDisabled ? "default" : "pointer",
                 outline: isToday ? "2px solid" : "2px solid transparent",
                 outlineColor: isToday ? "primary.main" : "transparent",

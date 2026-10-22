@@ -10,9 +10,9 @@
 //   - 本檔案建立的設計師與服務一律以 TEST_MARKER（`__TEST__dz-` 開頭）命名，測試設計師只對 `__TEST__`
 //     服務開啟（而且該服務是下架狀態，不會出現在前台）。「預期被擋下」的 insert 如果意外成功，也會被
 //     追蹤並清除（名稱不帶標記的案例靠 id 追蹤）。
-//   - 不修改「預設設計師」（唯一的真實設計師）的任何資料；不建立任何 appointments——appointments 的
-//     INSERT/UPDATE 有 Database Webhook trigger 會真的寄信（見 feedback_integration_test_db_triggers），
-//     本檔案驗證 appointments.designer_id 權限時只用「不存在的 id」觸發權限檢查，不會有資料列被更新。
+//   - 不修改「預設設計師」（唯一的真實設計師）的任何資料；建立 appointments 時 customer_email 一律為 null——
+//     appointments 的 INSERT/UPDATE 有 Database Webhook trigger，帶 email 才會真的寄信（見
+//     feedback_integration_test_db_triggers）。驗證 appointments.designer_id 權限時只用「不存在的 id」。
 //   - beforeAll 先掃除前次被中斷的測試殘留；afterAll 刪除測試設計師（cascade 帶走服務開關、請假、作品集
 //     資料列）、Storage 檔案、測試服務與測試帳號，清除失敗要 throw。
 //   - 前提：DESIGNER_EMAIL 帳號沒有啟用 MFA。若日後對它啟用 MFA，is_admin() 會要求 aal2，本檔案以密碼
@@ -27,13 +27,17 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
+  addDesignerLeave,
   countFutureAppointmentsForDesigner,
   createDesigner as createDesignerAdmin,
   deletePortfolioImage,
+  findAffectedAppointmentsForDesignerLeave,
+  listDesignerLeaves,
   listDesignerServiceIds,
   listDesigners,
   listPortfolio,
   removeDesignerAvatar,
+  removeDesignerLeave,
   removePortfolioFile,
   setDesignerActive,
   setDesignerService,
@@ -2851,6 +2855,254 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       expect(listed.data[0].image_url).toBe(tampered);
       expect(resolvePortfolioImageUrl(listed.data[0].image_url, a)).toBeNull();
       expect(resolvePortfolioImageUrl(victim.image_url, b)).toBe(victim.image_url);
+    });
+  });
+
+  // TASK-072：請假日（真實 admin／非管理員／anon session）。設計師都是 service_role 建立的 `__TEST__dz-` 設計師。
+  // 預約一律由 service_role 直接建立且 customer_email 為 null（appointments 的 INSERT 有 Database Webhook，帶 email 才會寄信）。
+  describe("TASK-072：設計師請假日（真實 admin session）", () => {
+    const GENERIC = { ok: false, error: { message: "發生未預期的錯誤，請稍後再試。" } };
+    const TZ = "+08:00";
+
+    function taipeiToday(): string {
+      return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+    }
+    function addDays(dateStr: string, days: number): string {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, d) + days * 86_400_000).toISOString().slice(0, 10);
+    }
+    function at(dateStr: string, minutesFromMidnight: number): string {
+      const hh = String(Math.floor(minutesFromMidnight / 60)).padStart(2, "0");
+      const mm = String(minutesFromMidnight % 60).padStart(2, "0");
+      return new Date(`${dateStr}T${hh}:${mm}:00${TZ}`).toISOString();
+    }
+    function toMinutes(time: string): number {
+      const [h, m] = time.split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    // 離今天 200 天以後的日期：不會和 beforeAll 放的 2099 日期、其他區塊的預約日期互相干擾，且必然在今天之後。
+    const FAR = addDays(taipeiToday(), 200);
+
+    async function leaveDates(designerId: string): Promise<string[]> {
+      const { data, error } = await serviceRoleClient
+        .from("designer_leaves")
+        .select("date")
+        .eq("designer_id", designerId)
+        .order("date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((row) => row.date as string);
+    }
+
+    async function seedLeave(designerId: string, date: string) {
+      const { error } = await serviceRoleClient.from("designer_leaves").insert({ designer_id: designerId, date });
+      if (error) throw error;
+    }
+
+    it("admin 新增：寫入一列；重複新增冪等（仍只有一列）；listDesignerLeaves 讀得到", async () => {
+      const id = await createDesigner();
+
+      expect(await addDesignerLeave(adminClient, id, FAR)).toEqual({ ok: true, data: undefined });
+      expect(await leaveDates(id)).toEqual([FAR]);
+
+      expect(await addDesignerLeave(adminClient, id, FAR)).toEqual({ ok: true, data: undefined });
+      expect(await leaveDates(id)).toEqual([FAR]);
+
+      expect(await listDesignerLeaves(adminClient, id)).toEqual({ ok: true, data: [FAR] });
+    });
+
+    it("admin 可以對停用中的設計師新增請假日", async () => {
+      const id = await createDesigner({ is_active: false });
+      expect(await addDesignerLeave(adminClient, id, FAR)).toEqual({ ok: true, data: undefined });
+      expect(await leaveDates(id)).toEqual([FAR]);
+    });
+
+    it("admin 移除：只刪指定那一天，同一位設計師的其他日期與其他設計師的同一天都還在；再移除一次回失敗（0 列）", async () => {
+      const first = await createDesigner();
+      const second = await createDesigner();
+      const day2 = addDays(FAR, 1);
+      await seedLeave(first, FAR);
+      await seedLeave(first, day2);
+      await seedLeave(second, FAR);
+
+      expect(await removeDesignerLeave(adminClient, first, FAR)).toEqual({ ok: true, data: undefined });
+
+      expect(await leaveDates(first)).toEqual([day2]);
+      expect(await leaveDates(second)).toEqual([FAR]);
+
+      expect(await removeDesignerLeave(adminClient, first, FAR)).toEqual(GENERIC);
+      expect(await leaveDates(first)).toEqual([day2]);
+    });
+
+    it("不存在的設計師（外鍵 23503）：回通用錯誤，訊息不含 constraint 名稱，不寫入", async () => {
+      const result = await addDesignerLeave(adminClient, randomUUID(), FAR);
+      expect(result).toEqual(GENERIC);
+      expect(JSON.stringify(result)).not.toMatch(/fkey|constraint|designer_leaves/);
+    });
+
+    it("函式層擋下過去的日期與不合法的日期：資料庫沒有收到任何列", async () => {
+      const id = await createDesigner();
+      for (const date of [addDays(taipeiToday(), -1), "2099-02-30", "today", "infinity"]) {
+        expect(await addDesignerLeave(adminClient, id, date), date).toEqual(GENERIC);
+      }
+      expect(await leaveDates(id)).toEqual([]);
+    });
+
+    it("非管理員：新增被 RLS 擋下（不被當成成功、沒有寫入）；移除回失敗（0 列），既有的列仍在；讀取是空的", async () => {
+      const id = await createDesigner();
+
+      expect((await addDesignerLeave(nonAdminClient, id, FAR)).ok).toBe(false);
+      expect(await leaveDates(id)).toEqual([]);
+
+      await seedLeave(id, FAR);
+      // 該日已有列時，非管理員新增也必須失敗：RLS 的 WITH CHECK 要先於唯一性檢查，不能回 23505 被當成「冪等成功」。
+      expect((await addDesignerLeave(nonAdminClient, id, FAR)).ok).toBe(false);
+      expect((await removeDesignerLeave(nonAdminClient, id, FAR)).ok).toBe(false);
+      expect(await leaveDates(id)).toEqual([FAR]);
+
+      expect(await listDesignerLeaves(nonAdminClient, id)).toEqual({ ok: true, data: [] });
+    });
+
+    it("anon：讀取、新增、移除都失敗，既有的列仍在", async () => {
+      const id = await createDesigner();
+      await seedLeave(id, FAR);
+
+      expect((await listDesignerLeaves(anonClient, id)).ok).toBe(false);
+      expect((await addDesignerLeave(anonClient, id, addDays(FAR, 1))).ok).toBe(false);
+      expect((await addDesignerLeave(anonClient, id, FAR)).ok).toBe(false); // 該日已有列：也不能被當成冪等成功
+      expect((await removeDesignerLeave(anonClient, id, FAR)).ok).toBe(false);
+      expect(await leaveDates(id)).toEqual([FAR]);
+    });
+
+    describe("受影響預約與前台時段", () => {
+      let serviceId: string;
+      let day: string;
+      let openMin: number;
+
+      beforeAll(async () => {
+        const { data: hours, error: hoursError } = await serviceRoleClient
+          .from("business_hours")
+          .select("weekday, open_time, close_time, is_closed");
+        if (hoursError) throw hoursError;
+        const { data: closed, error: closedError } = await serviceRoleClient.from("closed_dates").select("date");
+        if (closedError) throw closedError;
+        const closedDates = new Set((closed ?? []).map((row) => row.date as string));
+
+        // 第 40 天起找第一個營業日（同時在 get_available_slots 的 90 天視野內）。
+        let found: { date: string; openMin: number } | null = null;
+        for (let offset = 40; offset < 54 && !found; offset += 1) {
+          const date = addDays(taipeiToday(), offset);
+          const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+          const row = (hours ?? []).find((h) => h.weekday === weekday);
+          if (row && !row.is_closed && row.open_time && row.close_time && !closedDates.has(date)) {
+            found = { date, openMin: toMinutes(row.open_time as string) };
+          }
+        }
+        if (!found) throw new Error("找不到營業日");
+        day = found.date;
+        openMin = found.openMin;
+
+        const { data: service, error } = await serviceRoleClient
+          .from("services")
+          // 下架狀態：只有「前台時段」那個案例才暫時上架，其餘案例期間前台看不到這個服務。
+          .insert({ name: `${TEST_MARKER} svc072`, price: 100, duration_minutes: 30, buffer_minutes: 0, is_active: false })
+          .select("id")
+          .single();
+        if (error) throw error;
+        serviceId = service.id as string;
+      });
+
+      async function seedAppointment(
+        designerId: string,
+        startAt: string,
+        status: "pending" | "confirmed" | "completed" | "cancelled",
+        label: string,
+      ) {
+        const { data, error } = await serviceRoleClient
+          .from("appointments")
+          .insert({
+            service_id: serviceId,
+            designer_id: designerId,
+            customer_name: `${TEST_MARKER} ${label}`,
+            customer_phone: `09${String(Date.now() % 100_000).padStart(5, "0")}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`,
+            customer_email: null,
+            start_at: startAt,
+            end_at: new Date(new Date(startAt).getTime() + 30 * 60_000).toISOString(),
+            status,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        return data.id as string;
+      }
+
+      async function linkService(designerId: string) {
+        const { error } = await serviceRoleClient
+          .from("designer_services")
+          .insert({ designer_id: designerId, service_id: serviceId });
+        if (error) throw error;
+      }
+
+      it("只回該設計師當天的 pending／confirmed：排除其他設計師、cancelled、completed、前一天 23:30 與次日 00:00；依時間排序；欄位剛好是最小集合", async () => {
+        const a = await createDesigner();
+        const b = await createDesigner();
+        const confirmed = await seedAppointment(a, at(day, openMin + 120), "confirmed", "a-confirmed");
+        const pending = await seedAppointment(a, at(day, openMin), "pending", "a-pending");
+        await seedAppointment(a, at(day, openMin + 60), "cancelled", "a-cancelled");
+        await seedAppointment(a, at(day, openMin + 180), "completed", "a-completed");
+        await seedAppointment(b, at(day, openMin), "pending", "b-pending");
+        await seedAppointment(a, at(addDays(day, -1), 23 * 60 + 30), "pending", "a-prev-day");
+        await seedAppointment(a, at(addDays(day, 1), 0), "pending", "a-next-day-midnight");
+
+        const result = await findAffectedAppointmentsForDesignerLeave(adminClient, a, day);
+
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.data.map((row) => row.id)).toEqual([pending, confirmed]);
+        for (const row of result.data) {
+          expect(Object.keys(row).sort()).toEqual(["customer_name", "id", "service_name", "start_at"]);
+          expect(row.service_name).toBe(`${TEST_MARKER} svc072`);
+        }
+
+        const other = await findAffectedAppointmentsForDesignerLeave(adminClient, b, day);
+        expect(other.ok && other.data).toHaveLength(1);
+      });
+
+      it("非管理員與 anon 看不到任何預約（RLS／欄位授權）", async () => {
+        const a = await createDesigner();
+        await seedAppointment(a, at(day, openMin), "pending", "a-hidden");
+
+        const nonAdmin = await findAffectedAppointmentsForDesignerLeave(nonAdminClient, a, day);
+        expect(nonAdmin).toEqual({ ok: true, data: [] });
+        expect((await findAffectedAppointmentsForDesignerLeave(anonClient, a, day)).ok).toBe(false);
+      });
+
+      it("標記請假後，指定該設計師的 get_available_slots 回空陣列；移除後恢復（寫入後預約端立即生效）", async () => {
+        const a = await createDesigner();
+        await linkService(a);
+        const { error: activateError } = await serviceRoleClient.from("services").update({ is_active: true }).eq("id", serviceId);
+        if (activateError) throw activateError;
+
+        const slots = async () => {
+          const { data, error } = await anonClient.rpc("get_available_slots", {
+            p_service_id: serviceId,
+            p_date: day,
+            p_designer_id: a,
+          });
+          if (error) throw error;
+          return data as { ok: boolean; data: unknown[] };
+        };
+
+        const before = await slots();
+        expect(before.ok).toBe(true);
+        expect(before.data.length).toBeGreaterThan(0);
+
+        expect(await addDesignerLeave(adminClient, a, day)).toEqual({ ok: true, data: undefined });
+        expect(await slots()).toEqual({ ok: true, data: [] });
+
+        expect(await removeDesignerLeave(adminClient, a, day)).toEqual({ ok: true, data: undefined });
+        expect((await slots()).data.length).toBeGreaterThan(0);
+      });
     });
   });
 });
