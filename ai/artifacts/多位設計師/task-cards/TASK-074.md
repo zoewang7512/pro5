@@ -8,7 +8,7 @@
 - 上層 User Story：顧客選擇設計師並查看詳細資訊
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-071, TASK-073
-- 狀態：待驗證，等人工驗收（實作與驗證見 [`verification/TASK-074.md`](../verification/TASK-074.md)；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」）
+- 狀態：完成（人工驗收通過，2026-10-22；實作與驗證見 [`verification/TASK-074.md`](../verification/TASK-074.md)；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」）
 - 風險等級：中（瀏覽器歷史紀錄操作，處理不好會讓顧客按返回鍵時離開預約頁、遺失進度）
 - Agent owner：Claude Code
 - 人工核准者：使用者

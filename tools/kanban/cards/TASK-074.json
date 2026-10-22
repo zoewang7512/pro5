@@ -2,7 +2,7 @@
   "id": "TASK-074",
   "title": "多位設計師 前台設計師全頁個人頁（仿 IG）、作品集九宮格與放大檢視、返回鍵行為",
   "content": "Dialog fullScreen＋pushState/popstate；數字列只有作品／專長；IG 連結 noopener；PortfolioGrid 元件。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -79,6 +79,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "實作與驗證完成，轉待驗證；agent 自我驗證不等同人工核准，product／ui／architecture／security／test／code_review 關卡待人工核准"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過，轉 Done"
     }
   ]
 }
