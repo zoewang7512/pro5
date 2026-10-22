@@ -33,7 +33,10 @@ import { getStoreSettings, resolveStoreDisplay } from "@/lib/store-settings";
 //   中「原時段／新時段」皆直接使用 payload 的 record／old_record，不重讀資料庫；
 //   只有 customer_name／customer_email／service_id 這幾個不受時序問題影響的
 //   識別性欄位才依 id 重讀資料庫（同樣是為了不整列送出、避免外洩
-//   access_token 等欄位）。
+//   access_token 等欄位）。TASK-076 起 designer_id 也屬此類，用來查信件的「設計師」
+//   一行：**這個前提依賴「預約建立後不能改派設計師」**（authenticated 沒有
+//   update(designer_id) 權限，見 0017_designers.sql；cancel／reschedule 也不動它）。
+//   日後若做改派，designer_id 必須改從 0012 trigger 的 payload 快照取得，不能再重讀。
 
 type WebhookPayload = {
   type: "INSERT" | "UPDATE" | "DELETE";
@@ -78,13 +81,40 @@ type ClaimedAppointment = {
   customer_email: string | null;
   start_at: string;
   service_id: string;
+  designer_id: string;
 };
 
 type AppointmentIdentity = {
   customer_name: string;
   customer_email: string | null;
   service_id: string;
+  designer_id: string;
 };
+
+// 設計師名稱（TASK-076）刻意不內嵌進 claim／身分重讀的 select，而是另外查詢：INSERT
+// 分支的 claim 是 UPDATE ... RETURNING，內嵌失敗會讓整個語句失敗並提早 return，
+// pg_net 不重試，確認信就永久遺失。查詢回傳 error 時只記 log 並省略該行、照常寄信；
+// 只有真的 throw 才由呼叫端的 catch 處理（INSERT 分支會釋放 claim）。
+// 不加 is_active 條件：已停用設計師的歷史預約仍要顯示名稱（service_role 略過 RLS）。
+async function readDesignerName(
+  supabase: SupabaseClient,
+  designerId: string | null | undefined,
+  appointmentId: string,
+): Promise<string | null> {
+  if (!designerId) return null;
+
+  const { data, error } = await supabase.from("designers").select("name").eq("id", designerId).maybeSingle();
+  if (error) {
+    console.error("appointment-events: 讀取設計師名稱失敗，信件省略設計師一行", {
+      appointmentId,
+      error: error.message,
+    });
+    return null;
+  }
+
+  const name = (data as { name?: unknown } | null)?.name;
+  return typeof name === "string" ? name : null;
+}
 
 export async function POST(req: NextRequest) {
   // 密鑰驗證失敗一律 401，不執行任何後續邏輯（含解析 body），避免對未驗證請求
@@ -136,7 +166,7 @@ async function handleAppointmentInsert(record: Record<string, unknown> | null) {
     .update({ confirmation_sent_at: new Date().toISOString() })
     .eq("id", record.id)
     .is("confirmation_sent_at", null)
-    .select("customer_name, customer_email, start_at, service_id")
+    .select("customer_name, customer_email, start_at, service_id, designer_id")
     .maybeSingle();
 
   if (claimError) {
@@ -164,8 +194,9 @@ async function handleAppointmentInsert(record: Record<string, unknown> | null) {
   // 釋放回 null，讓未來的人工／排程補寄機制能重新處理這筆預約，避免確認信永久
   // 遺失且無人知曉（architect／security-reviewer 於本卡審查提出的 MUST FIX）。
   try {
-    const [{ data: service }, storeSettingsResult] = await Promise.all([
+    const [{ data: service }, designerName, storeSettingsResult] = await Promise.all([
       supabase.from("services").select("name").eq("id", claimed.service_id).maybeSingle(),
+      readDesignerName(supabase, claimed.designer_id, record.id),
       getStoreSettings(supabase),
     ]);
     const storeDisplay = storeSettingsResult.ok ? resolveStoreDisplay(storeSettingsResult.data) : null;
@@ -174,6 +205,7 @@ async function handleAppointmentInsert(record: Record<string, unknown> | null) {
       customerName: claimed.customer_name,
       serviceName: (service as { name: string } | null)?.name ?? "服務",
       startAt: claimed.start_at,
+      designerName,
       storeName: storeDisplay?.name,
       storePhone: storeDisplay?.phone,
       storeLogoUrl: storeDisplay?.logoUrl,
@@ -252,7 +284,7 @@ async function handleAppointmentUpdate(
   // 都不會動到這些欄位），仍是為了不整列送出、避免外洩 access_token 等欄位。
   const { data, error } = await supabase
     .from("appointments")
-    .select("customer_name, customer_email, service_id")
+    .select("customer_name, customer_email, service_id, designer_id")
     .eq("id", record.id)
     .maybeSingle();
 
@@ -274,8 +306,9 @@ async function handleAppointmentUpdate(
   }
 
   try {
-    const [{ data: service }, storeSettingsResult] = await Promise.all([
+    const [{ data: service }, designerName, storeSettingsResult] = await Promise.all([
       supabase.from("services").select("name").eq("id", identity.service_id).maybeSingle(),
+      readDesignerName(supabase, identity.designer_id, record.id),
       getStoreSettings(supabase),
     ]);
     const serviceName = (service as { name: string } | null)?.name ?? "服務";
@@ -287,6 +320,7 @@ async function handleAppointmentUpdate(
             customerName: identity.customer_name,
             serviceName,
             startAt: record.start_at,
+            designerName,
             storeName: storeDisplay?.name,
             storePhone: storeDisplay?.phone,
             storeLogoUrl: storeDisplay?.logoUrl,
@@ -297,6 +331,7 @@ async function handleAppointmentUpdate(
             serviceName,
             oldStartAt: oldRecord.start_at,
             newStartAt: record.start_at,
+            designerName,
             storeName: storeDisplay?.name,
             storePhone: storeDisplay?.phone,
             storeLogoUrl: storeDisplay?.logoUrl,

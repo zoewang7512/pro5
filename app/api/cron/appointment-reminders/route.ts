@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
         customerName: appointment.customer_name,
         serviceName: appointment.service_name,
         startAt: appointment.start_at,
+        designerName: appointment.designer_name,
         storeName: storeDisplay?.name,
         storePhone: storeDisplay?.phone,
         storeLogoUrl: storeDisplay?.logoUrl,

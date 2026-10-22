@@ -55,15 +55,18 @@ export type ClaimedReminderAppointment = {
   customer_email: string | null;
   start_at: string;
   service_name: string;
+  designer_name: string | null;
 };
 
 type RawService = { name: string };
+type RawDesigner = { name: string };
 type RawClaimedRow = {
   id: string;
   customer_name: string;
   customer_email: string | null;
   start_at: string;
   services: RawService | RawService[] | null;
+  designers: RawDesigner | RawDesigner[] | null;
 };
 
 // PostgREST embedded resource 依 supabase-js 版本可能回傳物件或單元素陣列，兩種
@@ -72,6 +75,14 @@ type RawClaimedRow = {
 function flattenServiceName(services: RawClaimedRow["services"]): string {
   const service = Array.isArray(services) ? services[0] : services;
   return service?.name ?? "服務";
+}
+
+// 設計師名稱（TASK-076）：空值或非字串一律回 null，由信件範本省略「設計師」一行，
+// 不讓異常形狀的內嵌結果流進 escapeHtml 而 throw。
+function flattenDesignerName(designers: RawClaimedRow["designers"]): string | null {
+  const designer = Array.isArray(designers) ? designers[0] : designers;
+  const name = (designer as { name?: unknown } | null | undefined)?.name;
+  return typeof name === "string" ? name : null;
 }
 
 // 「claim 模式」：用一次 UPDATE ... WHERE reminder_sent_at IS NULL ... RETURNING
@@ -90,7 +101,10 @@ function flattenServiceName(services: RawClaimedRow["services"]): string {
 // select 內嵌 services(name) 一次查完服務名稱，不像 webhook 端點逐筆查（那裡
 // 一次只處理一列）；這裡 claim 一次可能回幾十列，逐筆查會是不必要的 N+1 往返
 // （architect 於本卡審查提出的 NICE TO HAVE，比照 lib/admin/appointments.ts
-// getAppointmentsForWeek 的既有 join 慣例）。
+// getAppointmentsForWeek 的既有 join 慣例）。TASK-076 起同理內嵌 designers(name)；
+// 與 services(name) 的失敗模式相同：內嵌失敗等同整批 claim 失敗（交易回滾、不留佔位，
+// route 回 500，隔天重撈），**不是**「省略設計師一行」。appointments 到 designers 只有
+// 一條外鍵，內嵌不會有歧義；不加 is_active 條件，已停用設計師的歷史預約仍要有名稱。
 //
 // .order("start_at") 讓最快到來的預約優先處理，搭配 route.ts 的時間預算提前
 // 中止機制，逾時發生時犧牲的會是最不急迫的預約，不是隨機的（architect 提出）。
@@ -108,7 +122,7 @@ export async function claimAppointmentsForReminder(
     .is("reminder_sent_at", null)
     .order("start_at", { ascending: true })
     .limit(MAX_BATCH_SIZE)
-    .select("id, customer_name, customer_email, start_at, services(name)");
+    .select("id, customer_name, customer_email, start_at, services(name), designers(name)");
 
   if (error) {
     return { ok: false, error: INTERNAL_ERROR };
@@ -120,6 +134,7 @@ export async function claimAppointmentsForReminder(
     customer_email: row.customer_email,
     start_at: row.start_at,
     service_name: flattenServiceName(row.services),
+    designer_name: flattenDesignerName(row.designers),
   }));
 
   return { ok: true, data: claimed };

@@ -34,6 +34,7 @@ const DEFAULT_CLAIM_ROWS = [
     customer_email: "customer@example.invalid",
     start_at: "2026-08-25T09:00:00+08:00",
     services: { name: "剪髮" },
+    designers: { name: "小美" },
   },
 ];
 
@@ -178,6 +179,35 @@ describe("GET /api/cron/appointment-reminders", () => {
     expect(call.subject).toContain("剪髮");
     expect(call.html).toContain("王小明");
     expect(call.html).toContain("測試髮廊");
+  });
+
+  it("提醒信內文帶入設計師名稱，主旨不含名稱；名稱含 HTML 特殊字元時 escape", async () => {
+    const { GET } = await import("@/app/api/cron/appointment-reminders/route");
+    await GET(cronRequest());
+    const first = state.sendEmailMock.mock.calls[0][0];
+    expect(first.html).toContain("<li>設計師：小美</li>");
+    expect(first.subject).not.toContain("小美");
+
+    state.sendEmailMock.mockClear();
+    state.supabaseClient = createSupabaseMock({
+      claim: { data: [{ ...DEFAULT_CLAIM_ROWS[0], designers: { name: "<script>alert(1)</script>" } }], error: null },
+    });
+    await GET(cronRequest());
+    const second = state.sendEmailMock.mock.calls[0][0];
+    expect(second.html).not.toContain("<script>alert(1)</script>");
+    expect(second.html).toContain("&lt;script&gt;");
+  });
+
+  it("designers 內嵌為 null 時仍寄信，省略設計師一行", async () => {
+    state.supabaseClient = createSupabaseMock({
+      claim: { data: [{ ...DEFAULT_CLAIM_ROWS[0], designers: null }], error: null },
+    });
+    const { GET } = await import("@/app/api/cron/appointment-reminders/route");
+    const res = await GET(cronRequest());
+
+    expect(res.status).toBe(200);
+    expect(state.sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(state.sendEmailMock.mock.calls[0][0].html).not.toContain("設計師：");
   });
 
   it("claim 到的 customer_email 為 null 時跳過該筆寄信，不計入 sent，也不釋放去重佔位", async () => {

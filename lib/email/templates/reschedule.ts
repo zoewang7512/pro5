@@ -8,6 +8,7 @@ export type RescheduleEmailInput = {
   serviceName: string;
   oldStartAt: string;
   newStartAt: string;
+  designerName?: string | null;
   storeName?: string | null;
   storePhone?: string | null;
   storeLogoUrl?: string | null;
@@ -31,6 +32,8 @@ export function buildRescheduleEmail(input: RescheduleEmailInput): RescheduleEma
   const safeOldDateTimeLabel = escapeHtml(oldDateTimeLabel);
   const safeNewDateTimeLabel = escapeHtml(newDateTimeLabel);
   const safeStoreName = escapeHtml(input.storeName?.trim() || DEFAULT_STORE_NAME);
+  // 同 confirmation.ts：designerName 只放在文字節點，不進主旨，空值整行省略。
+  const designerLine = input.designerName?.trim() ? `<li>設計師：${escapeHtml(input.designerName.trim())}</li>` : "";
   // 比照 cancellation.ts：補上聯絡方式，讓「若新時段不方便」這句話真的有辦法
   // 聯絡（architect 於本卡審查提出的 NICE TO HAVE，與 TASK-052 confirmation.ts
   // 既有模式一致）。
@@ -45,9 +48,12 @@ export function buildRescheduleEmail(input: RescheduleEmailInput): RescheduleEma
     `<li>服務項目：${safeServiceName}</li>`,
     `<li>原時段：${safeOldDateTimeLabel}</li>`,
     `<li>新時段：${safeNewDateTimeLabel}</li>`,
+    designerLine,
     "</ul>",
     contactLine,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const html = wrapEmailBody({
     storeName: input.storeName,

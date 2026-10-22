@@ -72,4 +72,36 @@ describe("buildConfirmationEmail", () => {
     expect(html).not.toContain("<img");
     expect(html).toContain("您在路口理髮廳的預約已成立");
   });
+
+  describe("設計師名稱（TASK-076）", () => {
+    it("提供 designerName 時輸出「設計師」一行，主旨不含名稱", () => {
+      const { html, subject } = buildConfirmationEmail({ ...baseInput, designerName: "小美" });
+      expect(html).toContain("<li>設計師：小美</li>");
+      expect(subject).not.toContain("小美");
+      expect(subject).toContain("預約確認");
+    });
+
+    it.each([undefined, null, "", "   "])("designerName 為 %j 時不輸出「設計師」一行，也不留下空的 <li>", (designerName) => {
+      const { html } = buildConfirmationEmail({ ...baseInput, designerName });
+      expect(html).not.toContain("設計師：");
+      expect(html).not.toContain("<li></li>");
+    });
+
+    it("designerName 含 <script> 時必須 escape", () => {
+      const { html } = buildConfirmationEmail({ ...baseInput, designerName: "<script>alert(1)</script>" });
+      expect(html).not.toContain("<script>alert(1)</script>");
+      expect(html).toContain("<li>設計師：&lt;script&gt;alert(1)&lt;/script&gt;</li>");
+    });
+
+    it("designerName 含雙引號、單引號與 & 時分別 escape 成 &quot;、&#39;、&amp;", () => {
+      const { html } = buildConfirmationEmail({ ...baseInput, designerName: "A\"B'C&D" });
+      expect(html).toContain("設計師：A&quot;B&#39;C&amp;D");
+    });
+
+    it("designerName 含換行時主旨不會出現換行（名稱不進主旨）", () => {
+      const { subject, html } = buildConfirmationEmail({ ...baseInput, designerName: "小\n美" });
+      expect(subject).not.toMatch(/[\r\n]/);
+      expect(html).toContain("設計師：");
+    });
+  });
 });

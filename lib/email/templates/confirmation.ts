@@ -9,6 +9,7 @@ export type ConfirmationEmailInput = {
   customerName: string;
   serviceName: string;
   startAt: string;
+  designerName?: string | null;
   storeName?: string | null;
   storePhone?: string | null;
   storeLogoUrl?: string | null;
@@ -37,6 +38,9 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): Confirmat
   const safeServiceName = escapeHtml(input.serviceName);
   const safeDateTimeLabel = escapeHtml(dateTimeLabel);
   const safeStoreName = escapeHtml(input.storeName?.trim() || DEFAULT_STORE_NAME);
+  // designerName 來自店長在後台輸入的 designers.name（TASK-076），只放在文字節點，
+  // 不進主旨；空值（null／undefined／全空白）整行省略。
+  const designerLine = input.designerName?.trim() ? `<li>設計師：${escapeHtml(input.designerName.trim())}</li>` : "";
   const contactLine = input.storePhone?.trim()
     ? `<p>如需異動預約，歡迎聯絡我們：${escapeHtml(input.storePhone.trim())}</p>`
     : "";
@@ -47,6 +51,7 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): Confirmat
     "<ul>",
     `<li>服務項目：${safeServiceName}</li>`,
     `<li>預約時段：${safeDateTimeLabel}</li>`,
+    designerLine,
     "</ul>",
     contactLine,
     "<p>期待您的光臨。</p>",

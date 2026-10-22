@@ -7,6 +7,7 @@ export type ReminderEmailInput = {
   customerName: string;
   serviceName: string;
   startAt: string;
+  designerName?: string | null;
   storeName?: string | null;
   storePhone?: string | null;
   storeLogoUrl?: string | null;
@@ -32,6 +33,8 @@ export function buildReminderEmail(input: ReminderEmailInput): ReminderEmailCont
   const safeServiceName = escapeHtml(input.serviceName);
   const safeDateTimeLabel = escapeHtml(dateTimeLabel);
   const safeStoreName = escapeHtml(input.storeName?.trim() || DEFAULT_STORE_NAME);
+  // 同 confirmation.ts：designerName 只放在文字節點，不進主旨，空值整行省略。
+  const designerLine = input.designerName?.trim() ? `<li>設計師：${escapeHtml(input.designerName.trim())}</li>` : "";
   const contactLine = input.storePhone?.trim()
     ? `<p>如有問題，歡迎聯絡我們：${escapeHtml(input.storePhone.trim())}</p>`
     : "";
@@ -42,6 +45,7 @@ export function buildReminderEmail(input: ReminderEmailInput): ReminderEmailCont
     "<ul>",
     `<li>服務項目：${safeServiceName}</li>`,
     `<li>預約時段：${safeDateTimeLabel}</li>`,
+    designerLine,
     "</ul>",
     contactLine,
     "<p>期待您的光臨。</p>",
