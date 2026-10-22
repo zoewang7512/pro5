@@ -50,4 +50,31 @@ describe("ConfirmDialog", () => {
     );
     expect(screen.getByRole("button", { name: "取消" })).toBeDisabled();
   });
+
+  describe("autoFocusCancel（TASK-081）", () => {
+    it("autoFocusCancel 為 true 時，取消鈕取得預設焦點（Enter 不會誤觸確認鈕）", async () => {
+      const onConfirm = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <ConfirmDialog
+          open
+          title="有尚未儲存的變更"
+          cancelLabel="繼續編輯"
+          confirmLabel="放棄變更"
+          autoFocusCancel
+          onConfirm={onConfirm}
+          onClose={vi.fn()}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "繼續編輯" })).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it("預設（未傳 autoFocusCancel）取消鈕不會被強制取得焦點，既有行為不變", () => {
+      render(<ConfirmDialog open title="確認刪除？" onConfirm={vi.fn()} onClose={vi.fn()} />);
+      expect(screen.getByRole("button", { name: "取消" })).not.toHaveFocus();
+    });
+  });
 });

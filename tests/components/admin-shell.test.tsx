@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
-import { renderWithTheme as render } from "../test-utils";
+import userEvent from "@testing-library/user-event";
+import { renderWithAppRouter, renderWithTheme as render } from "../test-utils";
+import { useUnsavedChangesGuard } from "@/app/admin/_components/UnsavedChangesProvider";
 import { AdminShell, isNavItemActive } from "@/app/admin/_components/AdminShell";
 
 const pathnameMock = vi.hoisted(() => ({ value: "/admin" }));
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => pathnameMock.value,
+  // UnsavedChangesProvider（TASK-081）用 useRouter；AdminShell 現在包著它。
+  useRouter: () => ({ push: routerMock.push, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 vi.mock("@/app/admin/_components/AdminProfileContext", () => ({
@@ -52,6 +57,78 @@ describe("AdminShell 導覽項目", () => {
       expect(screen.getByRole("link", { name: "預約" })).not.toHaveClass("Mui-selected");
     },
   );
+});
+
+// 放在 AdminShell 裡的測試表單：回報有／沒有未儲存變更（TASK-081）。
+function GuardedForm({ dirty }: { dirty: boolean }) {
+  useUnsavedChangesGuard("test-form", dirty);
+  return <div>表單內容</div>;
+}
+
+describe("AdminShell 未儲存變更攔截（TASK-081）", () => {
+  afterEach(() => {
+    cleanup();
+    pathnameMock.value = "/admin";
+    routerMock.push.mockReset();
+  });
+
+  it("有未儲存變更時點側邊欄：先提示、不導覽；選「放棄變更」後才 router.push 到目標", async () => {
+    const user = userEvent.setup();
+    const { router } = renderWithAppRouter(
+      <AdminShell>
+        <GuardedForm dirty />
+      </AdminShell>,
+    );
+
+    await user.click(screen.getByRole("link", { name: "服務設定" }));
+    expect(screen.getByText("有尚未儲存的變更")).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "放棄變更" }));
+    expect(routerMock.push).toHaveBeenCalledWith("/admin/services");
+    expect(screen.queryByText("有尚未儲存的變更")).not.toBeInTheDocument();
+  });
+
+  it("選「繼續編輯」：停留在原頁，表單內容仍在、不導覽", async () => {
+    const user = userEvent.setup();
+    renderWithAppRouter(
+      <AdminShell>
+        <GuardedForm dirty />
+      </AdminShell>,
+    );
+
+    await user.click(screen.getByRole("link", { name: "服務設定" }));
+    await user.click(screen.getByRole("button", { name: "繼續編輯" }));
+    expect(screen.getByText("表單內容")).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("沒有未儲存變更：不提示，由 Next 照常導覽", async () => {
+    const user = userEvent.setup();
+    const { router } = renderWithAppRouter(
+      <AdminShell>
+        <GuardedForm dirty={false} />
+      </AdminShell>,
+    );
+
+    await user.click(screen.getByRole("link", { name: "服務設定" }));
+    expect(screen.queryByText("有尚未儲存的變更")).not.toBeInTheDocument();
+    expect(router.push).toHaveBeenCalled();
+  });
+
+  it("點目前所在頁的導覽項目：就算有變更也不提示（沒有實際導覽）", async () => {
+    pathnameMock.value = "/admin/booking-policy";
+    const user = userEvent.setup();
+    renderWithAppRouter(
+      <AdminShell>
+        <GuardedForm dirty />
+      </AdminShell>,
+    );
+
+    await user.click(screen.getByRole("link", { name: "預約規則" }));
+    expect(screen.queryByText("有尚未儲存的變更")).not.toBeInTheDocument();
+  });
 });
 
 describe("isNavItemActive", () => {

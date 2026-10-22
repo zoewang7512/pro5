@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen } from "@testing-library/react";
-import { renderWithTheme as render } from "../test-utils";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderWithAppRouter, renderWithTheme as render } from "../test-utils";
 import { Sidebar } from "@/components/ui/Sidebar";
 
 // jsdom 沒有內建 matchMedia，Sidebar 內嵌的 ColorModeToggle 用到 MUI useColorScheme
@@ -76,5 +77,68 @@ describe("Sidebar", () => {
       <Sidebar title="理髮廳後台" items={[{ label: "服務設定", href: "/admin/services" }]} />,
     );
     expect(screen.getByText("服務設定")).toBeInTheDocument();
+  });
+
+  describe("onItemNavigate（TASK-081）", () => {
+    it("點擊導覽項目時，onNavigate 能穿過 ListItemButton component={Link} 傳到 Link，並帶入該項目的 href", async () => {
+      mockMatchMedia();
+      const onItemNavigate = vi.fn((_href: string, event: { preventDefault: () => void }) => event.preventDefault());
+      const user = userEvent.setup();
+      const { router } = renderWithAppRouter(
+        <Sidebar
+          title="理髮廳後台"
+          items={[
+            { label: "預約", href: "/admin", active: true },
+            { label: "服務設定", href: "/admin/services" },
+          ]}
+          onItemNavigate={onItemNavigate}
+        />,
+      );
+
+      await user.click(screen.getByRole("link", { name: "服務設定" }));
+      expect(onItemNavigate).toHaveBeenCalledTimes(1);
+      expect(onItemNavigate).toHaveBeenCalledWith("/admin/services", expect.objectContaining({ preventDefault: expect.any(Function) }));
+      // 呼叫端 preventDefault 後，Next 不會自己導覽（由呼叫端決定之後怎麼做）。
+      expect(router.push).not.toHaveBeenCalled();
+    });
+
+    it("修飾鍵（Ctrl／Cmd）點擊由 Next 排除，不會呼叫 onItemNavigate（瀏覽器預設開新分頁）；一般點擊則會（避免空轉通過）", () => {
+      mockMatchMedia();
+      const onItemNavigate = vi.fn((_href: string, event: { preventDefault: () => void }) => event.preventDefault());
+      renderWithAppRouter(
+        <Sidebar title="理髮廳後台" items={[{ label: "服務設定", href: "/admin/services" }]} onItemNavigate={onItemNavigate} />,
+      );
+      const link = screen.getByRole("link", { name: "服務設定" });
+
+      fireEvent.click(link);
+      expect(onItemNavigate).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(link, { ctrlKey: true });
+      fireEvent.click(link, { metaKey: true });
+      expect(onItemNavigate).toHaveBeenCalledTimes(1);
+    });
+
+    it("停用的項目不是連結，點擊不會觸發 onItemNavigate", () => {
+      mockMatchMedia();
+      const onItemNavigate = vi.fn();
+      render(
+        <Sidebar
+          title="理髮廳後台"
+          items={[{ label: "預約", href: "/admin" }, { label: "即將推出", href: "/admin/soon", disabled: true }]}
+          onItemNavigate={onItemNavigate}
+        />,
+      );
+
+      fireEvent.click(screen.getByText("即將推出"));
+      expect(onItemNavigate).not.toHaveBeenCalled();
+    });
+
+    it("沒有傳 onItemNavigate 時行為不變（點擊不報錯）", async () => {
+      mockMatchMedia();
+      const user = userEvent.setup();
+      render(<Sidebar title="理髮廳後台" items={[{ label: "服務設定", href: "/admin/services" }]} />);
+      await user.click(screen.getByRole("link", { name: "服務設定" }));
+      expect(screen.getByRole("link", { name: "服務設定" })).toBeInTheDocument();
+    });
   });
 });

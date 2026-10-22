@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar, type SidebarItem } from "@/components/ui/Sidebar";
 import { LogoutButton } from "../logout-button";
 import { useAdminProfile } from "./AdminProfileContext";
+import { UnsavedChangesProvider, useUnsavedChangesActions } from "./UnsavedChangesProvider";
 import { resolveAdminDisplayName } from "@/lib/admin/account";
 
 // Sidebar 導覽上移到這裡（第二個後台頁面 /admin/business-hours 出現，比照
@@ -112,9 +113,20 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+// AdminShell 拆成「Provider 外層＋AdminShellInner」（TASK-081）：元件拿不到自己 render 出來的 Provider 的
+// context，而 Sidebar 的接線（guardNavigate）需要讀這個 context，所以接線寫在內層。
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  return (
+    <UnsavedChangesProvider>
+      <AdminShellInner>{children}</AdminShellInner>
+    </UnsavedChangesProvider>
+  );
+}
+
+function AdminShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { displayName, avatarUrl } = useAdminProfile();
+  const { guardNavigate } = useUnsavedChangesActions();
   const items: SidebarItem[] = NAV_ITEMS.map((item) => ({
     ...item,
     active: isNavItemActive(pathname, item.href),
@@ -128,6 +140,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         logoutSlot={<LogoutButton />}
         profileName={resolveAdminDisplayName(displayName)}
         profileAvatarUrl={avatarUrl}
+        onItemNavigate={guardNavigate}
       />
       <Box component="main" sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {children}

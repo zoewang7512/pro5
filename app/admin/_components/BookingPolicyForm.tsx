@@ -19,6 +19,7 @@ import {
   type BookingPolicyInput,
 } from "@/lib/booking-policy";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useUnsavedChangesGuard } from "./UnsavedChangesProvider";
 
 // TASK-046：頁面骨架＋唯讀顯示（比照 StoreSettingsForm.tsx／BusinessHoursForm.tsx 的
 // 既有「fetch 結果存 state＋cancelled guard」模式）。TASK-047：接上編輯／驗證／儲存
@@ -66,6 +67,9 @@ function PolicyCard({ initial, supabase }: { initial: BookingPolicy; supabase: R
   const hasChanges =
     fields.min_lead_time_hours !== savedFields.min_lead_time_hours ||
     fields.cancel_window_hours !== savedFields.cancel_window_hours;
+
+  // 有未儲存變更時，離開（側邊欄、登出、關頁）先提示（TASK-081）。改回原值或儲存成功後 hasChanges 即為 false。
+  useUnsavedChangesGuard("booking-policy", hasChanges);
 
   const minLeadTimeHoursValue = Number(fields.min_lead_time_hours);
   const exceedsCustomerVisibleRange =

@@ -28,10 +28,15 @@ export function Sidebar({
   logoutSlot,
   profileName,
   profileAvatarUrl,
+  onItemNavigate,
 }: {
   title: string;
   items: SidebarItem[];
   logoutSlot?: React.ReactNode;
+  // 轉傳給 next/link 的 onNavigate（TASK-081）：只在 Next 確定要做站內 client 導覽時才呼叫
+  // （修飾鍵、download、外部網址已被它排除）。呼叫端可在這裡 event.preventDefault() 攔截導覽。
+  // Sidebar 是跨頁共用的通用元件，不認識「未儲存變更」；不傳時行為不變。
+  onItemNavigate?: (href: string, event: { preventDefault: () => void }) => void;
   // 目前登入設計師的顯示名稱／大頭貼（TASK-038），顯示於 logoutSlot 上方。皆為選填：
   // 未傳入時（例如尚未載入完成）不渲染這個區塊，不佔版位、不顯示空白骨架——比照既有
   // 「非阻塞式次要資訊」的既有慣例（見 BrandHeaderSection 獨立 fetch 不阻塞主流程）。
@@ -77,6 +82,7 @@ export function Sidebar({
               key={item.href}
               component={Link}
               href={item.href}
+              onNavigate={onItemNavigate ? (event: { preventDefault: () => void }) => onItemNavigate(item.href, event) : undefined}
               selected={item.active}
               sx={{
                 px: 2.5,

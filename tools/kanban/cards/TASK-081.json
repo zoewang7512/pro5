@@ -2,7 +2,7 @@
   "id": "TASK-081",
   "title": "UI 設計系統 後台「未儲存變更」離開提示：共用機制＋預約規則表單（試點）",
   "content": "共用機制（外部 store、useUnsavedChangesGuard／useUnsavedChanges、提示對話框、beforeunload）＋ConfirmDialog autoFocusCancel＋Sidebar／登出接線，套用到預約規則表單作為第一條垂直切片。同一分支依序做 081→082→083。",
-  "stage": "implementing",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -37,7 +37,7 @@
     "screenSpec": "ai/artifacts/專案設置/screen-spec-未儲存變更離開提示.md",
     "mockupDecision": "ai/artifacts/專案設置/mockup-decision-未儲存變更離開提示.md",
     "taskCard": "ai/artifacts/專案設置/task-cards/TASK-081.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-081.md",
     "pr": ""
   },
   "refs": [
@@ -50,9 +50,19 @@
     "app/admin/_components/UnsavedChangesProvider.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過",
+      "npx vitest run --maxWorkers=3：1123/1124（1 項為 account-settings-view 的 5 秒逾時，單獨重跑 33/33 通過）",
+      "新增 52 項測試（store 8、Provider 22、Sidebar 4、ConfirmDialog 2、AdminShell 4、LogoutButton 4、BookingPolicyForm 8）",
+      "突變測試：對 Provider 植入 7 種錯誤，測試皆能抓到（其中一項第一次沒抓到，是測試缺陷，已修）",
+      "瀏覽器走查（正式庫，預約規則不儲存）：攔截側邊欄／登出、繼續編輯／Esc／放棄變更、改回原值不提示、同頁不提示、beforeunload 註冊與解除、亮暗色"
+    ],
+    "findings": [
+      "預設焦點在真實瀏覽器沒有生效（淡入動畫期間 visibility:hidden，autoFocus 無效），單元測試抓不到；已改在 onEntered 明確給焦點並在瀏覽器驗證",
+      "vitest 的 next/link 是 Pages Router 實作，沒有 router context 時點擊不會走到 onNavigate；新增 renderWithAppRouter",
+      "測試缺陷：renderWithTheme 的 rerender 會整棵重掛 Provider，使一個突變沒被抓到；已改用 TestThemeWrapper"
+    ],
+    "residual": "瀏覽器上一頁不攔截；beforeunload 原生提示需人工在真實瀏覽器確認；Ctrl/Cmd 點擊無乾淨的瀏覽器直接證據（以 Next 原始碼＋單元測試為證）；onEntered 焦點路徑無法在 jsdom 單元測試；儲存中放棄變更文案可能失準；未做實作後 subagent 審查"
   },
   "comments": [
     {
@@ -99,6 +109,11 @@
       "name": "使用者",
       "time": "2026-10-22",
       "text": "核准 TASK-081／082／083 實作計畫（含 architect 7 項 MUST FIX 修正），開始做 TASK-081。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。TASK-082、TASK-083 維持 Backlog（依賴本卡）。"
     }
   ]
 }
