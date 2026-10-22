@@ -2,7 +2,7 @@
   "id": "TASK-081",
   "title": "UI 設計系統 後台「未儲存變更」離開提示：共用機制＋預約規則表單（試點）",
   "content": "共用機制（外部 store、useUnsavedChangesGuard／useUnsavedChanges、提示對話框、beforeunload）＋ConfirmDialog autoFocusCancel＋Sidebar／登出接線，套用到預約規則表單作為第一條垂直切片。同一分支依序做 081→082→083。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -114,6 +114,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。TASK-082、TASK-083 維持 Backlog（依賴本卡）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }
