@@ -22,12 +22,12 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": true,
     "ui": true,
-    "architecture": false,
+    "architecture": true,
     "security": false,
     "test": false,
     "code_review": false
@@ -56,6 +56,16 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "implementation-plan 產出。計畫待人工核准；前置卡完成後才可就緒。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "architect 動工前審查：要求修正，7 項 MUST FIX 已併入任務卡（AdminShell 拆 Provider 外層與內層、useIsUnsavedDirty 與穩定動作 context、confirmIfDirty 支援 key 範圍、放棄變更後 leavingRef 防第二次原生提示、新增成功先標記乾淨、帳號名稱 trim 比對、SSR getServerSnapshot 與 useState 建 store），並採用 Next Link 的 onNavigate 取代自寫修飾鍵判斷。計畫待使用者核准。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "核准 TASK-081／082／083 實作計畫（含 architect 7 項 MUST FIX 修正），開始做 TASK-081。"
     }
   ]
 }

@@ -45,18 +45,19 @@
 
 - WHEN 編輯模式下 `normalizeFields(fields)` 與已儲存值不同，或專長輸入框內有未提交的文字 THE SYSTEM SHALL 回報有變更；改回原值、儲存成功（`savedFields` 更新）後回報乾淨。
 - WHEN 新增模式下名稱、Instagram、簡介、專長標籤任一非空，或專長輸入框有文字 THE SYSTEM SHALL 回報有變更；所有欄位皆空時回報乾淨（**不得沿用新增模式 `hasChanges` 恆為 true 的判定**，儲存鈕的啟用邏輯維持不變）。
-- WHEN 新增成功後 `router.replace` 到編輯頁 THE SYSTEM SHALL NOT 出現提示（程式化導覽不攔截，且元件卸載會清除狀態）。
+- WHEN 新增成功後 THE SYSTEM SHALL **先**把 `isDirty` 設為 false（例如 `setCreated(true)`）**再**呼叫 `onCreated`（與規格「先標記為無變更再導覽」一致）。原因：`handleSubmit` 在 `onCreated()` 之後由 `finally` 才把 `submitting` 設回 false，從成功到新頁面 commit 之間若不先標記乾淨，圓點仍在、`beforeunload` 仍掛著、點側邊欄會誤提示。`router.replace` 是程式化導覽，不攔截。
+  （另記錄一個**既有且不在本卡範圍**的問題：建立成功後按鈕會重新啟用，有重複建立的風險，列入驗證報告。）
 
 麵包屑與頁籤：
 
-- WHEN 使用者點擊 `DesignerEditView` 的兩處麵包屑連結（「設計師」）且基本資料有變更 THE SYSTEM SHALL 套用 TASK-081 的 `guardLinkClick`。
-- WHEN 基本資料有變更 THE SYSTEM SHALL 在「基本資料」標籤旁顯示 `warning` 色圓點（MUI `Badge variant="dot"`），不論目前在哪個頁籤；WHEN 無變更或儲存成功 THE SYSTEM SHALL 立即移除圓點。圓點須有 tooltip 與 `aria-label`「有未儲存的變更」，不能只靠顏色。新增模式同樣適用。
+- WHEN 使用者點擊 `DesignerEditView` 頂部麵包屑的「設計師」連結（`DesignerEditView.tsx:91`）且基本資料有變更 THE SYSTEM SHALL 套用 TASK-081 的 `guardNavigate`（`Link` 的 `onNavigate`）。「找不到這位設計師」提示裡的「回設計師列表」連結（約 `:101`）出現時表單根本沒掛載，**不需要攔截**。
+- WHEN 基本資料有變更 THE SYSTEM SHALL 在「基本資料」標籤旁顯示 `warning` 色圓點（MUI `Badge variant="dot"`），不論目前在哪個頁籤；WHEN 無變更或儲存成功 THE SYSTEM SHALL 立即移除圓點。圓點用 `useIsUnsavedDirty("designer-basic-info")` 讀取；須有 tooltip，**並在 Tab 標籤內放視覺隱藏文字「有未儲存的變更」**（`aria-label` 加在沒有 role 的 Badge span 上，讀屏不一定會唸），不能只靠顏色。圓點是非文字元素，對比要求 3:1（比原寫的 4.5:1 寬，仍須在亮暗色皆可辨）。新增模式同樣適用。
 - WHEN 使用者切換頁籤 THE SYSTEM SHALL NOT 顯示提示。
 
 服務項目對話框（key `service-form`）：
 
 - WHEN 對話框內容與初始值（新增：空白預設；編輯：該服務目前值）不同 THE SYSTEM SHALL 回報有變更。
-- WHEN 有變更且使用者點背景、按 Esc 或按「取消」THE SYSTEM SHALL 以 `confirmIfDirty` 先提示，疊在服務對話框之上；選「繼續編輯」回到服務對話框、輸入不變；選「放棄變更」關閉兩層。
+- WHEN 有變更且使用者點背景、按 Esc 或按「取消」THE SYSTEM SHALL 以 `confirmIfDirty(onClose, { key: "service-form" })` 先提示（**只看 `service-form` 這個 key**，不被頁面上別的表單誤觸發），疊在服務對話框之上；選「繼續編輯」回到服務對話框、輸入不變、焦點還原到原輸入框；選「放棄變更」關閉兩層，**焦點須回到觸發的「新增服務／編輯」按鈕**（兩層同時卸載，焦點可能掉到 body，走查要確認）。
 - WHEN 對話框處於儲存中（`submitting`）THE SYSTEM SHALL 維持現況（不可關閉、不提示）。
 - WHEN 儲存成功 `onSuccess()` 關閉對話框 THE SYSTEM SHALL NOT 提示。
 
@@ -71,8 +72,8 @@
 
 ## 實作備註
 
-- `DesignerBasicInfoForm`：新增 `isDirty`（獨立於 `hasChanges`），並以受控的 `inputValue` 追蹤專長輸入框；`Autocomplete` 的 `onInputChange` 更新。新增模式的 dirty 與空白初始值比對。
-- `DesignerEditView`：以 `useUnsavedChanges().isDirty("designer-basic-info")` 讀取反應式狀態驅動圓點；`Tab` 的 `label` 用 `Badge` 包住文字；注意現有 `label` 對有計數的頁籤用 `Stack`＋`Chip`，基本資料目前是純文字字串。
+- `DesignerBasicInfoForm`：新增 `isDirty`（獨立於 `hasChanges`）。專長輸入框**不要改成受控 `inputValue`**（`freeSolo`＋`autoSelect` 在 reset 時會清空輸入框，受控容易讓文字卡住）；只用 `Autocomplete` 的 `onInputChange` 記一個「輸入框有沒有文字」的布林即可。這條路徑主要給 `beforeunload` 用：點側邊欄時 mousedown 先觸發 blur，文字此時已被 `autoSelect` 轉成標籤，由 `fields.specialties` 變動捕捉。新增模式的 dirty 與空白初始值比對。
+- `DesignerEditView`：以 `useIsUnsavedDirty("designer-basic-info")` 讀取反應式狀態驅動圓點；`Tab` 的 `label` 用 `Badge` 包住文字；注意現有 `label` 對有計數的頁籤用 `Stack`＋`Chip`，基本資料目前是純文字字串。
 - `ServiceFormDialog`：初始值用 lazy `useState` 另存一份（`initialForm`），`dirty = !sameForm(form, initialForm)`；`Dialog onClose` 與「取消」鈕改走 `confirmIfDirty(onClose)`。
 - 圓點是「補強」，不是主要提示；主要提示仍是離開時的對話框。
 
@@ -80,7 +81,7 @@
 
 - 單元測試：
   - 設計師基本資料：新增模式空白／非空；編輯模式改回原值、儲存成功；專長輸入框有文字；`autoSelect` 失焦轉標籤的路徑。
-  - `DesignerEditView`：圓點顯示／消失、tooltip 與 aria-label、切頁籤不提示、麵包屑點擊攔截、新增成功跳轉不提示。
+  - `DesignerEditView`：圓點顯示／消失、tooltip 與視覺隱藏文字、切頁籤不提示、頂部麵包屑點擊攔截（not-found 提示的連結不攔截）、新增成功先標記乾淨再跳轉、`onCreated` 與 `finally` 之間不誤提示。
   - `ServiceFormDialog`：新增與編輯的 dirty、Esc／背景／取消在有變更時提示、無變更直接關閉、儲存中不可關閉、儲存成功不提示。
 - 整合測試：不涉及資料層，不重跑。
 - E2E 測試：Browser 走查：設計師編輯頁（圓點、麵包屑、新增模式）、服務對話框（新增與編輯、疊加提示）。
@@ -95,5 +96,5 @@
 - 執行過的指令：
 - 測試輸出：
 - 螢幕截圖：
-- 已知限制：瀏覽器上一頁／下一頁不攔截。
+- 已知限制：瀏覽器上一頁／下一頁不攔截；建立成功後按鈕重新啟用有重複建立風險（既有，不在本卡範圍）。
 - 後續任務：無（整個 TASK-081～083 完成後合併 master）

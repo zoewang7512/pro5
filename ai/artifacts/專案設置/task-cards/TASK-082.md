@@ -58,16 +58,19 @@
 
 ## 實作備註
 
-- `BusinessHoursForm`：在 `LoadState.loaded` 增加 `savedRows`（載入與儲存後重新載入時一起設定），`hasBusinessHoursChanges(rows, savedRows)` 逐星期比對三個欄位；注意 `rows` 是 `Map<number, BusinessHoursInput>`。
-- `AccountSettingsView`：兩個區塊在各自元件內呼叫 `useUnsavedChangesGuard`（`AccountNameCard`／`AccountEmailCard` 或對應子元件），不要在外層用單一 key 合併，避免其中一個儲存後另一個的狀態被蓋掉。
+- `BusinessHoursForm`：在 `LoadState.loaded` 增加 `savedRows`（載入與儲存後重新載入時一起設定），`hasBusinessHoursChanges(rows, savedRows)` 逐星期比對三個欄位；注意 `rows` 是 `Map<number, BusinessHoursInput>`。**`updateRow` 目前每次都重建 `{ status: "loaded", rows }`，加了 `savedRows` 之後必須改成 `{ ...prev, rows: next }`，否則 `savedRows` 會被洗掉。**
+- `AccountSettingsView`：它是**單一元件**（沒有 `AccountNameCard`／`AccountEmailCard` 這種子元件，不要為了接 guard 而拆元件）。在同一元件內**兩次**呼叫 `useUnsavedChangesGuard`，key 分別為 `account-name`、`account-email`，不要合併成單一 key。
+- **顯示名稱的 dirty 要用 trim 後的值比對**：`nameInput.trim() !== (displayName ?? "")`。現有 `hasNameChanges` 比的是未 trim 的值，但儲存時存的是 `nameInput.trim()`（`AccountSettingsView.tsx:85`），輸入「Zoe 」存檔成功後輸入框不會回寫，會一直被判定有變更而誤報。**guard 用新的布林，不要改動既有的 `hasNameChanges`（它同時決定儲存鈕是否啟用，屬儲存邏輯）。**
+- 殘留風險：`refresh()` 內 `getAdminProfile` 失敗時 `displayName` 不會更新（`AdminProfileContext.tsx`），儲存成功後仍會被判定有變更；列入驗證報告，不在本卡處理。
 - 三個表單目前都沒有直接的 `useUnsavedChangesGuard`，只需在計算出布林值後加一行呼叫；不重構既有結構。
 
 ## 驗證契約
 
 - 單元測試：
-  - `hasBusinessHoursChanges`（相同、改公休、改時間、七列任一不同、空字串與 null 的等價處理）。
+  - `hasBusinessHoursChanges`（相同、改公休、改時間、七列任一不同；`rows` 已經過 `formatTimeInput` 正規化成 `""`，不需要測 null 等價）。
+  - `updateRow` 之後 `savedRows` 仍保留（防回歸）。
   - 各表單：改欄位→dirty、改回原值→乾淨、儲存成功→乾淨（以包 Provider 的測試輔助驗證 store 的 key）。
-  - 帳號設定：密碼欄位輸入不影響兩個 key。
+  - 帳號設定：密碼欄位輸入不影響兩個 key；**顯示名稱輸入「Zoe 」（尾端空白）並儲存成功後回報乾淨**。
 - 整合測試：不涉及資料層，不重跑；既有套件不受影響。
 - E2E 測試：Browser 走查三個表單各一次（改→點側邊欄→繼續編輯／放棄變更；改回原值；儲存後）；帳號設定另測「只改密碼欄位不提示」。
 - 型別檢查／Lint／Build：`npx tsc --noEmit`、`npm run lint`、`npm run build`。
