@@ -79,7 +79,7 @@ describe("claimAppointmentsForReminder", () => {
     expect(result).toEqual({ ok: true, data: [] });
   });
 
-  it("成功時把內嵌的 services(name) 攤平成 service_name，含 customer_email 為 null 的列（claim 一併涵蓋）", async () => {
+  it("成功時把內嵌的 services(name)／designers(name) 攤平成 service_name／designer_name（物件、陣列、null、非字串四種形狀），含 customer_email 為 null 的列（claim 一併涵蓋）", async () => {
     const rows = [
       {
         id: "apt-1",
@@ -87,6 +87,7 @@ describe("claimAppointmentsForReminder", () => {
         customer_email: "a@example.invalid",
         start_at: "2026-08-25T09:00:00+08:00",
         services: { name: "剪髮" },
+        designers: { name: "小美" },
       },
       {
         id: "apt-2",
@@ -94,6 +95,7 @@ describe("claimAppointmentsForReminder", () => {
         customer_email: null,
         start_at: "2026-08-25T10:00:00+08:00",
         services: [{ name: "染髮" }],
+        designers: [{ name: "阿杰" }],
       },
       {
         id: "apt-3",
@@ -101,6 +103,15 @@ describe("claimAppointmentsForReminder", () => {
         customer_email: "c@example.invalid",
         start_at: "2026-08-25T11:00:00+08:00",
         services: null,
+        designers: null,
+      },
+      {
+        id: "apt-4",
+        customer_name: "趙小強",
+        customer_email: "d@example.invalid",
+        start_at: "2026-08-25T12:00:00+08:00",
+        services: { name: "剪髮" },
+        designers: { name: 123 },
       },
     ];
     const { client, update, chainable } = fakeUpdateClient({ data: rows, error: null });
@@ -109,9 +120,10 @@ describe("claimAppointmentsForReminder", () => {
     expect(result).toEqual({
       ok: true,
       data: [
-        { id: "apt-1", customer_name: "王小明", customer_email: "a@example.invalid", start_at: "2026-08-25T09:00:00+08:00", service_name: "剪髮" },
-        { id: "apt-2", customer_name: "李小華", customer_email: null, start_at: "2026-08-25T10:00:00+08:00", service_name: "染髮" },
-        { id: "apt-3", customer_name: "陳小美", customer_email: "c@example.invalid", start_at: "2026-08-25T11:00:00+08:00", service_name: "服務" },
+        { id: "apt-1", customer_name: "王小明", customer_email: "a@example.invalid", start_at: "2026-08-25T09:00:00+08:00", service_name: "剪髮", designer_name: "小美" },
+        { id: "apt-2", customer_name: "李小華", customer_email: null, start_at: "2026-08-25T10:00:00+08:00", service_name: "染髮", designer_name: "阿杰" },
+        { id: "apt-3", customer_name: "陳小美", customer_email: "c@example.invalid", start_at: "2026-08-25T11:00:00+08:00", service_name: "服務", designer_name: null },
+        { id: "apt-4", customer_name: "趙小強", customer_email: "d@example.invalid", start_at: "2026-08-25T12:00:00+08:00", service_name: "剪髮", designer_name: null },
       ],
     });
     // 確認查詢條件正確組裝：status in pending/confirmed、reminder_sent_at is null、

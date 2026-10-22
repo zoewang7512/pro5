@@ -2,7 +2,7 @@
   "id": "TASK-076",
   "title": "多位設計師 四種通知信顯示設計師名稱",
   "content": "確認／提醒／取消／改期信加「設計師」一行（HTML 跳脫，空值省略）；webhook 與 cron 讀取設計師名稱。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -37,7 +37,7 @@
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-076.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-076.md",
     "pr": ""
   },
   "refs": [
@@ -46,18 +46,47 @@
     "lib/email/templates/cancellation.ts",
     "lib/email/templates/reschedule.ts",
     "app/api/webhooks/appointment-events/route.ts",
-    "app/api/cron/appointment-reminders/route.ts"
+    "app/api/cron/appointment-reminders/route.ts",
+    "lib/admin/appointment-reminders.ts",
+    "lib/email/templates/_layout.ts",
+    "tests/notifications.integration.test.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：通過",
+      "npm run build：通過",
+      "vitest（tests/lib、appointment-reminders、webhook、cron）：285/285 通過",
+      "npm run test:notifications（真實 Supabase）：20/20 通過（含已停用設計師的 webhook 與 cron 案例）",
+      "npm test 全套：1003/1040，37 項皆為 tests/components 的 5 秒逾時；乾淨 HEAD 上同批檔案同樣逾時（5 項），確認與本卡無關"
+    ],
+    "findings": [
+      "webhook 若把 designers 內嵌進 claim 的 RETURNING，內嵌失敗會讓確認信永久遺失（已改為另查、失敗省略該行）",
+      "cron 內嵌失敗等同整批 claim 失敗，任務卡原假設「查詢失敗不讓信失敗」不成立，已改寫任務卡說法",
+      "reschedule.ts 原本沒有 filter(Boolean)，空字串會在 <ul> 留下空行，已補上"
+    ],
+    "residual": "cron 內嵌失敗當天整批提醒不寄（同 services(name)）；UPDATE 分支重讀 designer_id 依賴不能改派；名稱可能被信箱自動轉連結；設計師查詢失敗僅記 log 無告警；未做實作後 subagent 審查；確認信實際收信截圖待 TASK-077"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前 architect／security-reviewer 審查完成並採納（見任務卡「動工前審查定案」）。開始實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }

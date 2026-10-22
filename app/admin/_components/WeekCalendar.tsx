@@ -7,11 +7,13 @@ import CardActionArea from "@mui/material/CardActionArea";
 import Chip from "@mui/material/Chip";
 import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { WeekDay } from "@/lib/admin/week-range";
 import type { WeekAppointment } from "@/lib/admin/appointments";
 import { STATUS_COLOR, STATUS_LABEL, formatTimeRange, toTaipeiDate } from "@/lib/admin/format";
+import { DesignerLabel } from "./DesignerFilterChips";
 
 // MUI 沒有現成的週曆格狀元件，比照 mockup 變體 B「展開事件卡」：7 欄日期格，
 // 每格顯示完整資訊事件卡。事件卡只在有傳入 onEventClick 時才用 CardActionArea 包裹
@@ -26,7 +28,15 @@ export type WeekCalendarProps = {
   closedWeekdays: Set<number>;
   closedDates: Set<string>;
   onEventClick?: (appointment: WeekAppointment) => void;
+  // 只勾選一位設計師時為 false（事件卡的設計師列是多餘資訊）；省略時不顯示，維持沒有設計師篩選時的版面。
+  showDesignerRow?: boolean;
+  // 日期 → 被勾選且當天請假的設計師名稱（只有明確勾選時才有內容）。
+  leaveLabels?: Map<string, string[]>;
+  // 篩選後該週沒有預約時的空狀態標題（「○○本週沒有預約」）；null 或省略時沿用「本週沒有預約」。
+  filteredEmptyTitle?: string | null;
 };
+
+const NO_LEAVE_LABELS = new Map<string, string[]>();
 
 export function WeekCalendar({
   weekDays,
@@ -36,6 +46,9 @@ export function WeekCalendar({
   closedWeekdays,
   closedDates,
   onEventClick,
+  showDesignerRow = false,
+  leaveLabels = NO_LEAVE_LABELS,
+  filteredEmptyTitle = null,
 }: WeekCalendarProps) {
   const appointmentsByDate = React.useMemo(() => {
     const map = new Map<string, WeekAppointment[]>();
@@ -54,7 +67,18 @@ export function WeekCalendar({
 
   return (
     <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
-      {status === "loaded" && appointments.length === 0 && <Alert severity="info">本週沒有預約</Alert>}
+      {status === "loaded" && appointments.length === 0 && (
+        <Alert severity="info">
+          {filteredEmptyTitle ? (
+            <>
+              <AlertTitle>{filteredEmptyTitle}</AlertTitle>
+              切換到「全部」或其他週次看看
+            </>
+          ) : (
+            "本週沒有預約"
+          )}
+        </Alert>
+      )}
 
       <Box
         sx={{
@@ -69,6 +93,7 @@ export function WeekCalendar({
         const isToday = day.date === todayDate;
         const isClosed = closedWeekdays.has(day.weekday) || closedDates.has(day.date);
         const dayAppointments = appointmentsByDate.get(day.date) ?? [];
+        const leaveNames = leaveLabels.get(day.date) ?? [];
 
         return (
           <Card
@@ -92,9 +117,35 @@ export function WeekCalendar({
               {isClosed ? " · 公休" : ""}
             </Typography>
 
+            {leaveNames.map((name) => (
+              <Typography
+                key={name}
+                variant="caption"
+                sx={{
+                  alignSelf: "flex-start",
+                  maxWidth: "100%",
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: "warning.light",
+                  color: "warning.main",
+                  fontWeight: 600,
+                  display: "flex",
+                  minWidth: 0,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {/* 名稱先縮（省略號），「請假」兩字常駐，才不會只看到被截斷的名字而不知道是什麼標示 */}
+                <Box component="span" sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <bdi>{name}</bdi>
+                </Box>
+                <span>請假</span>
+              </Typography>
+            ))}
+
             {status === "loading" && <Skeleton variant="rounded" height={56} />}
 
-            {status === "loaded" && dayAppointments.length === 0 && isClosed === false && (
+            {status === "loaded" && dayAppointments.length === 0 && isClosed === false && leaveNames.length === 0 && (
               <Typography variant="caption" sx={{ color: "text.disabled" }}>
                 —
               </Typography>
@@ -114,11 +165,14 @@ export function WeekCalendar({
                         textDecoration: appointment.status === "cancelled" ? "line-through" : "none",
                       }}
                     >
-                      {appointment.customer_name}
+                      <bdi>{appointment.customer_name}</bdi>
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       {appointment.service_name}
                     </Typography>
+                    {showDesignerRow && appointment.designer && (
+                      <DesignerLabel name={appointment.designer.name} avatarUrl={appointment.designer.avatar_url} />
+                    )}
                     <Chip
                       size="small"
                       label={STATUS_LABEL[appointment.status]}

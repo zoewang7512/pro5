@@ -8,7 +8,7 @@
 - 上層 User Story：管理設計師基本資料
 - 分軌：前後端串接（後台畫面＋`lib/admin/designers.ts` 寫入函式；資料表已由 TASK-067 建立）
 - 前置任務（dependsOn）：TASK-067
-- 狀態：就緒前審查中（人工已於 2026-10-21 核准；動工前先完成 architect／security-reviewer 架構審查）
+- 狀態：完成（人工驗收通過，2026-10-22；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」）
 - 風險等級：中（後台寫入與頭像上傳，沿用既有 Storage／表單模式）
 - Agent owner：Claude Code
 - 人工核准者：使用者
@@ -70,6 +70,60 @@
 - 排序：`swapDesignerOrder` 交換兩列的 `sort_order`（兩次 update），任一失敗就重新讀取列表，不做樂觀更新。
 - 新增設計師時 `sort_order` 取目前最大值 + 1。
 
+## 動工前審查定案（2026-10-22）
+
+architect、security-reviewer 皆為 Approve with changes（不等同人工核准）。以下為採納事項；使用者已於對話中決定
+範圍擴充兩項（標「人工決定」）。
+
+### 範圍修訂（追加允許變更的檔案）
+
+- `components/ui/ImageUploadField.tsx`：**〔人工決定〕** discriminated union——`{ kind, supabase }` 走舊路徑，
+  `{ onUpload, onRemove, validate? }` 走新路徑，另加選填 `shape="circle"`；既有商店設定頁行為不變。
+  圓形時「更換／移除」移到圓形下方。補 `tests/components/image-upload-field.test.tsx` 回歸案例。
+- `app/admin/_components/AdminShell.tsx`：**〔人工決定〕** 子路徑也算 active（`/admin` 首頁維持完全比對）＋單元測試。
+- `lib/admin/image-reencode.ts`（新增）：canvas 重新編碼（含可測純函式：目標尺寸、mime→副檔名）。
+- `lib/designers.ts`：`validateDesignerBio` 補擋控制／方向字元（允許換行）、`instagramProfileUrl()`、`isDesignerId()`。
+- 測試：`tests/components/designers-table.test.tsx`（擴充）、`designer-basic-info-form.test.tsx`、
+  `designer-edit-view.test.tsx`（新增）、`tests/lib/image-reencode.test.ts`（新增）。`tests/admin/designers.test.ts`
+  為擴充（任務卡原寫「新增」）。
+- `ai/context/design-system.md`：登記 TagInput 用法與 ImageUploadField 新 prop。
+- `Result` 型別沿用 `./appointments` 既有匯出，不新增。
+
+### 採納的設計定案
+
+1. **canvas**：先 `image/webp`，`blob === null` 或 `blob.type !== "image/webp"` 改 `image/jpeg`（先填白底），再失敗就**中止**，
+   任何分支都不上傳原檔；副檔名與 contentType 依 `blob.type` 經 `Object.hasOwn` 白名單推出；原圖超過 8000px／40MP
+   拒絕；輸出長邊縮到 1024px；`createImageBitmap(file, { imageOrientation: "from-image" })`；用完歸零 canvas、
+   `close()` bitmap。
+2. **頭像更新用 CAS**：`update({avatar_url}).eq("id").eq("avatar_url", old)`（舊值 null 用 `.is`）`.select("id")`；
+   0 列＝補刪新檔並提示重新整理；例外／逾時等結果不明時先重讀，`avatar_url !== newUrl` 才補刪。舊值**從資料庫讀**，
+   不信任前端 props。移除：先 CAS 改 null，成功才刪檔。多步驟全在 lib 函式內。
+3. **刪舊檔路徑**：先過 `resolveDesignerAssetUrl`，要求無 search／hash，pathname 以完整錨定正規式
+   `^/storage/v1/object/public/designer-assets/avatar/<designerId>/<uuid>.(jpg|png|webp)$` 比對，用擷取群組重組路徑；
+   不符就不刪並顯示警告。`designerId` 一律用 `getDesigner` 回傳的 `designer.id`（小寫）。
+4. **`[id]` 路由**：先 UUID 正規式，不合法顯示「找不到這位設計師」；`getDesigner` 用 `.maybeSingle()`，查不到回 `ok(null)`。
+5. **排序**：`planDesignerOrderSwap(list, index, direction)` 純函式（值不同＝交換；值相同＝整份重新編號）；
+   交換分支第二次失敗時盡力回滾第一列，一律重讀；列表有共用「操作進行中」狀態，在途時停用所有箭頭與停用按鈕。
+   箭頭旁加說明「順序也會影響『不指定設計師』時的自動指派優先順序」。
+6. **停用前筆數查詢**：`select("id", { count: "exact", head: true })`（不可用 `*`）；失敗時**不顯示 0**，
+   顯示「無法取得未來預約筆數」，仍可二次確認停用。
+7. **欄位白名單**：`toBasicInfoPayload()` 只回傳 4 個欄位（建立時加 `sort_order`、`is_active`），單元測試斷言 `Object.keys`；
+   不展開 `Designer`、不用 upsert；空字串 bio／IG 轉 null；名稱／專長／簡介送出前 NFC 正規化。
+8. **錯誤**：不顯示也不 log `error.message／details`；只依 `error.code` 對應少數文案。
+9. **新增模式**：頭像與其他三個頁籤停用，建立成功後 `router.replace` 到 `/admin/designers/<id>`。
+   「基本資料」面板切頁籤時保持掛載。TagInput 用 `autoSelect`，避免打字後未按 Enter 就儲存而漏標籤。
+10. **走查與清理**：只建 `__TEST__` 設計師，排序步驟只在兩位 `__TEST__` 設計師間交換；結束後用 service_role 先刪
+    `avatar/<id>/` Storage 物件再刪設計師，以 `starts_with(name, '__TEST__')` 查無殘留（不用 `LIKE`，`_` 是萬用字元），
+    並確認預設設計師 `sort_order`／`is_active` 未變。不與整合測試同時跑。
+
+### 已知限制（寫入驗證報告）
+
+- 排序重新編號分支寫入超過兩次，不做補償；失敗最壞情況是幾列同值，排序退回依 created_at。
+- 「最後一位啟用中」以前端已載入列表判斷，多分頁同時操作可能過時（僅一位管理員）。
+- 新增時網路逾時重試可能重複建立；補刪新檔失敗會留下孤兒檔（驗證報告附孤兒檔查詢 SQL）。
+- 簡介的控制／方向字元只有前端擋，資料庫 constraint 需另開卡。
+- 既有 `resolveAdminAvatarUrl` 弱點、CDN 快取殘留，同 TASK-067 驗證報告。
+
 ## 驗證契約
 
 - 單元測試：驗證純函式（各邊界值）、IG 帳號正規化、`swapDesignerOrder` 失敗時的回傳。
@@ -81,9 +135,12 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
+完整內容見 [`../verification/TASK-069.md`](../verification/TASK-069.md)。
+
+- 變更的檔案：`lib/designers.ts`（簡介字元驗證、`normalizeDesignerBio`、`instagramProfileUrl`、`isDesignerId`）、`lib/admin/designers.ts`（`getDesigner`、`createDesigner`、`updateDesignerBasicInfo`、`setDesignerActive`、`countFutureAppointmentsForDesigner`、`planDesignerOrderSwap`／`swapDesignerOrder`、頭像上傳／移除與路徑解析）、`lib/admin/image-reencode.ts`（新增）；`app/admin/designers/new/page.tsx`、`app/admin/designers/[id]/page.tsx`（新增）、`app/admin/_components/DesignerEditView.tsx`、`DesignerBasicInfoForm.tsx`（新增）、`DesignersTable.tsx`、`AdminShell.tsx`；`components/ui/ImageUploadField.tsx`；`ai/context/design-system.md`（TagInput、ImageUploadField 擴充）；測試：`tests/lib/designers.test.ts`、`tests/lib/image-reencode.test.ts`、`tests/admin/designers-write.test.ts`、`tests/components/designers-table.test.tsx`、`designer-basic-info-form.test.tsx`、`designer-edit-view.test.tsx`、`image-upload-field.test.tsx`、`admin-shell.test.tsx`、`tests/designers.integration.test.ts`。
+- 執行過的指令：`tsc --noEmit`、`npm run lint`、`npm run build`、`vitest run --maxWorkers=3`（690 項）、`npm run test:designers -- -t "TASK-069"`（12 項，真實專案）、瀏覽器走查與 service_role 清理。
+- 測試輸出：全數通過，詳見驗證報告（預設並行度下全套測試曾有無關檔案的逾時，已記錄）。
+- 螢幕截圖：列表、新增頁（預設與驗證錯誤）、編輯頁、停用確認、已停用狀態、768px 亮色模式，見驗證報告。
+- 已知限制：見驗證報告「殘留風險」——排序重新編號分支不補償、「最後一位啟用中」以前端列表判斷、孤兒檔、簡介字元只有前端擋、5MB 前置上限。
+- 實作期偏離原設計：寫入函式的單元測試放在獨立新檔 `tests/admin/designers-write.test.ts`（`designers.test.ts` 維持讀取函式測試）；`DesignerEditView` 載入完成前麵包屑只顯示「設計師」。範圍追加（`ImageUploadField`、`AdminShell`、`image-reencode.ts` 等）已在動工前審查定案中記錄並經人工決定。
 - 後續任務：TASK-070、TASK-071、TASK-072

@@ -3,6 +3,9 @@
 // 執行方式：npm run seed:booking（會用 --env-file=.env.local 載入環境變數）。
 // 冪等：business_hours 以 weekday 為 key 用 upsert；services 依 name 查詢，
 // 不存在才新增，重跑不會產生重複資料，也不會覆寫已被後台修改過的既有資料。
+// 多位設計師 Epic 起（0017／0018），預約依設計師計算：本次**新增**的服務會對「預設設計師」
+// （designers 依 created_at、id 排序的第一位）開啟，否則全新環境跑完 seed 後前台沒有任何設計師
+// 提供這些服務、無法預約。已存在的服務不會被動到（店長可能已經關掉某些服務的開關）。
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -48,6 +51,7 @@ async function seedBusinessHours() {
 }
 
 async function seedServices() {
+  const createdIds = [];
   for (const service of SERVICES) {
     const { data: existing, error: selectError } = await supabase
       .from("services")
@@ -62,15 +66,45 @@ async function seedServices() {
       continue;
     }
 
-    const { error: insertError } = await supabase.from("services").insert(service);
+    const { data: inserted, error: insertError } = await supabase.from("services").insert(service).select("id").single();
     if (insertError) fail(`新增服務「${service.name}」失敗：${insertError.message}`);
+    createdIds.push(inserted.id);
     console.log(`[seed-booking-data] 已新增服務「${service.name}」。`);
   }
+  return createdIds;
+}
+
+// 本次新增的服務對預設設計師開啟；已存在的服務維持店長現有的設定，不重新開啟。
+async function seedDesignerServices(serviceIds) {
+  if (serviceIds.length === 0) return;
+
+  const { data: defaultDesigner, error: designerError } = await supabase
+    .from("designers")
+    .select("id")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (designerError) fail(`查詢預設設計師失敗：${designerError.message}`);
+  if (!defaultDesigner) {
+    console.warn("[seed-booking-data] 找不到任何設計師（尚未套用 0017？），新增的服務沒有對任何設計師開啟，前台將無法預約。");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("designer_services")
+    .upsert(
+      serviceIds.map((serviceId) => ({ designer_id: defaultDesigner.id, service_id: serviceId })),
+      { onConflict: "designer_id,service_id", ignoreDuplicates: true },
+    );
+  if (error) fail(`對預設設計師開啟服務失敗：${error.message}`);
+  console.log(`[seed-booking-data] 已對預設設計師開啟 ${serviceIds.length} 項新增的服務。`);
 }
 
 async function main() {
   await seedBusinessHours();
-  await seedServices();
+  const createdServiceIds = await seedServices();
+  await seedDesignerServices(createdServiceIds);
 }
 
 main().then(

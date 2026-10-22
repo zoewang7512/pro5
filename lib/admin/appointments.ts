@@ -9,6 +9,10 @@ export type Result<T> = { ok: true; data: T } | { ok: false; error: AdminError }
 
 export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
+// 預約上的設計師（embed 自 designers，後台 authenticated 可讀整張表）。designer 為 null 只會出現在
+// embed 被擋或缺漏時；designer_id 本身是 not null（0018），改期時段計算一律以 designer_id 為準。
+export type AppointmentDesigner = { id: string; name: string; avatar_url: string | null };
+
 export type WeekAppointment = {
   id: string;
   customer_name: string;
@@ -18,6 +22,8 @@ export type WeekAppointment = {
   service_name: string;
   duration_minutes: number;
   buffer_minutes: number;
+  designer_id: string;
+  designer: AppointmentDesigner | null;
 };
 
 const INTERNAL_ERROR: AdminError = { message: "發生未預期的錯誤，請稍後再試。" };
@@ -29,6 +35,8 @@ type RawAppointmentRow = {
   start_at: string;
   end_at: string;
   status: AppointmentStatus;
+  designer_id: string;
+  designers: AppointmentDesigner | AppointmentDesigner[] | null;
   services: RawService | RawService[] | null;
 };
 
@@ -39,6 +47,31 @@ function flattenService(services: RawAppointmentRow["services"]): RawService {
   return service ?? { name: "", duration_minutes: 0, buffer_minutes: 0 };
 }
 
+function flattenDesigner(designers: RawAppointmentRow["designers"]): AppointmentDesigner | null {
+  const designer = Array.isArray(designers) ? designers[0] : designers;
+  return designer ?? null;
+}
+
+// 週曆與詳情共用同一份欄位與對應函式，避免兩個查詢漂移。明確列欄位，不用 `*`（appointments 是欄位層級授權）；
+// designers 不用 !inner，embed 被擋時預約仍要留在週曆上，只是不顯示設計師名稱。
+const APPOINTMENT_EMBEDS = "designer_id, designers(id, name, avatar_url), services(name, duration_minutes, buffer_minutes)";
+
+function toWeekAppointment(row: RawAppointmentRow): WeekAppointment {
+  const service = flattenService(row.services);
+  return {
+    id: row.id,
+    customer_name: row.customer_name,
+    start_at: row.start_at,
+    end_at: row.end_at,
+    status: row.status,
+    service_name: service.name,
+    duration_minutes: service.duration_minutes,
+    buffer_minutes: service.buffer_minutes,
+    designer_id: row.designer_id,
+    designer: flattenDesigner(row.designers),
+  };
+}
+
 export async function getAppointmentsForWeek(
   supabase: SupabaseClient,
   weekStart: string,
@@ -46,7 +79,7 @@ export async function getAppointmentsForWeek(
 ): Promise<Result<WeekAppointment[]>> {
   const { data, error } = await supabase
     .from("appointments")
-    .select("id, customer_name, start_at, end_at, status, services(name, duration_minutes, buffer_minutes)")
+    .select(`id, customer_name, start_at, end_at, status, ${APPOINTMENT_EMBEDS}`)
     .gte("start_at", `${weekStart}T00:00:00+08:00`)
     .lt("start_at", `${addDays(weekEnd, 1)}T00:00:00+08:00`)
     .order("start_at", { ascending: true });
@@ -55,19 +88,7 @@ export async function getAppointmentsForWeek(
     return { ok: false, error: INTERNAL_ERROR };
   }
 
-  const appointments: WeekAppointment[] = ((data ?? []) as RawAppointmentRow[]).map((row) => {
-    const service = flattenService(row.services);
-    return {
-      id: row.id,
-      customer_name: row.customer_name,
-      start_at: row.start_at,
-      end_at: row.end_at,
-      status: row.status,
-      service_name: service.name,
-      duration_minutes: service.duration_minutes,
-      buffer_minutes: service.buffer_minutes,
-    };
-  });
+  const appointments: WeekAppointment[] = ((data ?? []) as RawAppointmentRow[]).map(toWeekAppointment);
 
   return { ok: true, data: appointments };
 }
@@ -85,7 +106,7 @@ export async function getAppointmentDetail(
 ): Promise<Result<AppointmentDetail>> {
   const { data, error } = await supabase
     .from("appointments")
-    .select("id, customer_name, customer_phone, start_at, end_at, status, services(name, duration_minutes, buffer_minutes)")
+    .select(`id, customer_name, customer_phone, start_at, end_at, status, ${APPOINTMENT_EMBEDS}`)
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -94,21 +115,7 @@ export async function getAppointmentDetail(
   }
 
   const row = data as RawAppointmentDetailRow;
-  const service = flattenService(row.services);
-  return {
-    ok: true,
-    data: {
-      id: row.id,
-      customer_name: row.customer_name,
-      customer_phone: row.customer_phone,
-      start_at: row.start_at,
-      end_at: row.end_at,
-      status: row.status,
-      service_name: service.name,
-      duration_minutes: service.duration_minutes,
-      buffer_minutes: service.buffer_minutes,
-    },
-  };
+  return { ok: true, data: { ...toWeekAppointment(row), customer_phone: row.customer_phone } };
 }
 
 async function updateAppointmentStatus(

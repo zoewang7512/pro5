@@ -33,6 +33,7 @@ const DEFAULT_CLAIMED = {
   customer_email: "customer@example.invalid",
   start_at: "2026-08-24T09:00:00+08:00",
   service_id: "svc-1",
+  designer_id: "des-1",
 };
 
 // UPDATE 分支的「識別性欄位」回讀（TASK-053 修正後：不再回讀 status/start_at/
@@ -41,16 +42,20 @@ const DEFAULT_IDENTITY = {
   customer_name: "王小明",
   customer_email: "customer@example.invalid",
   service_id: "svc-1",
+  designer_id: "des-1",
 };
 
 function createSupabaseMock(overrides: {
   update?: TableResponse;
   services?: TableResponse;
+  designers?: TableResponse;
+  designersThrows?: boolean;
   storeSettings?: TableResponse;
   identityRead?: TableResponse;
 } = {}) {
   const update = overrides.update ?? { data: DEFAULT_CLAIMED, error: null };
   const services = overrides.services ?? { data: { name: "剪髮" }, error: null };
+  const designers = overrides.designers ?? { data: { name: "小美" }, error: null };
   const storeSettings = overrides.storeSettings ?? {
     data: { name: "測試髮廊", address: null, phone: "0912345678", description: null, logo_url: null, cover_image_url: null },
     error: null,
@@ -92,6 +97,18 @@ function createSupabaseMock(overrides: {
         select: vi.fn(() => ({
           eq: vi.fn(() => ({
             maybeSingle: vi.fn(async () => services),
+          })),
+        })),
+      };
+    }
+    if (table === "designers") {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(async () => {
+              if (overrides.designersThrows) throw new Error("designers boom");
+              return designers;
+            }),
           })),
         })),
       };
@@ -237,6 +254,68 @@ describe("POST /api/webhooks/appointment-events", () => {
     expect(call.html).toContain("王小明");
     expect(call.html).toContain("測試髮廊");
     expect(call.html).not.toContain("偽造姓名");
+  });
+
+  it("確認信內文帶入設計師名稱，主旨不含名稱", async () => {
+    const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+    const res = await POST(postRequest(insertPayload({ id: APPOINTMENT_ID })));
+
+    expect(res.status).toBe(200);
+    const call = state.sendEmailMock.mock.calls[0][0];
+    expect(call.html).toContain("<li>設計師：小美</li>");
+    expect(call.subject).not.toContain("小美");
+  });
+
+  it("設計師名稱含 HTML 特殊字元時必須 escape", async () => {
+    state.supabaseClient = createSupabaseMock({ designers: { data: { name: "<script>alert(1)</script>" }, error: null } });
+    const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+    await POST(postRequest(insertPayload({ id: APPOINTMENT_ID })));
+
+    const call = state.sendEmailMock.mock.calls[0][0];
+    expect(call.html).not.toContain("<script>alert(1)</script>");
+    expect(call.html).toContain("&lt;script&gt;");
+  });
+
+  it("designers 查詢查無資料時仍寄信，省略設計師一行", async () => {
+    state.supabaseClient = createSupabaseMock({ designers: { data: null, error: null } });
+    const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+    const res = await POST(postRequest(insertPayload({ id: APPOINTMENT_ID })));
+
+    expect(res.status).toBe(200);
+    expect(state.sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(state.sendEmailMock.mock.calls[0][0].html).not.toContain("設計師：");
+  });
+
+  it("designers 查詢回傳 error 時仍寄信、省略設計師一行，且不釋放去重佔位", async () => {
+    state.supabaseClient = createSupabaseMock({ designers: { data: null, error: { message: "permission denied" } } });
+    const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+    const res = await POST(postRequest(insertPayload({ id: APPOINTMENT_ID })));
+
+    expect(res.status).toBe(200);
+    expect(state.sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(state.sendEmailMock.mock.calls[0][0].html).not.toContain("設計師：");
+    expect(state.supabaseClient.appointmentsUpdateMock).not.toHaveBeenCalledWith({ confirmation_sent_at: null });
+  });
+
+  it("designers 查詢拋出例外時走既有補償路徑：不寄信並釋放去重佔位", async () => {
+    state.supabaseClient = createSupabaseMock({ designersThrows: true });
+    const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+    const res = await POST(postRequest(insertPayload({ id: APPOINTMENT_ID })));
+
+    expect(res.status).toBe(200);
+    expect(state.sendEmailMock).not.toHaveBeenCalled();
+    expect(state.supabaseClient.appointmentsUpdateMock).toHaveBeenCalledWith({ confirmation_sent_at: null });
+  });
+
+  it("designer_id 為空時不查 designers，仍寄信並省略設計師一行", async () => {
+    state.supabaseClient = createSupabaseMock({
+      update: { data: { ...DEFAULT_CLAIMED, designer_id: null }, error: null },
+    });
+    const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+    await POST(postRequest(insertPayload({ id: APPOINTMENT_ID })));
+
+    expect(state.supabaseClient.from).not.toHaveBeenCalledWith("designers");
+    expect(state.sendEmailMock.mock.calls[0][0].html).not.toContain("設計師：");
   });
 
   it("services 查詢查無資料時仍寄信，使用通用服務名稱 fallback", async () => {
@@ -392,6 +471,26 @@ describe("POST /api/webhooks/appointment-events", () => {
       expect(call.subject).toContain("預約已改期");
       expect(call.html).toContain("2026/08/20（四）09:00");
       expect(call.html).toContain("2026/08/26（三）13:30");
+    });
+
+    it("取消信與改期信都帶入設計師名稱（依回讀的 designer_id 查 designers）", async () => {
+      const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+      await POST(postRequest(updatePayload(CANCELLED_RECORD)));
+      await POST(postRequest(updatePayload(RESCHEDULED_RECORD)));
+
+      expect(state.sendEmailMock).toHaveBeenCalledTimes(2);
+      expect(state.sendEmailMock.mock.calls[0][0].html).toContain("<li>設計師：小美</li>");
+      expect(state.sendEmailMock.mock.calls[1][0].html).toContain("<li>設計師：小美</li>");
+    });
+
+    it("UPDATE 分支 designers 查詢回傳 error 時仍寄信並省略設計師一行", async () => {
+      state.supabaseClient = createSupabaseMock({ designers: { data: null, error: { message: "permission denied" } } });
+      const { POST } = await import("@/app/api/webhooks/appointment-events/route");
+      const res = await POST(postRequest(updatePayload(CANCELLED_RECORD)));
+
+      expect(res.status).toBe(200);
+      expect(state.sendEmailMock).toHaveBeenCalledTimes(1);
+      expect(state.sendEmailMock.mock.calls[0][0].html).not.toContain("設計師：");
     });
 
     it("分類結果為 none（例如標記完成）時不寄信，回傳 no_notification_needed，且不查詢識別性欄位", async () => {

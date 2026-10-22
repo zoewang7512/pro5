@@ -22,11 +22,17 @@ import {
   type RescheduleResult,
   type WeekAppointment,
 } from "@/lib/admin/appointments";
-import { computeAvailableSlots, getBusinessHoursForWeekday, getOccupiedRangesForDate } from "@/lib/admin/reschedule-slots";
+import {
+  computeAvailableSlots,
+  getBusinessHoursForWeekday,
+  getOccupiedRangesForDate,
+  isDesignerOnLeave,
+} from "@/lib/admin/reschedule-slots";
 import { isDateClosed } from "@/lib/admin/closed-dates";
 import { getTaipeiToday, getWeekday } from "@/lib/admin/week-range";
 import { STATUS_LABEL, formatAppointmentDateLabel, formatTimeRange } from "@/lib/admin/format";
 import { useToast } from "@/components/ui/ToastProvider";
+import { DesignerLabel } from "./DesignerFilterChips";
 
 // 詳情 Modal：比照 ConfirmDialog.tsx 內部用法直接用 MUI Dialog 拼出。取消預約的二次確認
 // 不在這裡刻一份確認 UI，而是由父層關閉本 Dialog、開啟既有的 ConfirmDialog（見
@@ -115,6 +121,10 @@ export function AppointmentDetailDialog({
     }
   }
 
+  // 設計師對後台而言不可變（改期不能換設計師），整週資料與詳情單筆取回的是同一個值；詳情到位後以它為準。
+  // 改期時段只算這位設計師，沒有 designerId 時 getOccupiedRangesForDate／isDesignerOnLeave 會 fail-closed 回錯誤。
+  const designerId = detail?.designer_id ?? appointment?.designer_id ?? null;
+  const designer = detail?.designer ?? appointment?.designer ?? null;
   const durationMinutes = detail?.duration_minutes ?? appointment?.duration_minutes ?? 0;
   const bufferMinutes = detail?.buffer_minutes ?? appointment?.buffer_minutes ?? 0;
 
@@ -125,21 +135,24 @@ export function AppointmentDetailDialog({
 
     (async () => {
       const weekday = getWeekday(rescheduleDate);
-      const [hoursRes, occupiedRes, closedRes] = await Promise.all([
+      const [hoursRes, occupiedRes, closedRes, leaveRes] = await Promise.all([
         getBusinessHoursForWeekday(supabase, weekday),
-        getOccupiedRangesForDate(supabase, rescheduleDate, appointmentId),
+        getOccupiedRangesForDate(supabase, { date: rescheduleDate, designerId, excludeAppointmentId: appointmentId }),
         isDateClosed(supabase, rescheduleDate),
+        isDesignerOnLeave(supabase, designerId, rescheduleDate),
       ]);
       if (cancelled) return;
 
-      if (hoursRes.ok && occupiedRes.ok && closedRes.ok) {
+      // 四個查詢任一失敗都進錯誤分支（fail-closed）：請假查詢失敗不能當成「沒請假」。
+      if (hoursRes.ok && occupiedRes.ok && closedRes.ok && leaveRes.ok) {
         // closedRes.data 為 true 時直接給空格點陣列，不呼叫 buildSlotGrid：buildSlotGrid
         // 只看 business_hours（不知道 closed_dates 的存在），當天 business_hours 若本來就
         // 正常營業，會照樣把整排格子畫出來、全部標成 disabled（因為 availableSlots 為
         // 空），使用者看到的是一整排灰掉的按鈕、沒有任何原因說明。直接給空陣列會落回既有
-        // 「cells.length === 0」分支的 Alert（文案已涵蓋「當日公休或已無可預約時段」兩種
+        // 「cells.length === 0」分支的 Alert（文案已涵蓋「當日公休、設計師請假或已無可預約時段」三種
         // 情況，不需要新增文案）。
-        const cells = closedRes.data
+        // 設計師當天請假同理（也是 buildSlotGrid 不知道的資訊），一樣直接給空陣列。
+        const cells = closedRes.data || leaveRes.data
           ? []
           : buildSlotGrid({
               date: rescheduleDate,
@@ -153,6 +166,7 @@ export function AppointmentDetailDialog({
                 now: Date.now(),
                 bufferMinutes,
                 isClosedDate: closedRes.data,
+                isDesignerLeaveDate: leaveRes.data,
               }),
             });
         setSlotsResult({ key, status: "loaded", cells });
@@ -164,7 +178,7 @@ export function AppointmentDetailDialog({
     return () => {
       cancelled = true;
     };
-  }, [view, appointmentId, rescheduleDate, durationMinutes, bufferMinutes, supabase]);
+  }, [view, appointmentId, designerId, rescheduleDate, durationMinutes, bufferMinutes, supabase]);
 
   const slotsMatchesRequest = view === "reschedule" && slotsResult?.key === rescheduleDate;
   const slotsStatus: "loading" | "loaded" | "error" = slotsMatchesRequest ? slotsResult!.status : "loading";
@@ -208,13 +222,33 @@ export function AppointmentDetailDialog({
   if (view === "reschedule") {
     return (
       <Dialog open={open} onClose={onClose} aria-labelledby="reschedule-title" maxWidth="xs" fullWidth>
-        <DialogTitle id="reschedule-title">改期：{appointment.customer_name}</DialogTitle>
+        <DialogTitle id="reschedule-title">
+          改期：<bdi>{appointment.customer_name}</bdi>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={1.5}>
             <Typography variant="body2" color="text.secondary">
               目前時段：{formatAppointmentDateLabel(appointment.start_at)}{" "}
               {formatTimeRange(appointment.start_at, appointment.end_at)}
             </Typography>
+
+            <Box
+              sx={{ px: 1.5, py: 1, borderRadius: 1, bgcolor: "grey.100", border: "1px solid", borderColor: "divider" }}
+            >
+              <Typography variant="caption" color="text.secondary" component="div">
+                設計師
+              </Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                {designer ? (
+                  <DesignerLabel name={designer.name} avatarUrl={designer.avatar_url} size={24} variant="body2" wrap />
+                ) : (
+                  <Typography variant="body2">—</Typography>
+                )}
+                <Typography variant="body2" color="text.secondary">
+                  （改期不能更換設計師）
+                </Typography>
+              </Stack>
+            </Box>
 
             <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 0.5 }}>
               {dateOptions.map((option) => (
@@ -243,7 +277,7 @@ export function AppointmentDetailDialog({
             )}
 
             {slotsStatus === "loaded" && cells.length === 0 && (
-              <Alert severity="info">當日公休或已無可預約時段，請選擇其他日期。</Alert>
+              <Alert severity="info">當日公休、設計師請假或已無可預約時段，請選擇其他日期。</Alert>
             )}
 
             {slotsStatus === "loaded" && cells.length > 0 && (
@@ -284,7 +318,9 @@ export function AppointmentDetailDialog({
 
   return (
     <Dialog open={open} onClose={onClose} aria-labelledby="appointment-detail-title" maxWidth="xs" fullWidth>
-      <DialogTitle id="appointment-detail-title">{appointment.customer_name}</DialogTitle>
+      <DialogTitle id="appointment-detail-title">
+        <bdi>{appointment.customer_name}</bdi>
+      </DialogTitle>
       <DialogContent>
         <Stack spacing={1}>
           <Typography variant="body2" color="text.secondary">
@@ -299,6 +335,15 @@ export function AppointmentDetailDialog({
           {detailStatus === "loaded" && detail && (
             <Typography variant="body2">電話：{detail.customer_phone ?? "—"}</Typography>
           )}
+
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Typography variant="body2">設計師：</Typography>
+            {designer ? (
+              <DesignerLabel name={designer.name} avatarUrl={designer.avatar_url} size={24} variant="body2" wrap />
+            ) : (
+              <Typography variant="body2">—</Typography>
+            )}
+          </Stack>
 
           <Typography variant="body2">狀態：{STATUS_LABEL[effectiveStatus]}</Typography>
         </Stack>

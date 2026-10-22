@@ -2,7 +2,7 @@
   "id": "TASK-074",
   "title": "多位設計師 前台設計師全頁個人頁（仿 IG）、作品集九宮格與放大檢視、返回鍵行為",
   "content": "Dialog fullScreen＋pushState/popstate；數字列只有作品／專長；IG 連結 noopener；PortfolioGrid 元件。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -38,24 +38,52 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-前台選擇設計師.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-前台選擇設計師.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-074.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-074.md",
     "pr": ""
   },
   "refs": [
     "app/_components/booking/DesignerProfileDialog.tsx",
     "components/ui/PortfolioGrid.tsx",
-    "lib/designers.ts"
+    "lib/designers.ts",
+    "app/_components/booking/DesignerPickerSection.tsx",
+    "tests/components/portfolio-grid.test.tsx",
+    "tests/components/designer-profile-dialog.test.tsx",
+    "tests/components/designer-picker-section.test.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：通過",
+      "npm run build：通過",
+      "npx vitest run --maxWorkers=3：934/934 通過（本卡三個測試檔 49 項）",
+      "瀏覽器走查（攔截 fetch 的模擬資料，未寫入正式資料庫）：開關個人頁、放大檢視、返回／前進、連點、選擇、無 IG／空作品集、暗色模式"
+    ],
+    "findings": [
+      "history.state.__NA 為 true，返回／前進沒有 reload",
+      "AppBar 被主題 Paper 圓角蓋過，已改 borderRadius: 0"
+    ],
+    "residual": "觸控滑動僅單元測試；iOS Safari 手勢返回與 LINE／IG 內建瀏覽器未走查；捲動位置還原在短頁面無法觀察；名字與專長的方向字元只靠資料庫；project-map 第 102 行待更新"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前 architect／security-reviewer 審查完成並採納（history session token、防重入、單一 return、PortfolioGrid 介面、不新增 buildInstagramUrl 改用 instagramProfileUrl 等），詳見任務卡「動工前審查定案」；agent 審查不等同人工核准"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉待驗證；agent 自我驗證不等同人工核准，product／ui／architecture／security／test／code_review 關卡待人工核准"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過，轉 Done"
     }
   ]
 }

@@ -71,7 +71,7 @@ describe("ImageUploadField", () => {
 
   it("選擇合法圖片成功上傳後切換為預覽態", async () => {
     uploadStoreImageMock.mockResolvedValueOnce({ ok: true, data: "https://example.invalid/uploaded.png" });
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<ImageUploadField label="Logo" kind="logo" initialUrl={null} supabase={fakeSupabase} />);
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -83,7 +83,7 @@ describe("ImageUploadField", () => {
 
   it("上傳失敗時顯示通用錯誤，維持未上傳狀態", async () => {
     uploadStoreImageMock.mockResolvedValueOnce({ ok: false, error: { message: "x" } });
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<ImageUploadField label="Logo" kind="logo" initialUrl={null} supabase={fakeSupabase} />);
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -95,7 +95,7 @@ describe("ImageUploadField", () => {
 
   it("點擊「移除」呼叫 removeStoreImage，成功後切換回未上傳狀態", async () => {
     removeStoreImageMock.mockResolvedValueOnce({ ok: true, data: undefined });
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(
       <ImageUploadField label="Logo" kind="logo" initialUrl="https://example.invalid/logo.png" supabase={fakeSupabase} />,
     );
@@ -104,5 +104,110 @@ describe("ImageUploadField", () => {
 
     await waitFor(() => expect(screen.getByText("點擊或拖曳圖片上傳")).toBeInTheDocument());
     expect(removeStoreImageMock).toHaveBeenCalledWith(fakeSupabase, "logo");
+  });
+
+  it("商店設定用法（傳 kind＋supabase）不會呼叫自訂 callback，上傳失敗仍顯示通用文案（回歸）", async () => {
+    uploadStoreImageMock.mockResolvedValueOnce({ ok: false, error: { message: "不該被顯示的內部訊息" } });
+    const user = userEvent.setup({ delay: null });
+    render(<ImageUploadField label="Logo" kind="logo" initialUrl={null} supabase={fakeSupabase} />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, pngFile());
+
+    expect(await screen.findByText("操作失敗，請稍後再試")).toBeInTheDocument();
+    expect(screen.queryByText("不該被顯示的內部訊息")).toBeNull();
+  });
+});
+
+describe("ImageUploadField 自訂 onUpload／onRemove＋圓形（TASK-069 頭像）", () => {
+  it("上傳成功：以呼叫端的 onUpload 處理檔案（不走商店設定的上傳），成功後切換為預覽", async () => {
+    uploadStoreImageMock.mockClear();
+    const onUpload = vi.fn().mockResolvedValue({ ok: true, data: "https://example.invalid/avatar.webp" });
+    const onRemove = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    render(<ImageUploadField label="頭像" shape="circle" initialUrl={null} onUpload={onUpload} onRemove={onRemove} />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, pngFile("a.png"));
+
+    await waitFor(() => expect(screen.getByRole("img", { name: "頭像" })).toBeInTheDocument());
+    expect(onUpload).toHaveBeenCalledWith(expect.any(File));
+    expect(uploadStoreImageMock).not.toHaveBeenCalled();
+  });
+
+  it("上傳失敗：行內顯示呼叫端回傳的訊息，維持未上傳狀態", async () => {
+    const onUpload = vi.fn().mockResolvedValue({ ok: false, error: { message: "圖片解析度過大，請換一張較小的圖片" } });
+    const user = userEvent.setup({ delay: null });
+    render(<ImageUploadField label="頭像" shape="circle" initialUrl={null} onUpload={onUpload} onRemove={vi.fn()} />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, pngFile());
+
+    expect(await screen.findByText("圖片解析度過大，請換一張較小的圖片")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "頭像" })).toBeNull();
+  });
+
+  it("onUpload 丟出例外：顯示通用文案，不會卡在處理中", async () => {
+    const onUpload = vi.fn().mockRejectedValue(new Error("boom"));
+    const user = userEvent.setup({ delay: null });
+    render(<ImageUploadField label="頭像" shape="circle" initialUrl={null} onUpload={onUpload} onRemove={vi.fn()} />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, pngFile());
+
+    expect(await screen.findByText("操作失敗，請稍後再試")).toBeInTheDocument();
+    expect(screen.queryByText(/boom/)).toBeNull();
+  });
+
+  it("不合法的檔案在前端先擋，不呼叫 onUpload", async () => {
+    const onUpload = vi.fn();
+    render(<ImageUploadField label="頭像" shape="circle" initialUrl={null} onUpload={onUpload} onRemove={vi.fn()} />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["x"], "a.gif", { type: "image/gif" })] } });
+
+    expect(await screen.findByText("檔案格式需為 JPG／PNG／WebP")).toBeInTheDocument();
+    expect(onUpload).not.toHaveBeenCalled();
+  });
+
+  it("圓形預覽：圖片在圓形容器內，「更換」「移除」按鈕在圓形下方（不疊在圖上）", () => {
+    render(
+      <ImageUploadField
+        label="頭像"
+        shape="circle"
+        initialUrl="https://example.invalid/a.webp"
+        onUpload={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+    const img = screen.getByRole("img", { name: "頭像" });
+    expect(img.parentElement).toHaveStyle({ borderRadius: "50%" });
+    expect(img.parentElement?.contains(screen.getByRole("button", { name: "更換" }))).toBe(false);
+    expect(screen.getByRole("button", { name: "移除" })).toBeInTheDocument();
+  });
+
+  it("點「移除」呼叫 onRemove，成功後回到未上傳狀態；失敗時顯示呼叫端的訊息並保留圖片", async () => {
+    const onRemove = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, error: { message: "頭像已被其他操作變更，請重新整理頁面後再試。" } })
+      .mockResolvedValueOnce({ ok: true, data: undefined });
+    const user = userEvent.setup({ delay: null });
+    render(
+      <ImageUploadField
+        label="頭像"
+        shape="circle"
+        initialUrl="https://example.invalid/a.webp"
+        onUpload={vi.fn()}
+        onRemove={onRemove}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "移除" }));
+    expect(await screen.findByText("頭像已被其他操作變更，請重新整理頁面後再試。")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "頭像" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "移除" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "上傳頭像" })).toBeInTheDocument());
+    expect(onRemove).toHaveBeenCalledTimes(2);
   });
 });

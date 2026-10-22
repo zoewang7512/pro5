@@ -83,6 +83,10 @@
 
 ## TASK-010（顧客預約流程）：時段衝突用 exclusion constraint，不分服務、不分應用層鎖
 
+> **部分被取代（2026-10-21，TASK-068）**：「只有一位設計師」的前提已不成立，constraint 現在是「同一位設計師
+> 不可重疊」（`designer_id with =` 加時段 `&&`），仍不依 `service_id` 分割；其餘（不採應用層鎖、排除 cancelled）
+> 仍然有效。見下方「TASK-068」。
+
 ```text
 日期：2026-08-05
 決策：`appointments` 加一個 `EXCLUDE USING gist` constraint（搭配 `btree_gist`），鍵是
@@ -132,6 +136,14 @@
 ```
 
 ## TASK-022～027（營業時間與可預約時段管理，第二批次）：緩衝時間不做資料庫層級約束，只在 `get_available_slots`／改期表單做候選時段過濾
+
+> **部分被取代（2026-10-22，TASK-068）**：下文以「單一設計師、低並發」為由的部分已不成立——現在有多位設計師，且 `create_appointment`
+> 也會經由共用的 `_designer_is_free` 檢查緩衝（人工 2026-10-21 決定，見下方「TASK-068」）。「不把緩衝做成 exclusion constraint」的決定本身仍有效，
+> 併發時兩筆相鄰預約仍可能吃掉緩衝，屬已知殘留。
+
+> **部分被取代（2026-10-21，TASK-068，人工決定）**：`create_appointment` 現在也檢查 buffer（指定與不指定兩條
+> 路徑都是）——緩衝不再只是「畫面上的排程偏好」，直接呼叫 API 擠進既有預約的 buffer 會回 `SLOT_CONFLICT`。
+> exclusion constraint 仍然不含 buffer（見下方「TASK-068」的殘留）。
 
 ```text
 日期：2026-08-06
@@ -295,4 +307,108 @@
   - 測試用 tests/mfa-rls.integration.test.ts（npm run test:mfa-rls），以拋棄式帳號暫時加入
     admins，不使用 designer001。
   - 多位設計師 Epic 的 migration 順延為 0017／0018。
+```
+
+## TASK-067（多位設計師 架構基礎，0017）：四張新表的權限與 trigger 設計取捨
+
+```text
+日期：2026-10-21
+決策：0017 新增 designers／designer_services／designer_leaves／designer_portfolio_images 與
+      designer-assets bucket；appointments.designer_id 先 nullable、回填「預設設計師」，0018 才改
+      not null。以下是實作與審查期定案、容易被日後誤改的取捨。
+決定與理由：
+  - 作品集 12 張上限的 trigger 是 AFTER INSERT＋`for no key update`，不是 BEFORE＋`for update`。
+    RLS 的 WITH CHECK 在 BEFORE ROW trigger 之後才檢查，BEFORE 會讓任何自行註冊的使用者（Supabase
+    公開註冊開著）在被 42501 擋下前就以 postgres 身分取鎖、並用錯誤碼探測作品張數。`for update`
+    與外鍵檢查已持有的 `for key share` 會在並行時互相等待而死結；`no key update` 相容 key share，
+    也不會擋住 0018 的 create_appointment。測試：並行 14 筆正好 12 成功、單一 insert 14 列整批回滾、
+    非管理員得到 42501 而非 PORTFOLIO_LIMIT。
+  - designers 的 insert／update 都是欄位層級授權（排除 id、created_at）。「預設設計師」以
+    `order by created_at, id limit 1` 辨識（0018 補回填 null 預約用），insert 若能自訂 created_at，
+    被盜用的管理員 session 可以塞一位最早建立的設計師冒充。
+  - designer_specialties_valid 保留 authenticated／service_role 的 execute，與架構筆記 E 原本寫的
+    「同樣 revoke」不同：PostgreSQL 評估 CHECK 時以當前使用者身分檢查函式 execute 權限，revoke
+    會讓管理員寫入 designers 全部失敗。只收回 public／anon。
+  - image_url 的 check constraint 只保證以 storage_path 結尾，**擋不住外部網域**。網址只能指向
+    designer-assets 的唯一防線是顯示層 resolveDesignerAssetUrl（origin＋pathname 白名單，並拒絕帳密與
+    %2F／%5C），前台與後台每個顯示圖片的地方都必須套用。
+  - Storage insert policy 限定剛好兩層資料夾與 jpg／png／webp 副檔名（bucket 的 MIME 限制只看用戶端
+    宣告的 Content-Type）。不建 update policy（無 upsert 這條路），但管理員可以先刪再上傳到同一路徑，
+    不能宣稱「同一網址不可能被換圖」。
+  - authenticated 對 designer_leaves／designer_services 沒有 update 權限：TASK-070／072 不能用 upsert
+    （on conflict do update），只能 insert（ignoreDuplicates）或 delete。
+  - 0017 對四張新表做 revoke all 再 grant 並重建所有 policy：0018 套用後不要再重跑 0017，否則會悄悄
+    還原 0018 之後對這些表追加的授權或 policy。
+影響與殘留：
+  - Supabase 公開註冊開著（disable_signup: false），本 Epic 所有防線靠 is_admin()；建議關閉，列為
+    合併 master 或套用 0018 的前置條件（待人工決定）。
+    **已決定（2026-10-22，TASK-077）：使用者決定關閉公開註冊。** 這是 Supabase 後台的設定（Authentication 的
+    「Allow new users to sign up」），不受版控，**本專案無法驗證**；**使用者已於 2026-10-22 回報已在後台關閉**（未經本專案獨立驗證）。關閉不影響現有功能：
+    應用程式碼從不呼叫 `signUp`，種子腳本與測試都用 service_role 的 `admin.createUser`。之後的 Demo 體驗帳戶也應走
+    伺服器端 service_role 建立，不依賴公開註冊。
+  - **已決定（2026-10-22，TASK-077）：designer001 先不啟用 MFA。** 使用者接受「唯一正式管理員只靠密碼保護」的殘留風險
+    （TASK-079 的 aal2 強制只對已啟用 MFA 的帳號生效）。本 Epic 新增的、只靠這組密碼保護的寫入面：公開 bucket 上傳、
+    可竄改前台設計師頁、關閉服務或標請假即可讓前台無法預約。與既有「管理員密碼外洩」同類風險，沒有新的攻擊類型；
+    建議確認 Supabase Auth 的外洩密碼防護與登入限流已開啟。日後想補強時再啟用 MFA，`test:mfa-rls` 不依賴 designer001。
+  - 0017 重跑冪等與 0017_down 尚未在隔離環境實跑；is_admin() aal2 對新表寫入是「繼承」保護，
+    test:mfa-rls 尚未涵蓋新表。
+  - 既有整合測試套件結束時 signOut() 預設 global scope，會撤銷設計師帳號在所有裝置的登入；
+    新套件 test:designers 已改用 scope: "local"，其餘套件建議另開卡處理。
+```
+
+## TASK-068（多位設計師 依設計師計算時段與建立預約，0018）：exclusion 依設計師、自動指派、email 上限與審查定案的取捨
+
+```text
+日期：2026-10-21
+決策：appointments_no_overlap 改為 exclude using gist (designer_id with =, tstzrange(start_at, end_at, '[)') with &&)
+      where status in (pending, confirmed, completed)，名稱不變；designer_id 改 not null。get_available_slots 與
+      create_appointment 新增 p_designer_id uuid default null（省略或 null＝不指定）；成功時 create_appointment
+      回傳 designer_id、designer_name。取代 2026-08-05「時段衝突不分服務」中「只有一位設計師」的前提。
+決定與理由（容易被日後誤改的取捨）：
+  - 檢查順序：欄位驗證 → 有限值 → 服務 → 公休日 → 營業時間 → 提前量／視野 → 設計師候選清單（空則 SLOT_CONFLICT）
+    → BOOKING_LIMIT（電話）→ BOOKING_LIMIT（email）→ 顧客去重 → insert 迴圈。設計師檢查放在視野之後，所以 90 天外的
+    時間合格與不合格設計師都回 VALIDATION_ERROR；清單為空在碰 customers 之前就回，指定的設計師「不存在、停用、
+    沒開服務、請假、時段被佔」回傳的 JSON 完全相同。
+  - 指定設計師＝只有一位候選人的清單，與不指定共用同一個 insert 迴圈，兩條路徑不會漂移。兩支 RPC 共用
+    _designer_is_eligible／_designer_is_free，buffer 判斷一致（只有一位設計師時，列出的每個時段都建得起來）。
+  - 候選人在巢狀 begin ... exception 內 insert，被擋下就換下一位；全部失敗時 raise exclusion_violation（constraint =
+    appointments_no_overlap），由外層 handler 轉成 SLOT_CONFLICT 並回滾整個區塊，不留 customers 孤兒列。
+    **巢狀 handler 也必須接 deadlock_detected**（architect 套用前審查）：兩筆同時 insert 同一位設計師的重疊時段時，
+    exclusion 檢查可能互相等待而死結，犧牲者拿到 40P01 而不是 23P01；不接的話會被外層吞成 INTERNAL_ERROR，破壞
+    「第一順位被訂走就改派」的保證。
+  - 不指定的排序：(當天 Asia/Taipei 的 pending／confirmed 預約數, sort_order, id)；已取消與已完成不計入。
+  - migration 一開始就取 access exclusive 並設 lock_timeout 5 秒，不先取 share row exclusive 再升級（會與進行中的
+    舊 RPC 互相等待而死結）。套用前檢查：上架中的服務都必須至少有一位啟用中的設計師，否則 migration 直接失敗。
+  - 兩支 RPC 的 execute 權限明寫 anon、authenticated、service_role（revoke 時一併收回再 grant），不依賴 default
+    privileges；套用前實測（proacl）原本是 postgres、anon、authenticated、service_role 四者皆有。內部函式
+    anon／authenticated 不能呼叫（42501）。**0018 之後不要重跑 0009／0014**（舊簽名會與新簽名並存，PGRST203）。
+  - BOOKING_LIMIT（電話）維持全店、跨設計師合計，不改成每位設計師各自計算（會讓可佔用總容量變成 N 倍）。新增
+    以 email 計算的同等上限（人工決定併入本卡，取代延後的 TASK-080）：同 email 已有 3 筆未過期 pending／confirmed
+    就回 BOOKING_LIMIT_EXCEEDED。比對用 _email_dedupe_key 正規化（去空白、不分大小寫、去掉 +標籤、去掉網域結尾的
+    點、gmail.com／googlemail.com 去掉本地部分的點）；計數前先取 advisory lock（先電話、後 email）防止同時送出繞過。
+    這只是縱深防禦，不能取代限流：換受害者 email、換電話總量仍無上限，國際化網域等同形寫法也擋不住；email 欄位
+    不改成只收 ASCII（人工 2026-10-22 決定先不做：會擋掉國際化網域與少數正常顧客）。
+  - TASK-080（建立預約的限流，Turnstile／依 IP）仍延後；重新啟動條件：出現實際濫用跡象，或準備對外宣傳／大量曝光，
+    或 email 上限被繞過的證據。
+接受的殘留：
+  - exclusion constraint 不含 buffer，併發時兩筆相鄰預約仍可能吃掉緩衝時間（buffer 只在候選清單與
+    get_available_slots 檢查）。
+  - 候選清單算完之後、insert 之前，店長剛好停用設計師或新增請假，預約仍可能成立。
+  - 指定模式可逐一推算各設計師的忙碌時段與疑似請假日；BOOKING_LIMIT 與 SLOT_CONFLICT 的回應差異也能當成不留痕跡
+    的探測管道（已達上限的電話去約被佔時段得到 SLOT_CONFLICT，與 0014 不同，是檢查順序的結果）；回應時間差。
+    get_available_slots 沒有限流（既有）。
+  - 第 90 天晚於「現在時刻」的時段會被 get_available_slots 列出、create_appointment 卻以 90 天上限拒絕（0009／0014
+    起就如此，不是本卡引入）。
+  - 電話與 email 上限的計數條件用不到索引（資料量小時全表掃描，可接受）。
+  - 前台 BOOKING_LIMIT_EXCEEDED 文案寫「這支電話…」，email 上限觸發時對顧客有點誤導；改文案在
+    lib/booking/error-messages.ts，留給 TASK-073。
+部署順序：先套用 0018，再合併 master／部署新前端（新前端一定送出 p_designer_id，在 0018 前部署會 PGRST202 讓預約
+      中斷）。0018 套用到合併 master 之間，舊後台新增的服務不會對任何設計師開啟（createService 不寫
+      designer_services），前台沒有時段；期間不要在後台新增服務（人工 2026-10-22 決定接受這個空窗，不加程式碼防護，只靠文件提醒）。回滾順序：Vercel 回滾前端 → 0018_down → 0017_down；
+      多位設計師上線後若已有不同設計師同時段的預約，0018_down 會以明確訊息中止。
+測試：tests/helpers/designer-fixture.ts 讓每個套件建立專屬 __TEST__ 設計師（只能對 __TEST__ 服務開啟，清除時先刪預約
+      再刪設計師，並自動清掉超過 1 小時的同 tag 殘留）；直接 insert appointments 的 fixture 都要帶 designer_id。
+      既有 10 套整合測試套用 0018 後只改 fixture 設定、斷言不變（測試數量與套用前相同）。email 上限的「不計入已取消與
+      已過期」案例會真的成立一筆帶 email 的預約（@example.invalid，Resend 於 API 層拒絕，不會真的寄出），其餘一律
+      先以 null 建立再只更新 customer_email 那一欄，避開 0011／0012 的 webhook 觸發條件。
 ```

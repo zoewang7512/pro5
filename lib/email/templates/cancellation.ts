@@ -7,6 +7,7 @@ export type CancellationEmailInput = {
   customerName: string;
   serviceName: string;
   startAt: string;
+  designerName?: string | null;
   storeName?: string | null;
   storePhone?: string | null;
   storeLogoUrl?: string | null;
@@ -34,6 +35,8 @@ export function buildCancellationEmail(input: CancellationEmailInput): Cancellat
   // 的既有模式一致（architect 於本卡審查提出的 NICE TO HAVE：取消/改期信原本
   // 缺聯絡資訊，與確認信的既有模式偏移，getStoreSettings 已在 route.ts 匯入，
   // 補上成本很低）。
+  // 同 confirmation.ts：designerName 只放在文字節點，不進主旨，空值整行省略。
+  const designerLine = input.designerName?.trim() ? `<li>設計師：${escapeHtml(input.designerName.trim())}</li>` : "";
   const contactLine = input.storePhone?.trim()
     ? `<p>如需重新預約或有任何問題，歡迎聯絡我們：${escapeHtml(input.storePhone.trim())}</p>`
     : "";
@@ -44,6 +47,7 @@ export function buildCancellationEmail(input: CancellationEmailInput): Cancellat
     "<ul>",
     `<li>服務項目：${safeServiceName}</li>`,
     `<li>原預約時段：${safeDateTimeLabel}</li>`,
+    designerLine,
     "</ul>",
     contactLine,
     "<p>如需重新預約，歡迎再次前來預約。</p>",

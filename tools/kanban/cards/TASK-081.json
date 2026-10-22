@@ -1,0 +1,92 @@
+{
+  "id": "TASK-081",
+  "title": "UI 設計系統 後台表單「未儲存變更」離開提示",
+  "content": "後台有「儲存」按鈕的表單，填到一半切頁籤、點側邊欄或關閉頁面時，目前輸入會直接消失、沒有任何提示。來源：TASK-070 驗收時使用者提出。即時儲存的控制項（如設計師服務開關）不在範圍。開工前需先走 spec-interrogation（涵蓋哪些表單、攔截哪些離開方式、文案）與 ui-mockup-gate。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-22",
+  "epic": "專案設置",
+  "userStory": "UI 設計系統",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-072"
+  ],
+  "order": 81,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": false,
+    "files_known": false,
+    "scope_defined": false,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/專案設置/feature-spec-未儲存變更離開提示.md",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-未儲存變更離開提示.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-未儲存變更離開提示.md",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-081.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "app/admin/_components/DesignerBasicInfoForm.tsx",
+    "app/admin/_components/DesignerEditView.tsx",
+    "app/admin/_components/StoreSettingsForm.tsx",
+    "app/admin/_components/BookingPolicyForm.tsx",
+    "app/admin/_components/BusinessHoursForm.tsx",
+    "app/admin/_components/AccountSettingsView.tsx",
+    "components/ui/ConfirmDialog.tsx",
+    "ai/artifacts/專案設置/mockups/unsaved-changes-variant-a.html",
+    "ai/artifacts/專案設置/mockups/unsaved-changes-variant-b.html",
+    "ai/artifacts/專案設置/mockups/unsaved-changes-variant-c.html"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "TASK-070 驗收時提出「有存檔按鈕的頁面，修改後沒存檔離開應提示」，決定另開一張卡處理，不併入 TASK-070。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "需求釐清決定：範圍＝全部有儲存按鈕的表單＋服務項目對話框；自製攔截、不攔截瀏覽器上一頁；提示兩顆按鈕（繼續編輯／放棄變更）；等多位設計師合併 master 後再從 master 開分支實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "功能規格書草稿已產出（含 5 項假設 A1～A5 待使用者核准時確認）。尚未進入就緒，等待人工核准規格，之後走 ui-mockup-gate 與 implementation-plan。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "核准功能規格書（含假設 A1～A5），進入 ui-mockup-gate。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "ui-mockup-gate：已產出畫面規格、決策紀錄與 3 個 mockup 變體（A 只有對話框／B 對話框＋頁籤圓點／C 對話框列變更欄位＋儲存列提示），建議 B，等待使用者選定。選定前不得實作。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "選定 mockup 變體 B（對話框＋「基本資料」頁籤圓點）。"
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   removeStoreImage,
@@ -17,15 +19,39 @@ import {
 // 移除）／錯誤（邊框變色＋行內錯誤文字）四態，完成後登記回 design-system.md 的 S4
 // inventory。目前只有 TASK-031（Logo／封面圖）這一個使用場景，但設計為可重用的通用元件
 // （只認識檔案上傳/驗證/預覽這幾件事，不寫死 store_settings 特定邏輯以外的假設）。
+//
+// TASK-069 擴充（人工決定，architect／security-reviewer 動工前審查）：新增第二種用法——呼叫端傳入
+// onUpload／onRemove，由呼叫端決定檔案怎麼處理（例如設計師頭像：重新編碼、傳到 designer-assets）；
+// 加上選填 shape="circle"（圓形頭像預覽，「更換／移除」放在圓形下方）。沒傳 onUpload 時完全走原本的
+// 商店設定路徑（kind＋supabase），行為不變。注意：自訂路徑的前置驗證仍用 validateStoreImageFile
+// （規則相同：JPG／PNG／WebP、5MB），這是語意上的耦合；失敗訊息則直接顯示呼叫端回傳的 error.message，
+// 所以回傳的訊息必須是已經整理過、可以給使用者看的文案（不得是原始錯誤）。
 
-export type ImageUploadFieldProps = {
+type UploadResult<T> = { ok: true; data: T } | { ok: false; error: { message: string } };
+
+type ImageUploadFieldBaseProps = {
   label: string;
-  kind: StoreImageKind;
   initialUrl: string | null;
-  supabase: SupabaseClient;
+  shape?: "rect" | "circle";
 };
 
-export function ImageUploadField({ label, kind, initialUrl, supabase }: ImageUploadFieldProps) {
+export type ImageUploadFieldProps = ImageUploadFieldBaseProps &
+  (
+    | { kind: StoreImageKind; supabase: SupabaseClient; onUpload?: undefined; onRemove?: undefined }
+    | {
+        kind?: undefined;
+        supabase?: undefined;
+        onUpload: (file: File) => Promise<UploadResult<string>>;
+        onRemove: () => Promise<UploadResult<unknown>>;
+      }
+  );
+
+const GENERIC_ERROR = "操作失敗，請稍後再試";
+const AVATAR_SIZE = 120;
+
+export function ImageUploadField(props: ImageUploadFieldProps) {
+  const { label, initialUrl, shape = "rect" } = props;
+  const circle = shape === "circle";
   const [currentUrl, setCurrentUrl] = React.useState<string | null>(initialUrl);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -61,15 +87,15 @@ export function ImageUploadField({ label, kind, initialUrl, supabase }: ImageUpl
     // 釋放、busy 一定會解除，不會卡在「處理中…」且更換／移除按鈕永遠不出現（busy 時
     // 兩顆按鈕本來就不渲染）（security-reviewer TASK-031 審查建議）。
     try {
-      const res = await uploadStoreImage(supabase, kind, file);
+      const res = props.onUpload ? await props.onUpload(file) : await uploadStoreImage(props.supabase, props.kind, file);
       if (!mountedRef.current) return;
       if (res.ok) {
         setCurrentUrl(res.data);
       } else {
-        setErrorMessage("操作失敗，請稍後再試");
+        setErrorMessage(props.onUpload ? res.error.message : GENERIC_ERROR);
       }
     } catch {
-      if (mountedRef.current) setErrorMessage("操作失敗，請稍後再試");
+      if (mountedRef.current) setErrorMessage(GENERIC_ERROR);
     } finally {
       URL.revokeObjectURL(objectUrl);
       if (mountedRef.current) {
@@ -83,15 +109,15 @@ export function ImageUploadField({ label, kind, initialUrl, supabase }: ImageUpl
     setErrorMessage(null);
     setBusy(true);
     try {
-      const res = await removeStoreImage(supabase, kind);
+      const res = props.onRemove ? await props.onRemove() : await removeStoreImage(props.supabase, props.kind);
       if (!mountedRef.current) return;
       if (res.ok) {
         setCurrentUrl(null);
       } else {
-        setErrorMessage("操作失敗，請稍後再試");
+        setErrorMessage(props.onRemove ? res.error.message : GENERIC_ERROR);
       }
     } catch {
-      if (mountedRef.current) setErrorMessage("操作失敗，請稍後再試");
+      if (mountedRef.current) setErrorMessage(GENERIC_ERROR);
     } finally {
       if (mountedRef.current) setBusy(false);
     }
@@ -120,7 +146,92 @@ export function ImageUploadField({ label, kind, initialUrl, supabase }: ImageUpl
         }}
       />
 
-      {displayUrl ? (
+      {circle ? (
+        <Box>
+          {displayUrl ? (
+            <Box
+              sx={{ position: "relative", width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: "50%", overflow: "hidden" }}
+            >
+              <Box
+                component="img"
+                src={displayUrl}
+                alt={label}
+                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+              {busy && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    bgcolor: "rgba(43,38,34,.55)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress size={20} sx={{ color: "#fff" }} aria-label="處理中" />
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Box
+              role="button"
+              tabIndex={busy ? -1 : 0}
+              aria-label={`上傳${label}`}
+              onClick={openFilePicker}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openFilePicker();
+                }
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                const file = event.dataTransfer.files?.[0];
+                if (file) handleFile(file);
+              }}
+              sx={{
+                width: AVATAR_SIZE,
+                height: AVATAR_SIZE,
+                borderRadius: "50%",
+                border: "1.5px dashed",
+                borderColor: errorMessage ? "error.main" : "grey.300",
+                bgcolor: errorMessage ? "error.light" : "grey.100",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                px: 2,
+                cursor: busy ? "default" : "pointer",
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              {busy ? (
+                <CircularProgress size={20} />
+              ) : (
+                <Typography variant="caption" sx={{ color: errorMessage ? "error.main" : "text.secondary" }}>
+                  點擊或拖曳上傳
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {displayUrl && !busy && (
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Button size="small" variant="outlined" onClick={openFilePicker}>
+                更換
+              </Button>
+              <Button size="small" color="error" onClick={handleRemove}>
+                移除
+              </Button>
+            </Stack>
+          )}
+          <Typography variant="caption" sx={{ color: "text.disabled", display: "block", mt: 0.5 }}>
+            JPG／PNG／WebP，5MB 內
+          </Typography>
+        </Box>
+      ) : displayUrl ? (
         <Box sx={{ position: "relative", height: 120, borderRadius: 1, overflow: "hidden" }}>
           <Box
             component="img"

@@ -4,12 +4,32 @@ import * as React from "react";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import { createClient } from "@/lib/supabase/client";
-import { createAppointment, getServices, getBusinessHours, getAvailableSlots } from "@/lib/booking/api";
+import {
+  createAppointment,
+  getAvailableSlots,
+  getBusinessHours,
+  getDesignersForService,
+  getServices,
+} from "@/lib/booking/api";
+import {
+  ANY_DESIGNER,
+  designerIdOf,
+  getSectionVisibility,
+  resetForDesignerChange,
+  resetForServiceChange,
+} from "@/lib/booking/booking-flow-state";
 import { buildDateRange, getTaipeiToday } from "@/lib/booking/date-range";
 import { getBookingErrorMessage } from "@/lib/booking/error-messages";
 import { formatBookingPolicyText } from "@/lib/booking/policy-text";
 import { buildSlotGrid, type SlotCell } from "@/lib/booking/slot-grid";
-import type { AppointmentConfirmation, AvailableSlot, BusinessHours, Service } from "@/lib/booking/types";
+import type {
+  AppointmentConfirmation,
+  AvailableSlot,
+  BusinessHours,
+  DesignerSelection,
+  PublicDesigner,
+  Service,
+} from "@/lib/booking/types";
 import { getBookingPolicy } from "@/lib/booking-policy";
 import { EMPTY_STORE_SETTINGS, getStoreSettings, resolveStoreDisplay, type StoreSettings } from "@/lib/store-settings";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -17,9 +37,10 @@ import { BrandHeaderSection, BrandHeaderSectionSkeleton } from "./BrandHeaderSec
 import { ServiceListSection } from "./ServiceListSection";
 import { SlotPickerSection } from "./SlotPickerSection";
 import { ContactFormSection, type ContactFormValues } from "./ContactFormSection";
+import { DesignerPickerSection } from "./DesignerPickerSection";
 import { SuccessSection } from "./SuccessSection";
 
-// 單頁捲動版型的頁面層 state：服務／時段／聯絡資訊選擇皆集中於此，往下用 props
+// 單頁捲動版型的頁面層 state：服務／設計師／時段／聯絡資訊選擇皆集中於此，往下用 props
 // 傳給各區塊元件。送出成功後整頁切換為 SuccessSection，狀態只存在 client state，
 // 不依賴 URL 參數（重新整理該頁不會重複送出）。
 
@@ -28,6 +49,9 @@ const DATE_RANGE_DAYS = 14;
 type FetchStatus = "loading" | "loaded" | "error";
 
 type ServicesResult = { status: "loaded" | "error"; services: Service[] };
+
+// key＝服務 id：快速切換服務時，舊服務的名單不會蓋掉新服務的（loading 由 key 是否一致推導）。
+type DesignersResult = { key: string; status: "loaded" | "error"; designers: PublicDesigner[] };
 
 type SlotsResult = {
   key: string;
@@ -45,12 +69,17 @@ export function BookingFlow() {
   // 目前的依賴值與最後完成的 key 是否一致推導出來，不在 effect 內同步呼叫
   // setState 把狀態撥回 loading（react-hooks/set-state-in-effect 規則要求）。
   const [servicesResult, setServicesResult] = React.useState<ServicesResult | null>(null);
+  const [designersResult, setDesignersResult] = React.useState<DesignersResult | null>(null);
   const [slotsResult, setSlotsResult] = React.useState<SlotsResult | null>(null);
   const [brandSettings, setBrandSettings] = React.useState<StoreSettings | null>(null);
   const [policyText, setPolicyText] = React.useState<string | null>(null);
 
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
   const [editingService, setEditingService] = React.useState(false);
+
+  // 預設「不指定」（顧客明確的選擇，不是「還沒選」）；換服務時回到預設。
+  const [designerSelection, setDesignerSelection] = React.useState<DesignerSelection>(ANY_DESIGNER);
+  const [editingDesigner, setEditingDesigner] = React.useState(false);
 
   const [selectedDate, setSelectedDate] = React.useState(dateOptions[0].date);
   const [selectedSlot, setSelectedSlot] = React.useState<AvailableSlot | null>(null);
@@ -113,19 +142,46 @@ export function BookingFlow() {
     };
   }, [supabase]);
 
-  const slotsRequestKey = selectedService ? `${selectedService.id}|${selectedDate}` : null;
+  // 設計師名單依服務讀取一次：effect 只依賴服務 id，同一個服務按「修改」再選回來不會重複讀取。名單含每位
+  // 設計師的全部作品，TASK-074 的個人頁直接用同一份。
+  const selectedServiceId = selectedService?.id ?? null;
 
   React.useEffect(() => {
-    if (!selectedService) return;
+    if (!selectedServiceId) return;
+    let cancelled = false;
+    getDesignersForService(supabase, selectedServiceId)
+      .then((result) => {
+        if (cancelled) return;
+        setDesignersResult(
+          result.ok
+            ? { key: selectedServiceId, status: "loaded", designers: result.data }
+            : { key: selectedServiceId, status: "error", designers: [] },
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDesignersResult({ key: selectedServiceId, status: "error", designers: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, selectedServiceId]);
+
+  // 時段依「服務＋日期＋設計師」查詢：key 含設計師，換設計師後不會把上一位（或「不指定」）的結果當成符合。
+  const designerId = designerIdOf(designerSelection);
+  const slotsRequestKey = selectedServiceId ? `${selectedServiceId}|${selectedDate}|${designerId ?? "any"}` : null;
+
+  React.useEffect(() => {
+    if (!selectedServiceId) return;
     const dateOption = dateOptions.find((option) => option.date === selectedDate);
     if (!dateOption) return;
 
-    const key = `${selectedService.id}|${selectedDate}`;
+    const key = `${selectedServiceId}|${selectedDate}|${designerId ?? "any"}`;
     let cancelled = false;
 
     Promise.all([
       getBusinessHours(supabase, dateOption.weekday),
-      getAvailableSlots(supabase, selectedService.id, selectedDate),
+      getAvailableSlots(supabase, selectedServiceId, selectedDate, designerId),
     ]).then(([hoursResult, availableResult]) => {
       if (cancelled) return;
       if (hoursResult.ok && availableResult.ok) {
@@ -138,10 +194,17 @@ export function BookingFlow() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, selectedService, selectedDate, dateOptions]);
+  }, [supabase, selectedServiceId, selectedDate, designerId, dateOptions]);
 
   const servicesStatus: FetchStatus = servicesResult?.status ?? "loading";
   const services = servicesResult?.services ?? [];
+
+  const designersMatchesRequest = selectedServiceId !== null && designersResult?.key === selectedServiceId;
+  const designersStatus: FetchStatus = designersMatchesRequest ? designersResult!.status : "loading";
+  const designers = React.useMemo<PublicDesigner[]>(
+    () => (designersMatchesRequest ? designersResult!.designers : []),
+    [designersMatchesRequest, designersResult],
+  );
 
   const brandDisplay = brandSettings ? resolveStoreDisplay(brandSettings) : null;
 
@@ -154,12 +217,25 @@ export function BookingFlow() {
   );
 
   function handleSelectService(service: Service) {
-    if (service.id !== selectedService?.id) {
-      setSelectedSlot(null);
-      setEditingSlot(false);
+    const reset = resetForServiceChange(selectedService?.id ?? null, service.id);
+    if (reset) {
+      setDesignerSelection(reset.designerSelection);
+      setEditingDesigner(reset.editingDesigner);
+      setSelectedSlot(reset.selectedSlot);
+      setEditingSlot(reset.editingSlot);
     }
     setSelectedService(service);
     setEditingService(false);
+  }
+
+  function handleSelectDesigner(selection: DesignerSelection) {
+    const reset = resetForDesignerChange(designerSelection, selection);
+    if (reset) {
+      setSelectedSlot(reset.selectedSlot);
+      setEditingSlot(reset.editingSlot);
+    }
+    setDesignerSelection(selection);
+    setEditingDesigner(false);
   }
 
   function handleSelectDate(date: string) {
@@ -186,6 +262,7 @@ export function BookingFlow() {
       customerName: values.name,
       customerPhone: values.phone,
       customerEmail: values.email || undefined,
+      designerId,
     });
     setSubmitting(false);
 
@@ -209,6 +286,25 @@ export function BookingFlow() {
     [selectedService, selectedDate, businessHours, availableSlots],
   );
 
+  const visibility = getSectionVisibility({
+    hasService: selectedService !== null,
+    editingService,
+    editingDesigner,
+    editingSlot,
+    selectedSlot,
+    designersStatus,
+    designerCount: designers.length,
+  });
+
+  // 成功頁的設計師一律取自 create_appointment 回傳的資料庫值；頭像從已載入名單用 designer_id 查，
+  // 查不到（名單過期）退回首字頭像。回傳沒有名字時不顯示設計師列。
+  const successDesigner = confirmation?.designer_name
+    ? {
+        name: confirmation.designer_name,
+        avatarUrl: designers.find((item) => item.id === confirmation.designer_id)?.avatar_url ?? null,
+      }
+    : null;
+
   return (
     <Container maxWidth="sm" sx={{ py: { xs: 3, sm: 5 }, px: { xs: 2.5, sm: 3 } }}>
       {brandDisplay === null ? (
@@ -222,7 +318,11 @@ export function BookingFlow() {
       )}
 
       {confirmation ? (
-        <SuccessSection confirmation={confirmation} />
+        <SuccessSection
+          confirmation={confirmation}
+          designer={successDesigner}
+          requestedAny={designerSelection.kind === "any"}
+        />
       ) : (
         <>
           <ServiceListSection
@@ -234,7 +334,18 @@ export function BookingFlow() {
             onEdit={() => setEditingService(true)}
           />
 
-          {selectedService && !editingService && (
+          {visibility.designerStep && (
+            <DesignerPickerSection
+              status={designersStatus}
+              designers={designers}
+              selection={designerSelection}
+              collapsed={visibility.designerCollapsed}
+              onSelect={handleSelectDesigner}
+              onEdit={() => setEditingDesigner(true)}
+            />
+          )}
+
+          {visibility.slotStep && (
             <SlotPickerSection
               dateOptions={dateOptions}
               selectedDate={selectedDate}
@@ -248,7 +359,7 @@ export function BookingFlow() {
             />
           )}
 
-          {selectedService && selectedSlot && !editingService && !editingSlot && (
+          {visibility.contactForm && (
             <ContactFormSection submitting={submitting} onSubmit={handleSubmitContact} policyText={policyText} />
           )}
         </>

@@ -105,8 +105,8 @@ export async function getClosedDatesInRange(
 // 邏輯比照 findAffectedAppointments（lib/admin/business-hours.ts）：查詢
 // pending/confirmed/completed 且未來的預約，回傳最小化欄位。差異：這裡只需要比對
 // 「單一日期」，該日期即將變成整天公休，落在當天範圍內的預約全部視為受影響，不需要
-// 逐筆比對新舊營業時間；單一日期本來就有界（appointments_no_overlap 保證同一天不重疊
-// 的未取消預約數量有限），但仍套用與範本相同的 200 筆上限，保持同一道防線（避免把含
+// 逐筆比對新舊營業時間；單一日期本來就有界（appointments_no_overlap 保證同一位設計師同一天
+// 不重疊，所以當天的未取消預約數量受「設計師人數 × 營業時段數」限制），但仍套用與範本相同的 200 筆上限，保持同一道防線（避免把含
 // 姓名的資料無邊界下載到瀏覽器）。
 export async function findAffectedAppointmentsForClosedDate(
   supabase: SupabaseClient,

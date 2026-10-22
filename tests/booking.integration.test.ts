@@ -13,6 +13,7 @@
 // 通過，必須明確控制數值才能真正驗證「未調整設定值時行為與修改前完全一致」）。
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -166,6 +167,8 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
   let serviceRoleClient: SupabaseClient;
   let anonClient: SupabaseClient;
   let testServiceId: string;
+  // 0018 起預約依設計師計算：測試服務必須有設計師開啟，直接 insert appointments 也要帶 designer_id。
+  let testDesignerId: string;
   let originalMinLeadTimeHours: number;
   let originalCancelWindowHours: number | null;
 
@@ -189,6 +192,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       .single();
     if (error) throw error;
     testServiceId = service.id;
+    testDesignerId = (await createTestDesigner(serviceRoleClient, { tag: "book", serviceIds: [testServiceId] })).id;
 
     // 記錄 booking_policy 目前的快照（不能假設是預設值 1，可能已被後台設定頁調整過），
     // 再明確設回 1——本檔案下面「提前量／視野上限」既有 describe 的斷言（假設提前量
@@ -228,6 +232,16 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       .eq("service_id", testServiceId);
     if (deleteAppointmentsError) throw deleteAppointmentsError;
 
+    // 設計師清除失敗不能讓後面的顧客、服務、booking_policy 還原被跳過：先記下錯誤，最後再丟。
+    let designerCleanupError: unknown;
+    if (testDesignerId) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+      } catch (error) {
+        designerCleanupError = error;
+      }
+    }
+
     const { error: deleteCustomersError } = await serviceRoleClient
       .from("customers")
       .delete()
@@ -245,6 +259,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
       .update({ min_lead_time_hours: originalMinLeadTimeHours, cancel_window_hours: originalCancelWindowHours })
       .eq("id", 1);
     if (restorePolicyError) throw restorePolicyError;
+    if (designerCleanupError) throw designerCleanupError;
   });
 
   describe("get_available_slots", () => {
@@ -254,6 +269,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
 
       const { error: insertError } = await serviceRoleClient.from("appointments").insert({
         service_id: testServiceId,
+        designer_id: testDesignerId,
         customer_name: `${TEST_MARKER} occupied-fixture`,
         start_at: occupiedStart,
         end_at: occupiedEnd,
@@ -633,6 +649,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .from("appointments")
         .insert({
           service_id: testServiceId,
+          designer_id: testDesignerId,
           customer_name: `${TEST_MARKER} delete-fixture`,
           start_at: isoAt(RLS_FIXTURE_DATE, 12, 0),
           end_at: isoAt(RLS_FIXTURE_DATE, 12, 30),
@@ -680,6 +697,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         .from("appointments")
         .insert({
           service_id: testServiceId,
+          designer_id: testDesignerId,
           customer_name: `${TEST_MARKER} update-fixture`,
           start_at: isoAt(RLS_FIXTURE_DATE, 10, 0),
           end_at: isoAt(RLS_FIXTURE_DATE, 10, 30),
@@ -855,6 +873,7 @@ describe("顧客預約流程整合測試（真實 Supabase 專案）", () => {
         const fixtureEnd = isoAt(BUFFER_LEAD_TIME_DATE, 14, 30);
         const { error: insertError } = await serviceRoleClient.from("appointments").insert({
           service_id: testServiceId,
+          designer_id: testDesignerId,
           customer_name: `${TEST_MARKER} buffer-lead-fixture`,
           start_at: fixtureStart,
           end_at: fixtureEnd,

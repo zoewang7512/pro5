@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AvailableSlot } from "@/lib/booking/types";
 import { addDays } from "./week-range";
+import { isDesignerId } from "@/lib/designers";
 import type { AdminError, Result } from "./appointments";
+import { isRealDate } from "./designers";
 
 // 改期表單專用的可預約時段計算。後台管理者是受信任的內部使用者，不套用顧客端
 // get_available_slots RPC 的「提前 1 小時」「90 天視野」防濫用限制（feature-spec
@@ -27,11 +29,16 @@ function flattenBufferMinutes(services: RawServiceBuffer): number {
   return service?.buffer_minutes ?? 0;
 }
 
+// 物件參數：designerId 與 excludeAppointmentId 都是 uuid 字串，位置參數傳反時型別檢查抓不到。
+// 只算這位設計師的預約（appointments_no_overlap 自 0018 起是「同一位設計師不可重疊」）。designerId 不合法
+// 一律 fail-closed 回錯誤、不送請求——退回「不過濾」或回空陣列都會讓畫面把不該開放的時段顯示成可選。
 export async function getOccupiedRangesForDate(
   supabase: SupabaseClient,
-  date: string,
-  excludeAppointmentId: string,
+  params: { date: string; designerId: string | null | undefined; excludeAppointmentId: string },
 ): Promise<Result<OccupiedRange[]>> {
+  const { date, designerId, excludeAppointmentId } = params;
+  if (!designerId || !isDesignerId(designerId)) return { ok: false, error: INTERNAL_ERROR };
+
   // 下界往前推一天：services.buffer_minutes 上限 120 分鐘（見 0003_closures_and_buffer.sql
   // 的 check constraint），前一天深夜才開始、加上緩衝後跨過午夜的既有預約，start_at 落在
   // 前一天，若只查當天會漏掉，導致這裡（TS 版）跟 get_available_slots RPC（沒有依 start_at
@@ -40,6 +47,7 @@ export async function getOccupiedRangesForDate(
   const { data, error } = await supabase
     .from("appointments")
     .select("start_at, end_at, services(buffer_minutes)")
+    .eq("designer_id", designerId)
     .neq("id", excludeAppointmentId)
     .in("status", ["pending", "confirmed", "completed"])
     .gte("start_at", `${addDays(date, -1)}T00:00:00+08:00`)
@@ -58,6 +66,28 @@ export async function getOccupiedRangesForDate(
   }));
 
   return { ok: true, data: ranges };
+}
+
+// 這位設計師當天是否請假（designer_leaves，只有 admin 讀得到）。查詢失敗回錯誤，由呼叫端整個改期表單 fail-closed，
+// 不能把失敗當成「沒請假」。日期與 id 先驗證，不通過不送請求。
+export async function isDesignerOnLeave(
+  supabase: SupabaseClient,
+  designerId: string | null | undefined,
+  date: string,
+): Promise<Result<boolean>> {
+  if (!designerId || !isDesignerId(designerId) || !isRealDate(date)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase
+      .from("designer_leaves")
+      .select("date")
+      .eq("designer_id", designerId)
+      .eq("date", date)
+      .limit(1);
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: data.length > 0 };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
 }
 
 export type DayBusinessHours = { open_time: string | null; close_time: string | null; is_closed: boolean };
@@ -96,10 +126,13 @@ export function computeAvailableSlots(params: {
   now: number;
   bufferMinutes: number;
   isClosedDate: boolean;
+  // 這位設計師當天請假（isDesignerOnLeave 的結果）；與全店公休並列，整天沒有時段。
+  isDesignerLeaveDate: boolean;
 }): AvailableSlot[] {
-  const { date, durationMinutes, businessHours, occupiedRanges, now, bufferMinutes, isClosedDate } = params;
+  const { date, durationMinutes, businessHours, occupiedRanges, now, bufferMinutes, isClosedDate, isDesignerLeaveDate } =
+    params;
 
-  if (isClosedDate) return [];
+  if (isClosedDate || isDesignerLeaveDate) return [];
 
   if (!businessHours || businessHours.is_closed || !businessHours.open_time || !businessHours.close_time) {
     return [];

@@ -94,7 +94,11 @@ export function ServiceFormDialog({
     setSubmitting(false);
 
     if (result.ok) {
-      showToast(mode === "create" ? "服務項目已新增" : "服務項目已更新", "success");
+      // 新增的服務不會寫 designer_services（見 TASK-070），提示店長到設計師頁開啟，否則前台沒有時段可選。
+      showToast(
+        mode === "create" ? "已新增服務。新服務預設不開給任何設計師，請到「設計師」頁開啟。" : "服務項目已更新",
+        "success",
+      );
       onSuccess();
     } else {
       showToast("操作失敗，請稍後再試", "error");

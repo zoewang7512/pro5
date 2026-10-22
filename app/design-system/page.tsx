@@ -32,6 +32,9 @@ import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { OtpInput } from "@/components/ui/OtpInput";
 import { ColorModeToggle } from "@/components/ui/ColorModeToggle";
 
+// MonthPicker Demo 的唯讀日期（例如全店公休日）：不可點，灰底加刪除線。
+const MONTH_PICKER_READ_ONLY_DATES = new Set(["2026-08-10", "2026-08-11"]);
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Box component="section" sx={{ mb: 6 }}>
@@ -194,6 +197,8 @@ export default function DesignSystemShowcase() {
               month={monthPickerMonth}
               todayDate="2026-08-07"
               markedDates={markedDates}
+              readOnlyDates={MONTH_PICKER_READ_ONLY_DATES}
+              readOnlyLabel="全店公休"
               onDayClick={(date) => {
                 setMarkedDates((prev) => {
                   const next = new Set(prev);

@@ -2,7 +2,7 @@
   "id": "TASK-071",
   "title": "多位設計師 「作品集」頁籤（上傳、刪除、12 張上限）",
   "content": "PortfolioManager 元件；上傳 jpg/png/webp 5MB、刪除二次確認、達上限停用；資料庫 trigger 為最後防線。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -38,24 +38,47 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-後台設計師管理.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-後台設計師管理.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-071.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-071.md",
     "pr": ""
   },
   "refs": [
     "lib/admin/designers.ts",
+    "lib/designers.ts",
     "components/ui/PortfolioManager.tsx",
     "app/admin/_components/DesignerPortfolioTab.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：0 error／0 warning",
+      "npm run build：通過",
+      "npx vitest run --maxWorkers=3：771／774，3 項為 account-settings-view 逾時（單獨跑 33 項全過，非本卡檔案）",
+      "npm run test:designers -- -t \"TASK-071\"（真實 Supabase）：11 項通過，無殘留",
+      "瀏覽器走查（__TEST__ 停用設計師，已清除）：空狀態、上傳 3 張（webp、長邊 1600、cache-control 300）、上傳中、刪除二次確認、重新整理保留、12／12 達上限、768px"
+    ],
+    "findings": [
+      "「結果不明」不能看 error 有沒有 code（AbortError 的 code 是 \"20\"）：只有 PORTFOLIO_LIMIT 與 5 碼 SQLSTATE 才算確定沒寫入，其餘先重讀（architect M1／security M4）",
+      "image_url 資料庫 constraint 只驗結尾，可帶 query 指到別人的檔案：新增 resolvePortfolioImageUrl 於顯示層擋下（security M1），人工決定納入 lib/designers.ts",
+      "刪除結果不明也要處理，否則靜默失敗（architect M2）；未過白名單的列畫成可刪除佔位格（architect M3）",
+      "MUI Alert 給 action 會吃掉關閉鈕：實作中由元件測試抓到並修正"
+    ],
+    "residual": "刪除後公開網址因快取最多約 5 分鐘仍可能讀到（整合測試實測先預熱快取再刪除回 200）；孤兒檔無清理機制；伺服器端不檢查檔案內容；createImageBitmap 先解碼再檢查解析度；image_url constraint 只驗結尾；aal1 情境未測；實作後 security／test 審查未做。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前審查完成：architect（request changes，輕微）、security-reviewer（無 High，Medium 4 項），採納事項與人工決定的 4 項（1600px、納入 lib/designers.ts、重試按鈕、cacheControl 300 秒）已寫入任務卡「動工前審查定案」。實作與驗證完成，等待人工驗收，見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過，轉 Done。"
     }
   ]
 }

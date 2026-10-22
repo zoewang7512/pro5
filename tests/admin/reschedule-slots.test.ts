@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { computeAvailableSlots } from "@/lib/admin/reschedule-slots";
+import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { computeAvailableSlots, getOccupiedRangesForDate, isDesignerOnLeave } from "@/lib/admin/reschedule-slots";
 
 // 2026-08-10 為週一，營業時間 10:00–19:00（比照 scripts/seed-booking-data.mjs 的種子資料）。
 const BUSINESS_HOURS = { open_time: "10:00", close_time: "19:00", is_closed: false };
@@ -15,6 +16,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     expect(slots).toEqual([]);
   });
@@ -28,6 +30,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     expect(slots).toEqual([]);
   });
@@ -41,6 +44,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: true,
+      isDesignerLeaveDate: false,
     });
     expect(slots).toEqual([]);
   });
@@ -54,6 +58,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     // 起點固定 10:00，每 30 分鐘一格（10:00, 10:30, 11:00, ...）；
     // 最後一格開始時間 + 45 分鐘須 <= 19:00 → 最後一格是 18:00（18:30+45=19:15 已超過）。
@@ -72,6 +77,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     // 10:00 起的格子 [10:00,10:45) 與佔用區間完全重疊；10:30 起的格子 [10:30,11:15) 也與
@@ -91,6 +97,7 @@ describe("computeAvailableSlots", () => {
       now,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     expect(startTimes).not.toContain(new Date("2026-08-10T10:00:00+08:00").toISOString());
@@ -110,6 +117,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     // 11:00 起的格子 [11:00,11:45) 與延伸後的佔用區間 [10:00,11:15) 仍重疊（11:00 < 11:15），
@@ -133,6 +141,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 30,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     expect(startTimes).not.toContain(new Date("2026-08-10T10:30:00+08:00").toISOString());
@@ -156,6 +165,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     expect(startTimes).not.toContain(new Date("2026-08-10T11:00:00+08:00").toISOString());
@@ -177,6 +187,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 15,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     expect(startTimes).not.toContain(new Date("2026-08-10T10:30:00+08:00").toISOString());
@@ -197,6 +208,7 @@ describe("computeAvailableSlots", () => {
       now: FAR_FUTURE_NOW,
       bufferMinutes: 0,
       isClosedDate: false,
+      isDesignerLeaveDate: false,
     });
     const startTimes = slots.map((s) => s.start_at);
     // A 的緩衝為 0，10:30 起的格子恰好緊接在後，不受 A 影響，保留。
@@ -207,5 +219,177 @@ describe("computeAvailableSlots", () => {
     expect(startTimes).not.toContain(new Date("2026-08-10T14:30:00+08:00").toISOString());
     // 15:30 起的格子恰好緊接在 B 的緩衝結束後，不算重疊，保留。
     expect(startTimes).toContain(new Date("2026-08-10T15:30:00+08:00").toISOString());
+  });
+});
+
+describe("computeAvailableSlots：設計師請假日", () => {
+  it("isDesignerLeaveDate: true 時回傳空陣列，即使當天營業、沒有任何預約", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-08-10",
+      durationMinutes: 45,
+      businessHours: BUSINESS_HOURS,
+      occupiedRanges: [],
+      now: FAR_FUTURE_NOW,
+      bufferMinutes: 0,
+      isClosedDate: false,
+      isDesignerLeaveDate: true,
+    });
+    expect(slots).toEqual([]);
+  });
+
+  it("isDesignerLeaveDate: false 時照常產生時段（對照組，確認上一條不是因為別的原因而空）", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-08-10",
+      durationMinutes: 45,
+      businessHours: BUSINESS_HOURS,
+      occupiedRanges: [],
+      now: FAR_FUTURE_NOW,
+      bufferMinutes: 0,
+      isClosedDate: false,
+      isDesignerLeaveDate: false,
+    });
+    expect(slots.length).toBeGreaterThan(0);
+  });
+});
+
+type QueryResult = { data: unknown; error: unknown };
+type Call = { method: string; args: unknown[] };
+
+// 每個方法都記錄呼叫並回傳自己，整條鏈可 await 取得結果；測試用它斷言過濾條件。
+function fakeClient(result: QueryResult | (() => never)) {
+  const calls: Call[] = [];
+  const from = vi.fn();
+  const chain: Record<string, unknown> = {};
+  for (const method of ["select", "eq", "neq", "in", "gte", "lt", "limit"]) {
+    chain[method] = (...args: unknown[]) => (calls.push({ method, args }), chain);
+  }
+  chain.then = (resolve: (value: QueryResult) => unknown, reject: (reason: unknown) => unknown) => {
+    try {
+      return resolve(typeof result === "function" ? result() : result);
+    } catch (error) {
+      return reject(error);
+    }
+  };
+  from.mockReturnValue(chain);
+  return { client: { from } as unknown as SupabaseClient, from, calls };
+}
+
+const DESIGNER_A = "11111111-1111-4111-8111-111111111111";
+const DESIGNER_B = "22222222-2222-4222-8222-222222222222";
+const APPOINTMENT_X = "33333333-3333-4333-8333-333333333333";
+const GENERIC = { ok: false, error: { message: "發生未預期的錯誤，請稍後再試。" } };
+
+describe("getOccupiedRangesForDate", () => {
+  const ROW = { start_at: "2026-08-10T02:00:00+00:00", end_at: "2026-08-10T02:45:00+00:00", services: { buffer_minutes: 15 } };
+
+  it("只算這位設計師的預約，並排除正在改期的這筆（兩個不同的 id，傳反就會失敗）", async () => {
+    const { client, from, calls } = fakeClient({ data: [ROW], error: null });
+    const result = await getOccupiedRangesForDate(client, {
+      date: "2026-08-10",
+      designerId: DESIGNER_A,
+      excludeAppointmentId: APPOINTMENT_X,
+    });
+
+    expect(from).toHaveBeenCalledWith("appointments");
+    expect(calls.find((c) => c.method === "eq")?.args).toEqual(["designer_id", DESIGNER_A]);
+    expect(calls.find((c) => c.method === "neq")?.args).toEqual(["id", APPOINTMENT_X]);
+    expect(calls.find((c) => c.method === "in")?.args).toEqual(["status", ["pending", "confirmed", "completed"]]);
+    expect(result).toEqual({
+      ok: true,
+      data: [{ start_at: ROW.start_at, end_at: ROW.end_at, buffer_minutes: 15 }],
+    });
+  });
+
+  it("換一位設計師就換過濾條件（不是寫死某個值）", async () => {
+    const { client, calls } = fakeClient({ data: [], error: null });
+    await getOccupiedRangesForDate(client, { date: "2026-08-10", designerId: DESIGNER_B, excludeAppointmentId: APPOINTMENT_X });
+    expect(calls.find((c) => c.method === "eq")?.args).toEqual(["designer_id", DESIGNER_B]);
+  });
+
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["空字串", ""],
+    ["非 uuid", "not-a-uuid"],
+    ["夾帶 PostgREST 語法", "a,designer_id.neq.x"],
+  ])("designerId 為 %s：fail-closed 回通用錯誤，不送請求（不能退回成全店計算或回空陣列）", async (_label, designerId) => {
+    const { client, from } = fakeClient({ data: [], error: null });
+    const result = await getOccupiedRangesForDate(client, {
+      date: "2026-08-10",
+      designerId: designerId as string | null | undefined,
+      excludeAppointmentId: APPOINTMENT_X,
+    });
+    expect(result).toEqual(GENERIC);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("查詢失敗回傳通用錯誤，不外洩原始錯誤訊息", async () => {
+    const { client } = fakeClient({ data: null, error: { message: "relation boom" } });
+    const result = await getOccupiedRangesForDate(client, {
+      date: "2026-08-10",
+      designerId: DESIGNER_A,
+      excludeAppointmentId: APPOINTMENT_X,
+    });
+    expect(result).toEqual(GENERIC);
+  });
+
+  it("緩衝時間的 embed 為陣列或 null 時也能攤平", async () => {
+    const { client } = fakeClient({
+      data: [
+        { ...ROW, services: [{ buffer_minutes: 30 }] },
+        { ...ROW, services: null },
+      ],
+      error: null,
+    });
+    const result = await getOccupiedRangesForDate(client, {
+      date: "2026-08-10",
+      designerId: DESIGNER_A,
+      excludeAppointmentId: APPOINTMENT_X,
+    });
+    expect(result.ok && result.data.map((range) => range.buffer_minutes)).toEqual([30, 0]);
+  });
+});
+
+describe("isDesignerOnLeave", () => {
+  it("只查這位設計師、這一天；有列＝請假", async () => {
+    const { client, from, calls } = fakeClient({ data: [{ date: "2026-08-10" }], error: null });
+    const result = await isDesignerOnLeave(client, DESIGNER_A, "2026-08-10");
+
+    expect(from).toHaveBeenCalledWith("designer_leaves");
+    expect(calls.filter((c) => c.method === "eq").map((c) => c.args)).toEqual([
+      ["designer_id", DESIGNER_A],
+      ["date", "2026-08-10"],
+    ]);
+    expect(result).toEqual({ ok: true, data: true });
+  });
+
+  it("沒有列＝沒請假", async () => {
+    const { client } = fakeClient({ data: [], error: null });
+    expect(await isDesignerOnLeave(client, DESIGNER_A, "2026-08-10")).toEqual({ ok: true, data: false });
+  });
+
+  it("查詢失敗回錯誤（不能當成沒請假）", async () => {
+    const { client } = fakeClient({ data: null, error: { message: "boom" } });
+    expect(await isDesignerOnLeave(client, DESIGNER_A, "2026-08-10")).toEqual(GENERIC);
+  });
+
+  it("查詢拋出例外也回錯誤", async () => {
+    const { client } = fakeClient(() => {
+      throw new Error("network");
+    });
+    expect(await isDesignerOnLeave(client, DESIGNER_A, "2026-08-10")).toEqual(GENERIC);
+  });
+
+  it.each([
+    ["designerId 為 null", null, "2026-08-10"],
+    ["designerId 非 uuid", "nope", "2026-08-10"],
+    ["日期為 today", DESIGNER_A, "today"],
+    ["日期為 infinity", DESIGNER_A, "infinity"],
+    ["日期不存在", DESIGNER_A, "2099-02-30"],
+    ["日期格式不嚴格", DESIGNER_A, "2099-2-1"],
+  ])("%s：回錯誤且不送請求", async (_label, designerId, date) => {
+    const { client, from } = fakeClient({ data: [], error: null });
+    expect(await isDesignerOnLeave(client, designerId, date)).toEqual(GENERIC);
+    expect(from).not.toHaveBeenCalled();
   });
 });

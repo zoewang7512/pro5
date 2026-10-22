@@ -26,6 +26,7 @@
 import { NextRequest } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 // server-only 依賴 Next.js 建置時才會設定的 "react-server" resolve condition，
 // Vitest 走一般 Node 解析一律拿到會直接 throw 的版本，比照既有
@@ -95,6 +96,12 @@ function testPhone(): string {
 describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案）", () => {
   let serviceRoleClient: SupabaseClient;
   let testServiceId: string;
+  // 0018 起 appointments.designer_id 為 not null：直接 insert fixture 預約要帶測試設計師。
+  let testDesignerId: string;
+  let testDesignerName: string;
+  // TASK-076：已停用設計師的歷史預約，webhook／cron 以 service_role 仍要讀得到名稱。
+  let inactiveDesignerId: string;
+  let inactiveDesignerName: string;
   let POST: typeof import("../app/api/webhooks/appointment-events/route").POST;
   let GET: typeof import("../app/api/cron/appointment-reminders/route").GET;
 
@@ -114,6 +121,16 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
       .single();
     if (serviceError) throw serviceError;
     testServiceId = service.id;
+    const testDesigner = await createTestDesigner(serviceRoleClient, { tag: "notif", serviceIds: [testServiceId] });
+    testDesignerId = testDesigner.id;
+    testDesignerName = testDesigner.name;
+    const inactiveDesigner = await createTestDesigner(serviceRoleClient, {
+      tag: "noff",
+      serviceIds: [testServiceId],
+      isActive: false,
+    });
+    inactiveDesignerId = inactiveDesigner.id;
+    inactiveDesignerName = inactiveDesigner.name;
 
     // vi.mock 已在檔案頂端 hoist 完成，這裡才 import route handler 確保拿到 mock 過的
     // sendEmail／server-only（比照 tests/api/appointment-events-webhook.test.ts 的既有
@@ -136,6 +153,17 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
         .delete()
         .eq("service_id", testServiceId);
       if (deleteAppointmentsError) cleanupErrors.push(deleteAppointmentsError);
+
+      if (testDesignerId || inactiveDesignerId) {
+        try {
+          await cleanupTestDesigners(
+            serviceRoleClient,
+            [testDesignerId, inactiveDesignerId].filter((id): id is string => !!id),
+          );
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+      }
 
       const { error: deleteServiceError } = await serviceRoleClient.from("services").delete().eq("id", testServiceId);
       if (deleteServiceError) cleanupErrors.push(deleteServiceError);
@@ -168,11 +196,13 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
     endAt: string;
     status?: "pending" | "confirmed" | "completed" | "cancelled";
     customerEmail?: string | null;
+    designerId?: string;
   }): Promise<string> {
     const { data, error } = await serviceRoleClient
       .from("appointments")
       .insert({
         service_id: testServiceId,
+        designer_id: params.designerId ?? testDesignerId,
         customer_name: `${TEST_MARKER} ${params.name}`,
         customer_phone: testPhone(),
         customer_email: null,
@@ -252,9 +282,27 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
       const [[sendArgs]] = sendEmailMock.mock.calls;
       expect(sendArgs.to).toBe(`${TEST_MARKER}@example.invalid`);
       expect(sendArgs.subject).toContain("預約確認");
+      // TASK-076：webhook 以 service_role 另查 designers(name)，內文帶入設計師名稱，主旨不含。
+      expect(sendArgs.html).toContain(`<li>設計師：${testDesignerName}</li>`);
+      expect(sendArgs.subject).not.toContain(testDesignerName);
 
       const after = await fetchAppointment(id);
       expect(after.confirmation_sent_at).not.toBeNull();
+    });
+
+    it("已停用設計師的預約：確認信仍讀得到設計師名稱（service_role 略過 RLS，不加 is_active 條件）", async () => {
+      const id = await insertAppointment({
+        name: "confirmation-inactive-designer",
+        startAt: hoursFromNow(204),
+        endAt: hoursFromNow(204.5),
+        designerId: inactiveDesignerId,
+      });
+
+      const res = await POST(postWebhook(insertPayload({ id })));
+      expect(res.status).toBe(200);
+
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      expect(sendEmailMock.mock.calls[0][0].html).toContain(`<li>設計師：${inactiveDesignerName}</li>`);
     });
 
     it("重複觸發同一筆 INSERT（confirmation_sent_at 已設定）：不重複寄信", async () => {
@@ -336,6 +384,7 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
       const [[sendArgs]] = sendEmailMock.mock.calls;
       expect(sendArgs.to).toBe(`${TEST_MARKER}@example.invalid`);
       expect(sendArgs.subject).toContain("預約已取消");
+      expect(sendArgs.html).toContain(`<li>設計師：${testDesignerName}</li>`);
     });
 
     it("改期：分派到改期通知信", async () => {
@@ -354,6 +403,7 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
       expect(sendEmailMock).toHaveBeenCalledTimes(1);
       const [[sendArgs]] = sendEmailMock.mock.calls;
       expect(sendArgs.subject).toContain("預約已改期");
+      expect(sendArgs.html).toContain(`<li>設計師：${testDesignerName}</li>`);
     });
 
     it("標記完成（狀態變更但時段不變）：分類為 none，不寄信", async () => {
@@ -455,6 +505,13 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
         endAt: hoursFromNow(40.5),
         status: "confirmed",
       });
+      await insertAppointment({
+        name: "reminder-inactive-designer",
+        startAt: hoursFromNow(7),
+        endAt: hoursFromNow(7.5),
+        status: "confirmed",
+        designerId: inactiveDesignerId,
+      });
       const cancelledWithinWindowId = await insertAppointment({
         name: "reminder-cancelled-within-window",
         startAt: hoursFromNow(6),
@@ -483,6 +540,11 @@ describe("Email 通知與提醒：前後端串接整合測試（真實 Supabase 
         expect(sendEmailMock).toHaveBeenCalled();
         const calledEmails = sendEmailMock.mock.calls.map(([args]) => args.to);
         expect(calledEmails).toContain(`${TEST_MARKER}@example.invalid`);
+
+        // TASK-076：cron 以 service_role 內嵌 designers(name)——啟用與已停用的設計師名稱都要帶進提醒信。
+        const sentHtmls = sendEmailMock.mock.calls.map(([args]) => args.html as string);
+        expect(sentHtmls.some((html) => html.includes(`<li>設計師：${testDesignerName}</li>`))).toBe(true);
+        expect(sentHtmls.some((html) => html.includes(`<li>設計師：${inactiveDesignerName}</li>`))).toBe(true);
 
         // 去重：緊接著再呼叫一次，剛剛已 claim 的這筆不應該被重新處理（sendEmail
         // 呼叫次數不會再為它增加一次）。

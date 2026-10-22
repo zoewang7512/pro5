@@ -40,8 +40,14 @@ import {
   isDateClosed,
   removeClosedDate,
 } from "../lib/admin/closed-dates";
-import { computeAvailableSlots, getBusinessHoursForWeekday, getOccupiedRangesForDate } from "../lib/admin/reschedule-slots";
+import {
+  computeAvailableSlots,
+  getBusinessHoursForWeekday,
+  getOccupiedRangesForDate,
+  isDesignerOnLeave,
+} from "../lib/admin/reschedule-slots";
 import { createAppointment, getAvailableSlots } from "../lib/booking/api";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -135,6 +141,8 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
   // buffer_minutes=30 的獨立測試服務，只給下方 buffer_minutes 相關測試使用，不重用
   // testServiceId（buffer_minutes=0），避免兩組案例互相污染彼此的緩衝行為判斷。
   let bufferServiceId: string;
+  // 0018 起預約依設計師計算、appointments.designer_id 為 not null：兩個測試服務都要有設計師開啟。
+  let testDesignerId: string;
   let originalSnapshot: BusinessHoursRow[];
   // closed_dates 沒有固定列數也沒有 TEST_MARKER 可掛，改成記錄本次測試新增過的日期，
   // afterAll 只刪除這些日期，不動測試開始前就已存在的列（見檔頭註解）。
@@ -249,6 +257,10 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
     if (bufferServiceError) throw bufferServiceError;
     bufferServiceId = bufferService.id;
 
+    testDesignerId = (
+      await createTestDesigner(serviceRoleClient, { tag: "bhours", serviceIds: [testServiceId, bufferServiceId] })
+    ).id;
+
     // 記錄原始 7 列快照，afterAll 會用這份快照還原——不能假設目前一定是 seed script 的
     // 預設值（可能已被後台設定頁調整過），一律以「測試開始當下的實際資料」為還原基準。
     const { data: snapshot, error: snapshotError } = await serviceRoleClient
@@ -360,6 +372,14 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
       if (deleteBufferServiceError) cleanupErrors.push(deleteBufferServiceError);
     }
 
+    if (testDesignerId) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, [testDesignerId]);
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+
     // TASK-028 新增的 create_appointment 測試案例會透過真正的 RPC 呼叫，其顧客去重邏輯
     // 會在 customers 表新建一列——不像上面兩個服務底下的 appointments 可以直接依
     // service_id 篩選，customers 沒有 service_id 這種外鍵可用，改依 TEST_MARKER 名稱
@@ -414,6 +434,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
       .from("appointments")
       .insert({
         service_id: params.serviceId ?? testServiceId,
+        designer_id: testDesignerId,
         customer_name: `${TEST_MARKER} ${params.name}`,
         customer_phone: testPhone(),
         start_at: params.startAt,
@@ -1285,7 +1306,8 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
         serviceId: bufferServiceId,
       });
 
-      const rpcResult = await getAvailableSlots(anonClient, bufferServiceId, CROSS_VALIDATE_DATE);
+      // 兩邊都指定同一位測試設計師：RPC 與後台改期（只算該設計師的預約與請假日）才是同一個語意。
+      const rpcResult = await getAvailableSlots(anonClient, bufferServiceId, CROSS_VALIDATE_DATE, testDesignerId);
       expect(rpcResult.ok).toBe(true);
       if (!rpcResult.ok) return;
       expect(rpcResult.data.length).toBeGreaterThan(0);
@@ -1303,13 +1325,17 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
       expect(closedResult.ok).toBe(true);
       if (!closedResult.ok) return;
 
-      const occupiedResult = await getOccupiedRangesForDate(
-        designerClient,
-        CROSS_VALIDATE_DATE,
-        "00000000-0000-0000-0000-000000000000",
-      );
+      const occupiedResult = await getOccupiedRangesForDate(designerClient, {
+        date: CROSS_VALIDATE_DATE,
+        designerId: testDesignerId,
+        excludeAppointmentId: "00000000-0000-0000-0000-000000000000",
+      });
       expect(occupiedResult.ok).toBe(true);
       if (!occupiedResult.ok) return;
+
+      const leaveResult = await isDesignerOnLeave(designerClient, testDesignerId, CROSS_VALIDATE_DATE);
+      expect(leaveResult.ok).toBe(true);
+      if (!leaveResult.ok) return;
 
       // CROSS_VALIDATE_DATE 離今天 65 天以上，遠超過 RPC 的「提前 1 小時」門檻與
       // computeAvailableSlots 的「now 之後」門檻（見 lib/admin/reschedule-slots.ts 開頭
@@ -1325,6 +1351,7 @@ describe("營業時間與可預約時段管理整合測試（真實 Supabase 專
         now: Date.now(),
         bufferMinutes: 30,
         isClosedDate: closedResult.data,
+        isDesignerLeaveDate: leaveResult.data,
       });
 
       const toEpochPairs = (slots: { start_at: string; end_at: string }[]) =>
