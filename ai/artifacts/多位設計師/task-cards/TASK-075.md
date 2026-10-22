@@ -8,7 +8,7 @@
 - 上層 User Story：後台依設計師檢視預約
 - 分軌：前後端串接
 - 前置任務（dependsOn）：TASK-068, TASK-072
-- 狀態：待人工驗收（實作與驗證完成，見 [`verification/TASK-075.md`](../verification/TASK-075.md)；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」；範圍補列兩個檔案已於 2026-10-22 由使用者同意）
+- 狀態：完成（人工驗收通過，2026-10-22；實作與驗證完成，見 [`verification/TASK-075.md`](../verification/TASK-075.md)；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」；範圍補列兩個檔案已於 2026-10-22 由使用者同意）
 - 風險等級：中（改期時段計算若沒過濾設計師，後台會顯示錯誤的可選時段；資料庫 exclusion constraint 仍是最後防線）
 - Agent owner：Claude Code
 - 人工核准者：使用者

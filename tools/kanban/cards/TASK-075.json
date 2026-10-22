@@ -2,7 +2,7 @@
   "id": "TASK-075",
   "title": "多位設計師 後台週曆／列表設計師標示與多選篩選、詳情顯示設計師、改期依原設計師",
   "content": "多選 Chip 篩選（規則見 mockup-decision）、請假標示、列表設計師欄、詳情設計師列；reschedule-slots 依 designer_id 與請假日計算。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -88,6 +88,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }
