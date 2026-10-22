@@ -38,6 +38,16 @@ vi.mock("@/app/admin/_components/DesignerBasicInfoForm", () => ({
   ),
 }));
 
+// 提供服務頁籤有自己的測試：這裡換成簡單替身，只驗證常駐掛載與頁籤標籤上的開啟數。
+vi.mock("@/app/admin/_components/DesignerServicesTab", () => ({
+  DesignerServicesTab: (props: { designerId: string; onCountChange: (count: number) => void }) => (
+    <div data-testid="services-tab">
+      <span>{`服務：${props.designerId}`}</span>
+      <button onClick={() => props.onCountChange(5)}>模擬回報五項</button>
+    </div>
+  ),
+}));
+
 const ID = "3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6b";
 const DESIGNER: Designer = {
   id: ID,
@@ -108,6 +118,41 @@ describe("DesignerEditView", () => {
     await user.click(screen.getByRole("tab", { name: "基本資料" }));
     expect(screen.getByTestId("basic-form")).toBeVisible();
     expect(screen.getByLabelText("未儲存的輸入")).toHaveValue("草稿");
+  });
+
+  it("「提供服務」面板載入後就常駐掛載（隱藏），用資料庫回傳的設計師 id；切頁籤不卸載", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    render(<DesignerEditView designerId={ID.toUpperCase()} />);
+
+    expect(await screen.findByText(`服務：${ID}`)).toBeInTheDocument();
+    expect(screen.getByTestId("services-tab")).not.toBeVisible();
+
+    await user.click(screen.getByRole("tab", { name: "提供服務" }));
+    expect(screen.getByTestId("services-tab")).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "基本資料" }));
+    expect(screen.getByTestId("services-tab")).toBeInTheDocument();
+  });
+
+  it("新增模式不掛載「提供服務」面板", () => {
+    render(<DesignerEditView designerId={null} />);
+    expect(screen.queryByTestId("services-tab")).toBeNull();
+  });
+
+  it("「提供服務」頁籤標籤在回報前沒有數字，回報後顯示開啟數（還沒點進該頁籤就看得到）", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    render(<DesignerEditView designerId={ID} />);
+    await screen.findByText("表單：林小美");
+
+    expect(screen.getByRole("tab", { name: "提供服務" })).toBeInTheDocument();
+
+    // 面板隱藏中（hidden），所以要指定 hidden: true 才找得到替身按鈕。
+    await user.click(screen.getByRole("button", { name: "模擬回報五項", hidden: true }));
+
+    const tab = screen.getByRole("tab", { name: /提供服務/ });
+    expect(tab).toHaveTextContent("提供服務5");
+    expect(screen.getByLabelText("已開啟 5 項")).toBeInTheDocument();
   });
 
   it("基本資料儲存後，麵包屑與標題同步更新名稱", async () => {

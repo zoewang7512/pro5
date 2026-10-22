@@ -17,16 +17,17 @@ import { createClient } from "@/lib/supabase/client";
 import { getDesigner } from "@/lib/admin/designers";
 import { isDesignerId, type Designer } from "@/lib/designers";
 import { DesignerBasicInfoForm } from "./DesignerBasicInfoForm";
+import { DesignerServicesTab } from "./DesignerServicesTab";
 
-// 設計師編輯頁（TASK-069）：麵包屑＋四頁籤「基本資料／提供服務／作品集／請假」。本卡只完成「基本資料」，
-// 其他三個頁籤放占位內容，由 TASK-070／071／072 依序接上（那三張卡會修改這個檔案，不並行）。
+// 設計師編輯頁（TASK-069）：麵包屑＋四頁籤「基本資料／提供服務／作品集／請假」。TASK-069 完成「基本資料」，
+// TASK-070 接上「提供服務」，其餘頁籤放占位內容，由 TASK-071／072 依序接上（那兩張卡會修改這個檔案，不並行）。
 // designerId 為 null 代表新增模式：其他頁籤停用，建立成功後 router.replace 到 /admin/designers/<id>。
 
 type TabValue = "basic" | "services" | "portfolio" | "leaves";
 
 const TABS: Array<{ value: TabValue; label: string; placeholder: string }> = [
   { value: "basic", label: "基本資料", placeholder: "" },
-  { value: "services", label: "提供服務", placeholder: "提供服務的設定即將開放。" },
+  { value: "services", label: "提供服務", placeholder: "" },
   { value: "portfolio", label: "作品集", placeholder: "作品集管理即將開放。" },
   { value: "leaves", label: "請假", placeholder: "請假日設定即將開放。" },
 ];
@@ -41,6 +42,8 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
   const supabase = React.useMemo(() => createClient(), []);
   const router = useRouter();
   const [tab, setTab] = React.useState<TabValue>("basic");
+  // 「提供服務」頁籤標籤上的開啟數，由 DesignerServicesTab 載入完成後回報；null 代表還不知道，不顯示數字。
+  const [serviceCount, setServiceCount] = React.useState<number | null>(null);
   const [state, setState] = React.useState<LoadState>(
     designerId === null ? { status: "loading" } : isDesignerId(designerId) ? { status: "loading" } : { status: "not-found" },
   );
@@ -126,7 +129,16 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
               <Tab
                 key={item.value}
                 value={item.value}
-                label={item.label}
+                label={
+                  item.value === "services" && serviceCount !== null ? (
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                      <span>{item.label}</span>
+                      <Chip size="small" label={serviceCount} aria-label={`已開啟 ${serviceCount} 項`} />
+                    </Stack>
+                  ) : (
+                    item.label
+                  )
+                }
                 disabled={isCreate && item.value !== "basic"}
                 id={`designer-tab-${item.value}`}
                 aria-controls={`designer-tabpanel-${item.value}`}
@@ -149,7 +161,17 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
             />
           </Box>
 
-          {TABS.filter((item) => item.value !== "basic").map((item) => (
+          {/* 「提供服務」面板同樣常駐掛載：頁籤標籤的開啟數要在點進來之前就有，寫入途中切走也不會丟掉進行中的狀態。 */}
+          <Box
+            role="tabpanel"
+            id="designer-tabpanel-services"
+            aria-labelledby="designer-tab-services"
+            hidden={tab !== "services"}
+          >
+            {designer && <DesignerServicesTab designerId={designer.id} onCountChange={setServiceCount} />}
+          </Box>
+
+          {TABS.filter((item) => item.value !== "basic" && item.value !== "services").map((item) => (
             <Box
               key={item.value}
               role="tabpanel"

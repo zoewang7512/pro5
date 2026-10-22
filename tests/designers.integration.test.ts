@@ -29,9 +29,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   countFutureAppointmentsForDesigner,
   createDesigner as createDesignerAdmin,
+  listDesignerServiceIds,
   listDesigners,
   removeDesignerAvatar,
   setDesignerActive,
+  setDesignerService,
   swapDesignerOrder,
   updateDesignerBasicInfo,
   uploadDesignerAvatar,
@@ -2499,6 +2501,122 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       if (!replaced.ok) return;
       expect(replaced.data.cleanupWarning).toBe(true);
       expect(await statusOf(victimUpload.data.url)).toBe(200);
+    });
+  });
+
+  // TASK-070：設計師服務開關（真實 admin／非管理員 session）。測試服務一律是 `__TEST__` 前綴且下架中（不會出現在
+  // 前台、不影響真實顧客）；設計師是 service_role 建立的 `__TEST__` 設計師，絕不碰預設設計師的服務開關。
+  describe("TASK-070：設計師服務開關（真實 admin session）", () => {
+    let serviceA: string;
+    let serviceB: string;
+
+    beforeAll(async () => {
+      const { data, error } = await serviceRoleClient
+        .from("services")
+        .insert([
+          { name: `${TEST_MARKER} svc070-a`, price: 100, duration_minutes: 30, is_active: false },
+          { name: `${TEST_MARKER} svc070-b`, price: 100, duration_minutes: 30, is_active: false },
+        ])
+        .select("id, name")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      serviceA = data![0].id as string;
+      serviceB = data![1].id as string;
+    });
+
+    async function linkedServiceIds(designerId: string): Promise<string[]> {
+      const { data, error } = await serviceRoleClient
+        .from("designer_services")
+        .select("service_id")
+        .eq("designer_id", designerId);
+      if (error) throw error;
+      return (data ?? []).map((row) => row.service_id as string).sort();
+    }
+
+    it("admin 開啟：寫入一列；重複開啟冪等（仍只有一列）；listDesignerServiceIds 讀得到", async () => {
+      const id = await createDesigner();
+
+      expect(await setDesignerService(adminClient, id, serviceA, true)).toEqual({ ok: true, data: undefined });
+      expect(await linkedServiceIds(id)).toEqual([serviceA]);
+
+      expect(await setDesignerService(adminClient, id, serviceA, true)).toEqual({ ok: true, data: undefined });
+      expect(await linkedServiceIds(id)).toEqual([serviceA]);
+
+      expect(await listDesignerServiceIds(adminClient, id)).toEqual({ ok: true, data: [serviceA] });
+    });
+
+    it("admin 關閉：只刪掉那一列，同一位設計師的其他服務與其他設計師的同一項服務都不受影響", async () => {
+      const first = await createDesigner();
+      const second = await createDesigner();
+      for (const [designerId, serviceId] of [
+        [first, serviceA],
+        [first, serviceB],
+        [second, serviceA],
+      ]) {
+        expect((await setDesignerService(adminClient, designerId, serviceId, true)).ok).toBe(true);
+      }
+
+      expect(await setDesignerService(adminClient, first, serviceA, false)).toEqual({ ok: true, data: undefined });
+
+      expect(await linkedServiceIds(first)).toEqual([serviceB]);
+      expect(await linkedServiceIds(second)).toEqual([serviceA]);
+    });
+
+    it("關閉一項本來就沒開的服務（或已被別處關閉）：回失敗而不是成功（0 列），資料不變", async () => {
+      const id = await createDesigner();
+      expect((await setDesignerService(adminClient, id, serviceA, true)).ok).toBe(true);
+
+      expect(await setDesignerService(adminClient, id, serviceB, false)).toEqual({
+        ok: false,
+        error: { message: "發生未預期的錯誤，請稍後再試。" },
+      });
+      expect(await linkedServiceIds(id)).toEqual([serviceA]);
+    });
+
+    it("admin 可以讀到停用中設計師的服務開關，也可以對停用中的設計師開關（先設定好再啟用）", async () => {
+      const read = await listDesignerServiceIds(adminClient, inactiveDesignerId);
+      expect(read).toEqual({ ok: true, data: [testServiceId] });
+
+      const id = await createDesigner({ is_active: false });
+      expect((await setDesignerService(adminClient, id, serviceA, true)).ok).toBe(true);
+      expect(await linkedServiceIds(id)).toEqual([serviceA]);
+    });
+
+    it("不存在的設計師或服務（外鍵）：回通用錯誤，不寫入", async () => {
+      const id = await createDesigner();
+      const missing = randomUUID();
+
+      expect(await setDesignerService(adminClient, id, missing, true)).toEqual({
+        ok: false,
+        error: { message: "發生未預期的錯誤，請稍後再試。" },
+      });
+      expect(await setDesignerService(adminClient, missing, serviceA, true)).toEqual({
+        ok: false,
+        error: { message: "發生未預期的錯誤，請稍後再試。" },
+      });
+      expect(await linkedServiceIds(id)).toEqual([]);
+    });
+
+    it("非管理員：開啟被 RLS 擋下（沒有寫入）；關閉被擋下時回失敗（0 列），既有的列仍在", async () => {
+      const id = await createDesigner();
+
+      expect((await setDesignerService(nonAdminClient, id, serviceA, true)).ok).toBe(false);
+      expect(await linkedServiceIds(id)).toEqual([]);
+
+      const { error } = await serviceRoleClient.from("designer_services").insert({ designer_id: id, service_id: serviceB });
+      expect(error).toBeNull();
+      expect((await setDesignerService(nonAdminClient, id, serviceB, false)).ok).toBe(false);
+      expect(await linkedServiceIds(id)).toEqual([serviceB]);
+    });
+
+    it("anon 讀不到停用中設計師的 designer_services，讀得到啟用中的", async () => {
+      const inactive = await anonClient.from("designer_services").select("service_id").eq("designer_id", inactiveDesignerId);
+      expect(inactive.error).toBeNull();
+      expect(inactive.data).toEqual([]);
+
+      const active = await anonClient.from("designer_services").select("service_id").eq("designer_id", activeDesignerId);
+      expect(active.error).toBeNull();
+      expect(active.data).toEqual([{ service_id: testServiceId }]);
     });
   });
 });

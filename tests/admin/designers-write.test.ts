@@ -4,10 +4,12 @@ import {
   countFutureAppointmentsForDesigner,
   createDesigner,
   getDesigner,
+  listDesignerServiceIds,
   parseDesignerAvatarPath,
   planDesignerOrderSwap,
   removeDesignerAvatar,
   setDesignerActive,
+  setDesignerService,
   swapDesignerOrder,
   toBasicInfoPayload,
   updateDesignerBasicInfo,
@@ -57,7 +59,7 @@ function recordingClient(plan: Record<string, Step[]>, storage?: StorageMocks) {
   const client = {
     from(table: string) {
       const chain: Record<string, unknown> = {};
-      for (const method of ["select", "insert", "update", "eq", "is", "in", "gt", "order", "limit", "maybeSingle"]) {
+      for (const method of ["select", "insert", "update", "delete", "eq", "is", "in", "gt", "order", "limit", "maybeSingle"]) {
         chain[method] = (...args: unknown[]) => (calls.push({ table, method, args }), chain);
       }
       chain.then = (resolve: (value: Step) => unknown, reject: (reason: unknown) => unknown) => {
@@ -578,5 +580,109 @@ describe("uploadDesignerAvatar／removeDesignerAvatar", () => {
     const { client, calls } = recordingClient({ designers: [{ data: { avatar_url: null } }] });
     expect(await removeDesignerAvatar(client, ID)).toEqual({ ok: true, data: { cleanupWarning: false } });
     expect(updates(calls)).toHaveLength(0);
+  });
+});
+
+// TASK-070：設計師服務開關。
+const SERVICE_ID = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+const eqArgs = (calls: RecordedCall[]) => calls.filter((c) => c.method === "eq").map((c) => c.args);
+
+describe("listDesignerServiceIds", () => {
+  it("只查這位設計師的 service_id，回傳 id 陣列", async () => {
+    const { client, calls } = recordingClient({
+      designer_services: [{ data: [{ service_id: SERVICE_ID }, { service_id: UUID }] }],
+    });
+
+    expect(await listDesignerServiceIds(client, ID)).toEqual({ ok: true, data: [SERVICE_ID, UUID] });
+    expect(calls.find((c) => c.method === "select")?.args).toEqual(["service_id"]);
+    expect(eqArgs(calls)).toEqual([["designer_id", ID]]);
+  });
+
+  it("格式錯誤的 id 不送查詢；查詢失敗回通用訊息", async () => {
+    const none = recordingClient({});
+    expect((await listDesignerServiceIds(none.client, "bad")).ok).toBe(false);
+    expect(none.calls).toHaveLength(0);
+
+    const { client } = recordingClient({ designer_services: [{ error: { message: "relation boom" } }] });
+    expect(await listDesignerServiceIds(client, ID)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+});
+
+describe("setDesignerService", () => {
+  it("開啟＝insert 剛好 designer_id／service_id 兩個欄位，不用 upsert 也不帶 select", async () => {
+    const { client, calls } = recordingClient({ designer_services: [{}] });
+
+    expect(await setDesignerService(client, ID, SERVICE_ID, true)).toEqual({ ok: true, data: undefined });
+    const insert = calls.find((c) => c.method === "insert");
+    expect(insert?.args[0]).toEqual({ designer_id: ID, service_id: SERVICE_ID });
+    expect(calls.map((c) => c.method)).toEqual(["insert"]);
+  });
+
+  it("開啟時主鍵衝突（23505）視為成功（冪等）", async () => {
+    const { client } = recordingClient({ designer_services: [{ error: { code: "23505", message: "duplicate" } }] });
+    expect(await setDesignerService(client, ID, SERVICE_ID, true)).toEqual({ ok: true, data: undefined });
+  });
+
+  it("開啟時其他錯誤（23503 外鍵、42501 權限）回通用訊息，不外洩原始訊息", async () => {
+    for (const code of ["23503", "42501", "22P02"]) {
+      const { client } = recordingClient({
+        designer_services: [{ error: { code, message: "boom", details: "Key (service_id)=(x)" } }],
+      });
+      const result = await setDesignerService(client, ID, SERVICE_ID, true);
+      expect(result).toEqual({ ok: false, error: { message: GENERIC } });
+    }
+  });
+
+  it("只比對 code：message 含 duplicate 但 code 不是 23505 不算成功", async () => {
+    const { client } = recordingClient({ designer_services: [{ error: { code: "XX000", message: "23505 duplicate key" } }] });
+    expect((await setDesignerService(client, ID, SERVICE_ID, true)).ok).toBe(false);
+  });
+
+  it("關閉＝delete 且剛好兩個 eq（designer_id、service_id），刪到 1 列才成功", async () => {
+    const { client, calls } = recordingClient({ designer_services: [{ data: [{ service_id: SERVICE_ID }] }] });
+
+    expect(await setDesignerService(client, ID, SERVICE_ID, false)).toEqual({ ok: true, data: undefined });
+    expect(calls.map((c) => c.method)).toEqual(["delete", "eq", "eq", "select"]);
+    expect(eqArgs(calls)).toEqual([
+      ["designer_id", ID],
+      ["service_id", SERVICE_ID],
+    ]);
+    expect(calls.find((c) => c.method === "select")?.args).toEqual(["service_id"]);
+  });
+
+  it("關閉時刪到 0 列（被 RLS 擋下或別處已關閉）不當成功；多於 1 列、錯誤也失敗", async () => {
+    for (const step of [
+      { data: [] },
+      { data: null },
+      { data: [{ service_id: SERVICE_ID }, { service_id: UUID }] },
+      { error: { code: "42501", message: "boom" } },
+    ]) {
+      const { client } = recordingClient({ designer_services: [step] });
+      expect(await setDesignerService(client, ID, SERVICE_ID, false)).toEqual({ ok: false, error: { message: GENERIC } });
+    }
+  });
+
+  it("id 格式錯誤（空字串、非 uuid）不送任何請求", async () => {
+    const { client, calls } = recordingClient({});
+    for (const [designerId, serviceId] of [
+      [ID, ""],
+      ["", SERVICE_ID],
+      [ID, "not-a-uuid"],
+      ["not-a-uuid", SERVICE_ID],
+    ]) {
+      expect((await setDesignerService(client, designerId, serviceId, false)).ok).toBe(false);
+      expect((await setDesignerService(client, designerId, serviceId, true)).ok).toBe(false);
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it("請求丟出例外（網路中斷）時回通用訊息，不往外拋", async () => {
+    const client = {
+      from: () => {
+        throw new Error("fetch failed");
+      },
+    } as unknown as SupabaseClient;
+    expect(await setDesignerService(client, ID, SERVICE_ID, true)).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(await setDesignerService(client, ID, SERVICE_ID, false)).toEqual({ ok: false, error: { message: GENERIC } });
   });
 });

@@ -11,7 +11,7 @@ import type { Result } from "./appointments";
 import { IMAGE_MAX_BYTES, extensionForImageMime, reencodeImage } from "./image-reencode";
 
 // 設計師管理頁的資料存取，只給後台用（前台共用的型別與驗證在 lib/designers.ts）。TASK-067 建立讀取，
-// TASK-069 新增基本資料的寫入（設計師服務、作品集、請假由 TASK-070～072 接續）。與前台不同：這裡不過濾
+// TASK-069 新增基本資料的寫入，TASK-070 新增設計師服務的開關（作品集、請假由 TASK-071～072 接續）。與前台不同：這裡不過濾
 // is_active，後台需要同時看到啟用中與停用中的設計師（RLS 對 is_admin() 放行全部）。
 //
 // 寫入一律走 supabase-js 直接操作資料表：RLS 的 is_admin()（要求 aal2）加欄位層級 GRANT 是權限邊界
@@ -71,6 +71,53 @@ export async function listDesigners(supabase: SupabaseClient): Promise<Result<De
   }));
 
   return { ok: true, data: { designers, totalServices: activeServiceIds.size } };
+}
+
+// 這位設計師開啟的服務 id（含下架中的服務，designer_services 的列在服務下架時保留）。畫面要和上架中的服務
+// 取交集再顯示或計數，口徑與 listDesigners 的 service_count 一致。
+export async function listDesignerServiceIds(supabase: SupabaseClient, designerId: string): Promise<Result<string[]>> {
+  if (!isDesignerId(designerId)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase.from("designer_services").select("service_id").eq("designer_id", designerId);
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: (data as Array<{ service_id: string }>).map((row) => row.service_id) };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+// 開關一項服務：enabled＝insert 一列、否則 delete 一列。authenticated 對這張表沒有 update 權限，所以不能用
+// upsert。冪等只限 insert：重複開啟時主鍵衝突（23505）視為成功——RLS 的 WITH CHECK 先於唯一性檢查，
+// 看得到 23505 的一定是通過 is_admin() 的人，只比對 code，不看 message／details。
+// delete 一定要同時帶兩個 eq（欄位名稱寫死）：少一個條件會刪掉整批服務對照，前台立刻沒有時段。被 RLS 擋下的
+// delete 不會報錯、只回 0 列，所以用 .select 確認剛好刪掉 1 列；0 列（別的分頁已關閉，或權限不足）一律回失敗，
+// 由呼叫端重讀資料庫為準。
+export async function setDesignerService(
+  supabase: SupabaseClient,
+  designerId: string,
+  serviceId: string,
+  enabled: boolean,
+): Promise<Result<void>> {
+  if (!isDesignerId(designerId) || !isDesignerId(serviceId)) return { ok: false, error: INTERNAL_ERROR };
+
+  try {
+    if (enabled) {
+      const { error } = await supabase.from("designer_services").insert({ designer_id: designerId, service_id: serviceId });
+      if (error && error.code !== "23505") return { ok: false, error: INTERNAL_ERROR };
+      return { ok: true, data: undefined };
+    }
+
+    const { data, error } = await supabase
+      .from("designer_services")
+      .delete()
+      .eq("designer_id", designerId)
+      .eq("service_id", serviceId)
+      .select("service_id");
+    if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
 }
 
 const DESIGNER_COLUMNS = "id, name, bio, specialties, instagram_handle, avatar_url, is_active, sort_order";
