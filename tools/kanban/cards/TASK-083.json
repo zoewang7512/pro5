@@ -2,7 +2,7 @@
   "id": "TASK-083",
   "title": "UI 設計系統 後台「未儲存變更」離開提示：設計師基本資料、頁籤圓點、服務項目對話框",
   "content": "設計師基本資料（含新增模式、專長標籤輸入中）、麵包屑攔截、「基本資料」頁籤未儲存圓點（變體 B，MUI Badge variant=dot）、服務項目新增／編輯對話框（背景／Esc／取消）。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -37,7 +37,7 @@
     "screenSpec": "ai/artifacts/專案設置/screen-spec-未儲存變更離開提示.md",
     "mockupDecision": "ai/artifacts/專案設置/mockup-decision-未儲存變更離開提示.md",
     "taskCard": "ai/artifacts/專案設置/task-cards/TASK-083.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-083.md",
     "pr": ""
   },
   "refs": [
@@ -46,9 +46,19 @@
     "app/admin/_components/ServiceFormDialog.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過",
+      "npx vitest run --maxWorkers=3：75 檔／1209 項全數通過",
+      "新增 46 項測試（DesignerBasicInfoForm 18、DesignerEditView 10、ServiceFormDialog 18）",
+      "突變測試：9 種錯誤（建立成功不先標記乾淨、忽略專長輸入框、新增模式沿用 hasChanges、取消鈕直接關、不帶 key、麵包屑不攔截、拿掉視覺隱藏文字、Dialog onClose 不攔截、不還原焦點）測試皆能抓到並已還原驗證",
+      "瀏覽器走查（正式庫，一律不儲存）：服務對話框新增／編輯（Esc、點背景、取消、疊加提示、焦點）、設計師新增頁（全空不提示、專長輸入框、autoSelect 轉標籤、刪標籤）、設計師編輯頁（圓點、切頁籤、tooltip、麵包屑、放棄變更）"
+    ],
+    "findings": [
+      "放棄變更後焦點掉到 body（兩層對話框同 commit 卸載，提示層要還原的輸入框已不在 DOM）；單元測試抓不到；已在 ServiceFormDialog 記下觸發元素並於關閉後還原，瀏覽器驗證通過",
+      "亮色模式圓點對比實測 2.995:1（warning.main），未達非文字元素 3:1；改用 warning.dark 後亮色 4.77:1、暗色 8.04:1",
+      "走查中瀏覽器分頁被重置、登入狀態消失，請使用者重新登入後以唯讀方式確認服務與設計師名稱均未被改動"
+    ],
+    "residual": "瀏覽器上一頁不攔截；beforeunload 原生提示需人工在真實瀏覽器確認；新增設計師「建立成功→圓點不殘留」只以單元測試驗證（未寫入正式庫）；服務對話框亮色模式提示外觀未另外走查（共用 ConfirmDialog，TASK-081 已驗）；建立成功後按鈕重新啟用有重複建立風險（既有，不在本卡範圍）；截圖未存成專案檔；未做實作後 subagent 審查"
   },
   "comments": [
     {
@@ -65,6 +75,11 @@
       "name": "使用者",
       "time": "2026-10-22",
       "text": "核准 TASK-081／082／083 實作計畫（含 architect 7 項 MUST FIX 修正），開始做 TASK-081。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告；走查抓到兩個問題（焦點掉到 body、亮色圓點對比 2.995:1）已修正並驗證。TASK-081／082／083 皆完成後才合併 master。"
     }
   ]
 }

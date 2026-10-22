@@ -13,6 +13,8 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
+import Badge from "@mui/material/Badge";
+import Tooltip from "@mui/material/Tooltip";
 import { createClient } from "@/lib/supabase/client";
 import { getDesigner } from "@/lib/admin/designers";
 import { isDesignerId, type Designer } from "@/lib/designers";
@@ -20,6 +22,7 @@ import { DesignerBasicInfoForm } from "./DesignerBasicInfoForm";
 import { DesignerServicesTab } from "./DesignerServicesTab";
 import { DesignerPortfolioTab } from "./DesignerPortfolioTab";
 import { DesignerLeavesTab } from "./DesignerLeavesTab";
+import { useIsUnsavedDirty, useUnsavedChangesActions } from "./UnsavedChangesProvider";
 
 // 設計師編輯頁（TASK-069）：麵包屑＋四頁籤「基本資料／提供服務／作品集／請假」。TASK-069 完成「基本資料」，
 // TASK-070 接上「提供服務」，TASK-071 接上「作品集」，TASK-072 接上「請假」。
@@ -42,6 +45,17 @@ const TAB_COUNT_LABELS: Partial<Record<TabValue, (count: number) => string>> = {
   leaves: (count) => `已排 ${count} 個請假日`,
 };
 
+// 「基本資料」標籤旁的未儲存圓點（TASK-083，mockup 變體 B）：不依賴顏色——tooltip 與標籤內的視覺隱藏文字
+// 都會說明；圓點本身是非文字元素，對比只需 3:1（warning 色在亮暗模式皆可辨）。
+const visuallyHidden = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+} as const;
+
 type LoadState =
   | { status: "loading" }
   | { status: "error" }
@@ -51,6 +65,8 @@ type LoadState =
 export function DesignerEditView({ designerId }: { designerId: string | null }) {
   const supabase = React.useMemo(() => createClient(), []);
   const router = useRouter();
+  const { guardNavigate } = useUnsavedChangesActions();
+  const basicInfoDirty = useIsUnsavedDirty("designer-basic-info");
   const [tab, setTab] = React.useState<TabValue>("basic");
   const [counts, setCounts] = React.useState<Partial<Record<TabValue, number>>>({});
   // 子面板各自傳入穩定的回呼，避免每次 render 都換新函式。
@@ -88,7 +104,13 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
   return (
     <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 3 }}>
       <Breadcrumbs aria-label="麵包屑" sx={{ mb: 1 }}>
-        <Link component={NextLink} href="/admin/designers" underline="hover" color="inherit">
+        <Link
+          component={NextLink}
+          href="/admin/designers"
+          underline="hover"
+          color="inherit"
+          onNavigate={(event) => guardNavigate("/admin/designers", event)}
+        >
           設計師
         </Link>
         {title !== "" && <Typography color="text.primary">{title}</Typography>}
@@ -146,7 +168,29 @@ export function DesignerEditView({ designerId }: { designerId: string | null }) 
                   key={item.value}
                   value={item.value}
                   label={
-                    count !== undefined && countLabel ? (
+                    item.value === "basic" && basicInfoDirty ? (
+                      <Tooltip title="有未儲存的變更" describeChild>
+                        <Badge
+                          variant="dot"
+                          color="warning"
+                          sx={(theme) => ({
+                            "& .MuiBadge-badge": {
+                              top: -2,
+                              right: -8,
+                              // 亮色用 warning.dark：warning.main 在亮色底上只有 2.995:1，差一點沒到非文字元素的 3:1
+                              // （瀏覽器實測）；暗色維持 warning.main。
+                              backgroundColor: (theme.vars ?? theme).palette.warning.dark,
+                              ...theme.applyStyles("dark", { backgroundColor: (theme.vars ?? theme).palette.warning.main }),
+                            },
+                          })}
+                        >
+                          <span>{item.label}</span>
+                          <Box component="span" sx={visuallyHidden}>
+                            （有未儲存的變更）
+                          </Box>
+                        </Badge>
+                      </Tooltip>
+                    ) : count !== undefined && countLabel ? (
                       <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
                         <span>{item.label}</span>
                         <Chip size="small" label={count} aria-label={countLabel(count)} />

@@ -2,15 +2,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithTheme as render } from "../test-utils";
+import { renderWithTheme as render, renderWithAppRouter } from "../test-utils";
 import { DesignerEditView } from "@/app/admin/_components/DesignerEditView";
+import { UnsavedChangesProvider } from "@/app/admin/_components/UnsavedChangesProvider";
 import { getDesigner } from "@/lib/admin/designers";
 import type { Designer } from "@/lib/designers";
 
-const replace = vi.hoisted(() => vi.fn());
+const { replace, push } = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
 
+// push／usePathname 給 UnsavedChangesProvider（TASK-083 的未儲存變更測試）用。
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
+  usePathname: () => "/admin/designers/x",
+  useRouter: () => ({ replace, push, refresh: vi.fn() }),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -22,21 +25,34 @@ vi.mock("@/lib/admin/designers", () => ({
 }));
 
 // 基本資料表單有自己的測試：這裡換成簡單替身，只驗證編輯頁的載入、頁籤與父子溝通。
-vi.mock("@/app/admin/_components/DesignerBasicInfoForm", () => ({
-  DesignerBasicInfoForm: (props: {
-    designer: Designer | null;
-    onCreated: (id: string) => void;
-    onSaved: (fields: Partial<Designer>) => void;
-    onAvatarChange: (url: string | null) => void;
-  }) => (
-    <div data-testid="basic-form">
-      <span>{props.designer ? `表單：${props.designer.name}` : "表單：新增"}</span>
-      <input aria-label="未儲存的輸入" />
-      <button onClick={() => props.onCreated("new-id")}>模擬建立</button>
-      <button onClick={() => props.onSaved({ name: "新名字" })}>模擬儲存</button>
-    </div>
-  ),
-}));
+vi.mock("@/app/admin/_components/DesignerBasicInfoForm", async () => {
+  const React = await import("react");
+  const { useUnsavedChangesGuard } = await import("@/app/admin/_components/UnsavedChangesProvider");
+  return {
+    DesignerBasicInfoForm: (props: {
+      designer: Designer | null;
+      onCreated: (id: string) => void;
+      onSaved: (fields: Partial<Designer>) => void;
+      onAvatarChange: (url: string | null) => void;
+    }) => {
+      // 用開關模擬「表單有未儲存變更」，走真的 useUnsavedChangesGuard（沒有 Provider 時是 no-op）。
+      const [dirty, setDirty] = React.useState(false);
+      useUnsavedChangesGuard("designer-basic-info", dirty);
+      return (
+        <div data-testid="basic-form">
+          <span>{props.designer ? `表單：${props.designer.name}` : "表單：新增"}</span>
+          <input aria-label="未儲存的輸入" />
+          <label>
+            <input type="checkbox" checked={dirty} onChange={(e) => setDirty(e.target.checked)} />
+            模擬有變更
+          </label>
+          <button onClick={() => props.onCreated("new-id")}>模擬建立</button>
+          <button onClick={() => props.onSaved({ name: "新名字" })}>模擬儲存</button>
+        </div>
+      );
+    },
+  };
+});
 
 // 提供服務頁籤有自己的測試：這裡換成簡單替身，只驗證常駐掛載與頁籤標籤上的開啟數。
 vi.mock("@/app/admin/_components/DesignerServicesTab", () => ({
@@ -274,5 +290,137 @@ describe("DesignerEditView", () => {
 
     expect(await screen.findByText("無法載入設計師資料，請重新整理頁面再試一次。")).toBeInTheDocument();
     expect(screen.queryByText(/boom/)).toBeNull();
+  });
+});
+
+// TASK-083：頁籤圓點、麵包屑攔截、切頁籤不提示。替身表單用真的 useUnsavedChangesGuard 回報 designer-basic-info。
+describe("DesignerEditView 未儲存變更（TASK-083）", () => {
+  function renderGuarded(designerId: string | null = ID) {
+    return renderWithAppRouter(
+      <UnsavedChangesProvider>
+        <DesignerEditView designerId={designerId} />
+      </UnsavedChangesProvider>,
+    );
+  }
+
+  async function renderLoadedGuarded() {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    const view = renderGuarded();
+    await screen.findByText("表單：林小美");
+    return { user, ...view };
+  }
+
+  const toggle = () => screen.getByRole("checkbox", { name: "模擬有變更", hidden: true });
+  const dot = () => document.querySelector(".MuiBadge-dot");
+
+  afterEach(() => {
+    cleanup();
+    vi.resetAllMocks();
+  });
+
+  it("沒有變更：沒有圓點，標籤名稱維持「基本資料」", async () => {
+    await renderLoadedGuarded();
+    expect(dot()).toBeNull();
+    expect(screen.getByRole("tab", { name: "基本資料" })).toBeInTheDocument();
+  });
+
+  it("有變更：標籤旁出現圓點，標籤內有視覺隱藏文字；變更消失後圓點立即移除", async () => {
+    const { user } = await renderLoadedGuarded();
+
+    await user.click(toggle());
+    expect(dot()).not.toBeNull();
+    // 不能只靠顏色：標籤的無障礙名稱要包含說明文字。
+    expect(screen.getByRole("tab", { name: /基本資料.*有未儲存的變更/ })).toBeInTheDocument();
+
+    await user.click(toggle());
+    expect(dot()).toBeNull();
+    expect(screen.getByRole("tab", { name: "基本資料" })).toBeInTheDocument();
+  });
+
+  it("圓點有 tooltip 說明（滑過標籤顯示「有未儲存的變更」）", async () => {
+    const { user } = await renderLoadedGuarded();
+    await user.click(toggle());
+
+    // Tooltip 的觸發元素是標籤內的 Badge（文字所在處），不是整個 Tab 按鈕。
+    await user.hover(screen.getByText("基本資料"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("有未儲存的變更");
+  });
+
+  it("切到其他頁籤：不顯示提示，圓點仍在；切回來輸入仍在", async () => {
+    const { user } = await renderLoadedGuarded();
+    await user.click(toggle());
+
+    await user.click(screen.getByRole("tab", { name: "請假" }));
+    expect(screen.queryByText("有尚未儲存的變更", { selector: "h2" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(dot()).not.toBeNull();
+
+    await user.click(screen.getByRole("tab", { name: /基本資料/ }));
+    expect(toggle()).toBeChecked();
+  });
+
+  it("新增模式也會顯示圓點", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderGuarded(null);
+    await user.click(toggle());
+    expect(dot()).not.toBeNull();
+  });
+
+  it("有變更時點頂部麵包屑「設計師」：被攔截並提示，不導覽；「繼續編輯」停留且輸入不變", async () => {
+    const { user, router } = await renderLoadedGuarded();
+    await user.click(toggle());
+
+    await user.click(screen.getByRole("link", { name: "設計師" }));
+
+    expect(await screen.findByRole("dialog")).toHaveTextContent("有尚未儲存的變更");
+    expect(router.push).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "繼續編輯" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(toggle()).toBeChecked();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("有變更時點麵包屑 →「放棄變更」：導覽到 /admin/designers", async () => {
+    const { user } = await renderLoadedGuarded();
+    await user.click(toggle());
+
+    await user.click(screen.getByRole("link", { name: "設計師" }));
+    await user.click(await screen.findByRole("button", { name: "放棄變更" }));
+
+    expect(push).toHaveBeenCalledWith("/admin/designers");
+  });
+
+  it("沒有變更時點麵包屑：不提示", async () => {
+    const { user } = await renderLoadedGuarded();
+
+    await user.click(screen.getByRole("link", { name: "設計師" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("「找不到這位設計師」的「回設計師列表」連結：表單沒掛載，不攔截", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderGuarded("not-a-uuid");
+    expect(await screen.findByText("找不到這位設計師。")).toBeInTheDocument();
+    expect(screen.queryByTestId("basic-form")).toBeNull();
+
+    await user.click(screen.getByRole("link", { name: "回設計師列表" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("沒有 Provider 時照常運作：不顯示圓點，點麵包屑不提示", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    renderWithAppRouter(<DesignerEditView designerId={ID} />);
+    await screen.findByText("表單：林小美");
+
+    await user.click(toggle());
+    expect(dot()).toBeNull();
+    await user.click(screen.getByRole("link", { name: "設計師" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

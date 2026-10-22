@@ -35,6 +35,7 @@ import {
 } from "@/lib/designers";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import { useUnsavedChangesGuard } from "./UnsavedChangesProvider";
 
 // 「基本資料」頁籤（TASK-069）：名稱、Instagram、專長標籤、簡介、頭像。按底部「儲存」才寫入；頭像上傳／
 // 移除是立即生效（需要設計師 id 才有儲存路徑，所以新增模式在建立前先停用，建立成功後才開放）。
@@ -102,6 +103,19 @@ export function DesignerBasicInfoForm({ designer, onCreated, onSaved, onAvatarCh
 
   const hasChanges = isCreate || !sameFields(normalizeFields(fields), savedFields);
 
+  // 未儲存變更提示（TASK-083，key designer-basic-info）。獨立於 hasChanges：新增模式的 hasChanges 恆為 true
+  // （只決定儲存鈕是否啟用），不能拿來當 dirty；新增模式要跟「全空」的初始值比對。
+  // 專長輸入框內「已輸入但未按 Enter」的文字也算變更；不改成受控 inputValue（freeSolo＋autoSelect 在 reset
+  // 時會清空輸入框，受控容易讓文字卡住），只記「輸入框有沒有文字」。點側邊欄時 mousedown 先觸發 blur，文字此時
+  // 已被 autoSelect 轉成標籤，由 fields.specialties 變動捕捉。
+  const [specialtyInputHasText, setSpecialtyInputHasText] = React.useState(false);
+  // 新增成功後先標記乾淨再呼叫 onCreated：handleSubmit 在 onCreated() 之後由 finally 才把 submitting 設回
+  // false，從成功到新頁面 commit 之間若不先標記，圓點與 beforeunload 仍在，點側邊欄會誤提示。
+  const [created, setCreated] = React.useState(false);
+  const baseline = isCreate ? toFields(null) : savedFields;
+  const isDirty = !created && (specialtyInputHasText || !sameFields(normalizeFields(fields), baseline));
+  useUnsavedChangesGuard("designer-basic-info", isDirty);
+
   function markTouched(field: keyof Fields) {
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
   }
@@ -123,6 +137,7 @@ export function DesignerBasicInfoForm({ designer, onCreated, onSaved, onAvatarCh
         const res = await createDesigner(supabase, fields);
         if (res.ok) {
           showToast("設計師已新增", "success");
+          setCreated(true);
           onCreated(res.data.id);
         } else {
           showToast("操作失敗，請稍後再試", "error");
@@ -245,6 +260,7 @@ export function DesignerBasicInfoForm({ designer, onCreated, onSaved, onAvatarCh
             onChange={(_event, value) =>
               setFields((prev) => ({ ...prev, specialties: value.map((tag) => tag.trim()).filter((tag) => tag.length > 0) }))
             }
+            onInputChange={(_event, value) => setSpecialtyInputHasText(value.trim().length > 0)}
             onBlur={() => markTouched("specialties")}
             renderValue={(value, getItemProps) =>
               value.map((tag, index) => {

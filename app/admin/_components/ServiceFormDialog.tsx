@@ -20,6 +20,7 @@ import {
 } from "@/lib/admin/services";
 import type { AdminService } from "@/lib/booking/types";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useUnsavedChangesActions, useUnsavedChangesGuard } from "./UnsavedChangesProvider";
 
 // 新增/編輯共用的 Modal 表單，比照 mockup 變體 A：名稱單獨一列，價格/時長/緩衝時間
 // 並排（TASK-078 新增緩衝時間），描述獨立一列，底部「取消」「新增／儲存」。mode 決定
@@ -44,6 +45,16 @@ function toFormState(service: AdminService | null): FormState {
   };
 }
 
+function sameForm(a: FormState, b: FormState): boolean {
+  return (
+    a.name === b.name &&
+    a.price === b.price &&
+    a.durationMinutes === b.durationMinutes &&
+    a.bufferMinutes === b.bufferMinutes &&
+    a.description === b.description
+  );
+}
+
 export function ServiceFormDialog({
   mode,
   service,
@@ -64,6 +75,29 @@ export function ServiceFormDialog({
   // 都會是全新的元件實例，不需要額外用 effect 監聽「開啟」或「編輯目標切換」重新播種
   // （那樣會在 effect 內同步呼叫 setState，觸發 react-hooks/set-state-in-effect）。
   const [form, setForm] = React.useState<FormState>(() => toFormState(service));
+  // 未儲存變更提示（TASK-083，key service-form）：與開啟當下的初始值（新增：空白預設；編輯：該服務目前值）比對。
+  // 同樣用 lazy initializer 只存一份，之後不隨外層 render 變動。
+  const [initialForm] = React.useState<FormState>(() => toFormState(service));
+  const dirty = !sameForm(form, initialForm);
+  useUnsavedChangesGuard("service-form", dirty);
+  const { confirmIfDirty } = useUnsavedChangesActions();
+  // 背景、Esc、「取消」都走這裡：有變更時先提示（疊在本對話框之上），選「放棄變更」才真的關閉。
+  // 只看 service-form 這個 key，不被頁面上別的表單誤觸發。儲存中維持現況（不可關閉、不提示）。
+  // 觸發按鈕（「新增服務項目」或列上的「編輯」）：本元件只在開啟時才掛載，第一次 render 時焦點還在它身上。
+  // 選「放棄變更」時提示與本對話框在同一個 commit 一起卸載，提示層要還原焦點的目標（本對話框內的輸入框）
+  // 已不在 DOM，焦點會掉到 body（瀏覽器實測發現；jsdom 看不出來），所以關閉後明確把焦點還給觸發按鈕。
+  const [returnFocusTo] = React.useState<HTMLElement | null>(() =>
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
+  function closeAndRestoreFocus() {
+    onClose();
+    setTimeout(() => {
+      if (returnFocusTo?.isConnected) returnFocusTo.focus();
+    }, 0);
+  }
+  function requestClose() {
+    confirmIfDirty(closeAndRestoreFocus, { key: "service-form" });
+  }
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -106,7 +140,7 @@ export function ServiceFormDialog({
   }
 
   return (
-    <Dialog open onClose={submitting ? undefined : onClose} fullWidth maxWidth="sm">
+    <Dialog open onClose={submitting ? undefined : requestClose} fullWidth maxWidth="sm">
       <DialogTitle>{mode === "create" ? "新增服務項目" : "編輯服務項目"}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
@@ -172,7 +206,7 @@ export function ServiceFormDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={submitting}>
+        <Button onClick={requestClose} disabled={submitting}>
           取消
         </Button>
         <Button variant="contained" onClick={handleSubmit} loading={submitting}>

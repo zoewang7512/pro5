@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithTheme as render } from "../test-utils";
+import { renderWithTheme as render, TestThemeWrapper } from "../test-utils";
 import { DesignerBasicInfoForm } from "@/app/admin/_components/DesignerBasicInfoForm";
+import { UnsavedChangesProvider, useIsUnsavedDirty } from "@/app/admin/_components/UnsavedChangesProvider";
 import {
   createDesigner,
   removeDesignerAvatar,
@@ -13,6 +14,12 @@ import {
 import type { Designer } from "@/lib/designers";
 
 const showToast = vi.hoisted(() => vi.fn());
+
+// UnsavedChangesProvider（TASK-083 的未儲存變更測試）用到 useRouter／usePathname。
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/admin/designers/x",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({}),
@@ -259,5 +266,187 @@ describe("DesignerBasicInfoForm", () => {
 
     await waitFor(() => expect(onAvatarChange).toHaveBeenCalledWith(null));
     expect(removeDesignerAvatar).toHaveBeenCalledWith(expect.anything(), ID);
+  });
+});
+
+// TASK-083：key designer-basic-info 的 dirty 判定。
+describe("DesignerBasicInfoForm 未儲存變更回報（TASK-083，key: designer-basic-info）", () => {
+  function Probe() {
+    const dirty = useIsUnsavedDirty("designer-basic-info");
+    return <span data-testid="probe">{dirty ? "dirty" : "clean"}</span>;
+  }
+
+  function renderGuarded(designer: Designer | null = null) {
+    const handlers = { onCreated: vi.fn(), onSaved: vi.fn(), onAvatarChange: vi.fn() };
+    rtlRender(
+      <UnsavedChangesProvider>
+        <DesignerBasicInfoForm designer={designer} {...handlers} />
+        <Probe />
+      </UnsavedChangesProvider>,
+      { wrapper: TestThemeWrapper },
+    );
+    return handlers;
+  }
+
+  const expectDirty = (value: "dirty" | "clean") => expect(screen.getByTestId("probe")).toHaveTextContent(value);
+  const specialtyInput = () => screen.getByLabelText("專長標籤", { exact: false });
+
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", BASE_URL);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllEnvs();
+    vi.resetAllMocks();
+  });
+
+  describe("新增模式", () => {
+    it("什麼都沒填：乾淨，但「建立設計師」鈕的啟用邏輯不變（仍啟用）", () => {
+      renderGuarded();
+      expectDirty("clean");
+      expect(screen.getByRole("button", { name: "建立設計師" })).toBeEnabled();
+    });
+
+    it("名稱只有空白：乾淨（normalize 後仍是空）", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded();
+      await user.type(screen.getByLabelText("名稱", { exact: false }), "   ");
+      expectDirty("clean");
+    });
+
+    it.each([
+      ["名稱", "小美"],
+      ["Instagram 帳號", "mei.hair"],
+      ["簡介", "入行 8 年"],
+    ])("填了「%s」：有變更；清空後回到乾淨", async (label, text) => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded();
+      const field = screen.getByLabelText(label, { exact: false });
+      await user.type(field, text);
+      expectDirty("dirty");
+      await user.clear(field);
+      expectDirty("clean");
+    });
+
+    it("專長標籤按 Enter 變成標籤：有變更", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded();
+      await user.type(specialtyInput(), "韓系剪髮{Enter}");
+      expect(screen.getByText("韓系剪髮")).toBeInTheDocument();
+      expectDirty("dirty");
+    });
+
+    it("專長輸入框有文字但沒按 Enter：有變更（輸入框內文字也算）", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded();
+      await user.type(specialtyInput(), "打到一半");
+      expectDirty("dirty");
+    });
+
+    it("專長輸入框的文字清掉：回到乾淨", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded();
+      await user.type(specialtyInput(), "打到一半");
+      await user.clear(specialtyInput());
+      expectDirty("clean");
+    });
+
+    it("建立成功：先標記乾淨再跳轉——在 onCreated 呼叫後、新頁面 commit 前就已乾淨", async () => {
+      vi.mocked(createDesigner).mockResolvedValue({ ok: true, data: { id: ID } } as never);
+      const user = userEvent.setup({ delay: null });
+      const { onCreated } = renderGuarded();
+      await user.type(screen.getByLabelText("名稱", { exact: false }), "小美");
+      expectDirty("dirty");
+
+      await user.click(screen.getByRole("button", { name: "建立設計師" }));
+
+      await waitFor(() => expect(onCreated).toHaveBeenCalledWith(ID));
+      // onCreated 是 mock（沒有真的換頁），畫面仍停在新增表單，這正是「成功到新頁面 commit 之間」的狀態。
+      expectDirty("clean");
+    });
+
+    it("建立失敗：維持有變更", async () => {
+      vi.mocked(createDesigner).mockResolvedValue({ ok: false, error: { message: "x" } } as never);
+      const user = userEvent.setup({ delay: null });
+      const { onCreated } = renderGuarded();
+      await user.type(screen.getByLabelText("名稱", { exact: false }), "小美");
+      await user.click(screen.getByRole("button", { name: "建立設計師" }));
+      await waitFor(() => expect(showToast).toHaveBeenCalledWith("操作失敗，請稍後再試", "error"));
+      expect(onCreated).not.toHaveBeenCalled();
+      expectDirty("dirty");
+    });
+  });
+
+  describe("編輯模式", () => {
+    it("沒有改動：乾淨", () => {
+      renderGuarded(EXISTING);
+      expectDirty("clean");
+    });
+
+    it("改名稱：有變更；改回原值：乾淨", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded(EXISTING);
+      const name = screen.getByLabelText("名稱", { exact: false });
+      await user.type(name, "X");
+      expectDirty("dirty");
+      await user.type(name, "{Backspace}");
+      expectDirty("clean");
+    });
+
+    it("Instagram 只差 @ 與空白（normalize 後相同）：不算變更", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded(EXISTING);
+      const ig = screen.getByLabelText("Instagram 帳號", { exact: false });
+      await user.clear(ig);
+      await user.type(ig, " @mei.hair ");
+      expectDirty("clean");
+    });
+
+    it("專長輸入框有文字但沒按 Enter：有變更", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded(EXISTING);
+      await user.type(specialtyInput(), "打到一半");
+      expectDirty("dirty");
+    });
+
+    it("專長輸入框的文字失焦：autoSelect 轉成標籤，仍是有變更；把新標籤刪掉：回到乾淨", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderGuarded(EXISTING);
+      await user.type(specialtyInput(), "染髮");
+      await user.tab(); // 點側邊欄時 mousedown 先 blur：autoSelect 會把未完成的文字收成標籤
+      expect(screen.getByText("染髮")).toBeInTheDocument();
+      expectDirty("dirty");
+
+      const chip = screen.getByText("染髮").closest(".MuiChip-root") as HTMLElement;
+      await user.click(chip.querySelector("svg") as SVGElement);
+      expect(screen.queryByText("染髮")).toBeNull();
+      expectDirty("clean");
+    });
+
+    it("儲存成功：回到乾淨", async () => {
+      vi.mocked(updateDesignerBasicInfo).mockResolvedValue({ ok: true, data: undefined } as never);
+      const user = userEvent.setup({ delay: null });
+      const { onSaved } = renderGuarded(EXISTING);
+      await user.type(screen.getByLabelText("名稱", { exact: false }), "X");
+      expectDirty("dirty");
+      await user.click(screen.getByRole("button", { name: "儲存" }));
+      await waitFor(() => expect(onSaved).toHaveBeenCalled());
+      expectDirty("clean");
+    });
+
+    it("儲存失敗：維持有變更", async () => {
+      vi.mocked(updateDesignerBasicInfo).mockResolvedValue({ ok: false, error: { message: "x" } } as never);
+      const user = userEvent.setup({ delay: null });
+      renderGuarded(EXISTING);
+      await user.type(screen.getByLabelText("名稱", { exact: false }), "X");
+      await user.click(screen.getByRole("button", { name: "儲存" }));
+      await waitFor(() => expect(showToast).toHaveBeenCalledWith("操作失敗，請稍後再試", "error"));
+      expectDirty("dirty");
+    });
+  });
+
+  it("沒有 Provider 時照常運作（既有行為不變）", () => {
+    renderForm(EXISTING);
+    expect(screen.getByLabelText("名稱", { exact: false })).toHaveValue("林小美");
   });
 });
