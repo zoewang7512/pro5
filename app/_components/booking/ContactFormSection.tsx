@@ -52,7 +52,7 @@ export function ContactFormSection({ submitting, onSubmit, policyText }: Contact
 
   return (
     <Box component="section" sx={{ mb: 3 }}>
-      <SectionHeader step={3} label="填寫資訊" />
+      <SectionHeader step={4} label="填寫資訊" />
       <Box component="form" onSubmit={handleSubmit} noValidate>
         <Stack spacing={2}>
           <TextField

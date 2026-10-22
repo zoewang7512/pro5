@@ -53,7 +53,7 @@ export function SlotPickerSection({
 
   return (
     <Box component="section" sx={{ mb: 3 }}>
-      <SectionHeader step={2} label="選擇時段" />
+      <SectionHeader step={3} label="選擇時段" />
 
       <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 1, mb: 2 }}>
         {dateOptions.map((option) => (

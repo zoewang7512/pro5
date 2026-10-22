@@ -46,6 +46,7 @@ import {
   uploadDesignerAvatar,
   uploadPortfolioImage,
 } from "@/lib/admin/designers";
+import { createAppointment, getAvailableSlots, getDesignersForService, getServices } from "@/lib/booking/api";
 import { resolvePortfolioImageUrl } from "@/lib/designers";
 
 // Node 環境沒有 canvas／createImageBitmap：重新編碼本身有單元測試（tests/lib/image-reencode.test.ts），
@@ -3103,6 +3104,214 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
         expect(await removeDesignerLeave(adminClient, a, day)).toEqual({ ok: true, data: undefined });
         expect((await slots()).data.length).toBeGreaterThan(0);
       });
+    });
+  });
+
+  // 前台查詢（lib/booking/api.ts 的 getServices／getDesignersForService）直接用真實 client 呼叫，不另寫一份查詢。
+  // 三種 session：anon（RLS 只放行啟用中設計師）、admin（RLS 放行停用中設計師與下架服務，只剩查詢上明確的
+  // is_active 過濾擋得住）、非管理員 authenticated。這個區塊建立的服務是上架狀態（前台列表會短暫看得到
+  // `__TEST__` 服務，afterAll 清除）；設計師名稱與服務名稱一律帶 TEST_MARKER，不碰「預設設計師」。
+  describe("TASK-073：前台服務與設計師查詢（anon／admin／非管理員）", () => {
+    const GENERIC = { ok: false, error: { code: "INTERNAL_ERROR", message: "發生未預期的錯誤，請稍後再試。" } };
+    const PUBLIC_KEYS = ["avatar_url", "bio", "id", "instagram_handle", "name", "portfolio", "sort_order", "specialties"];
+
+    let activeA: string; // 啟用中，S1 與 S3 都有開
+    let inactiveB: string; // 停用中，S1 與 S2 都有開
+    let activeC: string; // 啟用中，什麼服務都沒開
+    let s1: string; // 上架：A 與 B 提供
+    let s2: string; // 上架：只有停用中的 B 提供
+    let s3: string; // 下架：A 提供
+    let s4: string; // 上架：沒有任何設計師提供
+    let goodImageIds: string[];
+    let day: string;
+
+    function taipeiToday(): string {
+      return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+    }
+    function addDays(dateStr: string, days: number): string {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, d) + days * 86_400_000).toISOString().slice(0, 10);
+    }
+
+    function sessions(): Array<[string, SupabaseClient]> {
+      return [
+        ["anon", anonClient],
+        ["admin", adminClient],
+        ["非管理員", nonAdminClient],
+      ];
+    }
+
+    async function createService(label: string, isActive: boolean): Promise<string> {
+      const { data, error } = await serviceRoleClient
+        .from("services")
+        .insert({ name: `${TEST_MARKER} ${label}`, price: 100, duration_minutes: 30, buffer_minutes: 0, is_active: isActive })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data.id as string;
+    }
+
+    async function link(designerId: string, serviceId: string) {
+      const { error } = await serviceRoleClient.from("designer_services").insert({ designer_id: designerId, service_id: serviceId });
+      if (error) throw error;
+    }
+
+    beforeAll(async () => {
+      activeA = await createDesigner({
+        bio: "A 的簡介",
+        specialties: ["漸層染", "韓系剪髮"],
+        instagram_handle: "mei.hair",
+        sort_order: 1,
+      });
+      // 頭像網址要指向 A 自己的路徑，所以建立後才寫入（檔案本身不需要存在，白名單只看網址）。
+      const { error: avatarError } = await serviceRoleClient
+        .from("designers")
+        .update({ avatar_url: publicUrl(`avatar/${activeA}/x.webp`) })
+        .eq("id", activeA);
+      if (avatarError) throw avatarError;
+      inactiveB = await createDesigner({ is_active: false, sort_order: 2 });
+      activeC = await createDesigner({ sort_order: 3 });
+
+      s1 = await createService("t73-s1", true);
+      s2 = await createService("t73-s2", true);
+      s3 = await createService("t73-s3", false);
+      s4 = await createService("t73-s4", true);
+      await link(activeA, s1);
+      await link(inactiveB, s1);
+      await link(inactiveB, s2);
+      await link(activeA, s3);
+
+      // A 的作品：兩張合格（較新的在前）＋兩張資料庫擋不住的不合格網址（query 夾帶別人的路徑、外部網域）。
+      const older = portfolioRow(activeA);
+      const newer = portfolioRow(activeA);
+      const smuggled = portfolioRow(activeA);
+      const external = portfolioRow(activeA);
+      const rows = [
+        { ...older, created_at: "2026-01-01T00:00:00Z" },
+        { ...newer, created_at: "2026-02-01T00:00:00Z" },
+        {
+          ...smuggled,
+          image_url: `${publicUrl(`avatar/${inactiveB}/x.webp`)}?${smuggled.storage_path}`,
+          created_at: "2026-03-01T00:00:00Z",
+        },
+        { ...external, image_url: `https://evil.example/${external.storage_path}`, created_at: "2026-04-01T00:00:00Z" },
+      ];
+      const { data, error } = await serviceRoleClient.from("designer_portfolio_images").insert(rows).select("id, storage_path");
+      if (error) throw error;
+      const idByPath = new Map((data ?? []).map((r) => [r.storage_path as string, r.id as string]));
+      goodImageIds = [idByPath.get(newer.storage_path)!, idByPath.get(older.storage_path)!];
+
+      // 第 40 天起找第一個營業日（同時在 get_available_slots 的 90 天視野內）。
+      const { data: hours, error: hoursError } = await serviceRoleClient
+        .from("business_hours")
+        .select("weekday, open_time, close_time, is_closed");
+      if (hoursError) throw hoursError;
+      const { data: closed, error: closedError } = await serviceRoleClient.from("closed_dates").select("date");
+      if (closedError) throw closedError;
+      const closedDates = new Set((closed ?? []).map((row) => row.date as string));
+      let found: string | null = null;
+      for (let offset = 40; offset < 54 && !found; offset += 1) {
+        const date = addDays(taipeiToday(), offset);
+        const row = (hours ?? []).find((h) => h.weekday === new Date(`${date}T00:00:00Z`).getUTCDay());
+        if (row && !row.is_closed && row.open_time && row.close_time && !closedDates.has(date)) found = date;
+      }
+      if (!found) throw new Error("找不到營業日");
+      day = found;
+    });
+
+    it("前提：admin session 讀得到停用中的設計師與下架中的服務（證明下面的「看不到」是查詢上的明確過濾，不是 RLS）", async () => {
+      const designer = await adminClient.from("designers").select("id").eq("id", inactiveB);
+      expect(designer.data).toEqual([{ id: inactiveB }]);
+      const service = await adminClient.from("services").select("id").eq("id", s3);
+      expect(service.data).toEqual([{ id: s3 }]);
+
+      const anonDesigner = await anonClient.from("designers").select("id").eq("id", inactiveB);
+      expect(anonDesigner.data).toEqual([]);
+    });
+
+    it("getServices：有啟用中設計師提供的上架服務才列出；唯一設計師停用、下架、沒有設計師的服務都不列出（三種 session 結果一致）", async () => {
+      for (const [label, client] of sessions()) {
+        const result = await getServices(client);
+        expect(result.ok, label).toBe(true);
+        if (!result.ok) continue;
+        const mine = result.data.map((service) => service.id).filter((id) => [s1, s2, s3, s4].includes(id));
+        expect(mine, label).toEqual([s1]);
+        // 內嵌欄位不外流，只有 Service 的欄位。
+        const service = result.data.find((item) => item.id === s1)!;
+        expect(Object.keys(service).sort(), label).toEqual(
+          ["description", "duration_minutes", "id", "is_active", "name", "price", "sort_order"],
+        );
+      }
+    });
+
+    it("getServices：同一個服務有多位設計師提供時只出現一次", async () => {
+      const second = await createDesigner({ sort_order: 4 });
+      await link(second, s1);
+      const result = await getServices(anonClient);
+      expect(result.ok && result.data.filter((service) => service.id === s1)).toHaveLength(1);
+    });
+
+    it("getDesignersForService(s1)：只回啟用中且有開該服務的設計師；欄位剛好是白名單；作品只留合格的、新的在前", async () => {
+      for (const [label, client] of sessions()) {
+        const result = await getDesignersForService(client, s1);
+        expect(result.ok, label).toBe(true);
+        if (!result.ok) continue;
+        const mine = result.data.filter((designer) => [activeA, inactiveB, activeC].includes(designer.id));
+        expect(mine.map((designer) => designer.id), label).toEqual([activeA]);
+
+        const a = mine[0];
+        expect(Object.keys(a).sort(), label).toEqual(PUBLIC_KEYS);
+        expect(a.name.startsWith(TEST_MARKER)).toBe(true);
+        expect(a.bio).toBe("A 的簡介");
+        expect(a.specialties).toEqual(["漸層染", "韓系剪髮"]);
+        expect(a.instagram_handle).toBe("mei.hair");
+        expect(a.avatar_url).toBe(publicUrl(`avatar/${activeA}/x.webp`));
+        expect(a.portfolio.map((image) => image.id), label).toEqual(goodImageIds);
+        for (const image of a.portfolio) expect(resolvePortfolioImageUrl(image.image_url, activeA)).toBe(image.image_url);
+      }
+    });
+
+    it("getDesignersForService：只有停用中的設計師提供（s2）、服務下架（s3）、沒人提供（s4）都回空陣列，admin 也一樣", async () => {
+      for (const [label, client] of sessions()) {
+        for (const [name, serviceId] of [["s2", s2], ["s3", s3], ["s4", s4]] as const) {
+          expect(await getDesignersForService(client, serviceId), `${label} ${name}`).toEqual({ ok: true, data: [] });
+        }
+      }
+    });
+
+    it("getDesignersForService：不是 uuid 的 serviceId 回通用錯誤", async () => {
+      for (const bad of ["not-a-uuid", "' or 1=1", "a,b)"]) {
+        expect(await getDesignersForService(anonClient, bad), bad).toEqual(GENERIC);
+      }
+    });
+
+    it("竄改 designerId：停用中的設計師、沒開該服務的設計師、不存在的 id，時段都是空陣列、預約都是 SLOT_CONFLICT 且沒有建立預約", async () => {
+      const own = await getAvailableSlots(anonClient, s1, day, activeA);
+      expect(own.ok && own.data.length).toBeGreaterThan(0);
+      if (!own.ok) return;
+      const startAt = own.data[0].start_at;
+      const phone = `09${String(Date.now() % 100_000).padStart(5, "0")}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
+
+      for (const [name, designerId] of [
+        ["停用中", inactiveB],
+        ["沒開服務", activeC],
+        ["不存在", randomUUID()],
+      ] as const) {
+        expect(await getAvailableSlots(anonClient, s1, day, designerId), name).toEqual({ ok: true, data: [] });
+        const result = await createAppointment(anonClient, {
+          serviceId: s1,
+          startAt,
+          customerName: `${TEST_MARKER} tamper`,
+          customerPhone: phone,
+          designerId,
+        });
+        expect(result.ok, name).toBe(false);
+        if (!result.ok) expect(result.error.code, name).toBe("SLOT_CONFLICT");
+      }
+
+      const { data: appointments, error } = await serviceRoleClient.from("appointments").select("id").eq("service_id", s1);
+      if (error) throw error;
+      expect(appointments).toEqual([]);
     });
   });
 });

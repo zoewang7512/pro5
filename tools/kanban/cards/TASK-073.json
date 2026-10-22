@@ -2,7 +2,7 @@
   "id": "TASK-073",
   "title": "多位設計師 前台「選擇設計師」步驟、服務列表過濾、時段與送出串接、成功頁設計師",
   "content": "Variant B 橫向頭像列＋預覽卡；沒有設計師提供的服務不顯示；把選擇傳給兩支 RPC；成功頁顯示（不指定時顯示被安排的設計師）。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -39,7 +39,7 @@
     "screenSpec": "ai/artifacts/多位設計師/screen-spec-前台選擇設計師.md",
     "mockupDecision": "ai/artifacts/多位設計師/mockup-decision-前台選擇設計師.md",
     "taskCard": "ai/artifacts/多位設計師/task-cards/TASK-073.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/多位設計師/verification/TASK-073.md",
     "pr": ""
   },
   "refs": [
@@ -51,15 +51,46 @@
     "app/_components/booking/SuccessSection.tsx"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過",
+      "npm run lint：0 error／0 warning",
+      "npm run build：通過",
+      "npx vitest run --maxWorkers=3：893／894，1 項為 account-settings-view 逾時（非本卡檔案）",
+      "npm run test:designers -- -t \"TASK-073\"（真實 Supabase，anon／admin／非管理員）：7 項通過，無殘留；變異檢查（拿掉巢狀 eq）測試如預期失敗",
+      "瀏覽器走查（__TEST__ 暫時資料，已清除）：預設、選設計師、收合／修改／換人清時段、指定與不指定送出（成功頁與資料庫一致）、錯誤狀態、亮色與桌面寬度"
+    ],
+    "findings": [
+      "architect：看完整作品集的開啟處理函式留在 DesignerPickerSection 內部，否則 TASK-074 必須改 BookingFlow；整合測試要涵蓋 admin session",
+      "security：時段 key 加入設計師；圖片 no-referrer；成功頁 designer_name 為空時不顯示；簡介去方向控制字元；逐欄位白名單組出 PublicDesigner",
+      "範圍擴張：SlotPickerSection／ContactFormSection 步驟編號、booking-flow-state.ts、整合測試檔、兩個額外元件測試檔"
+    ],
+    "residual": "名單載入失敗或為空時完全不顯示時段、修改設計師時只有真的換人才清時段（兩項人工 2026-10-22 確認維持現狀）；看完整作品集本卡是空函式（TASK-074 接上）；名單載入後設計師被停用會 SLOT_CONFLICT；sort_order 重複時前後台排序可能不同；無 CSP；未做實作後 subagent 審查；走查期間正式前台短暫看得到 __TEST__ 服務；iOS Safari 實機與 6 位以上頭像列未走查。"
   },
   "comments": [
     {
       "name": "使用者",
       "time": "2026-10-21",
       "text": "核准（對話中核准 TASK-067～077 這批任務卡；要求動工前先由 architect／security-reviewer 子代理審查架構）"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "動工前審查完成：architect（request changes，4 項必須修正皆只需改計畫）、security-reviewer（需先補任務卡，無需改 RLS／migration），採納事項已寫入任務卡「動工前審查定案」。允許檔案補列：SlotPickerSection／ContactFormSection（步驟編號順延）、lib/booking/booking-flow-state.ts、tests/designers.integration.test.ts。開始實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉 Verify，等待人工驗收（見驗證報告）。需要你確認：名單載入失敗／為空時不顯示時段；修改設計師時只有真的換人才清時段；BOOKING_LIMIT_EXCEEDED 文案要不要納入本卡。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "三項決定：名單載入失敗時不顯示時段（照現在）、修改設計師只有真的換人才清時段（照現在）、BOOKING_LIMIT_EXCEEDED 文案改。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "已改 BOOKING_LIMIT_EXCEEDED 文案為「你的聯絡資訊目前有太多筆待確認的預約…」（通用說法，不區分電話或 email），新增 tests/booking/error-messages.test.ts；tsc、tests/booking 71 項、eslint 通過。仍在 Verify，等待人工驗收。"
     }
   ]
 }
