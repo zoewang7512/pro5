@@ -33,7 +33,7 @@
     "code_review": false
   },
   "links": {
-    "featureSpec": "",
+    "featureSpec": "ai/artifacts/專案設置/feature-spec-未儲存變更離開提示.md",
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/專案設置/task-cards/TASK-081.md",
@@ -59,6 +59,16 @@
       "name": "使用者",
       "time": "2026-10-22",
       "text": "TASK-070 驗收時提出「有存檔按鈕的頁面，修改後沒存檔離開應提示」，決定另開一張卡處理，不併入 TASK-070。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "需求釐清決定：範圍＝全部有儲存按鈕的表單＋服務項目對話框；自製攔截、不攔截瀏覽器上一頁；提示兩顆按鈕（繼續編輯／放棄變更）；等多位設計師合併 master 後再從 master 開分支實作。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "功能規格書草稿已產出（含 5 項假設 A1～A5 待使用者核准時確認）。尚未進入就緒，等待人工核准規格，之後走 ui-mockup-gate 與 implementation-plan。"
     }
   ]
 }
