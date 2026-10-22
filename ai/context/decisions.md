@@ -343,7 +343,7 @@
   - Supabase 公開註冊開著（disable_signup: false），本 Epic 所有防線靠 is_admin()；建議關閉，列為
     合併 master 或套用 0018 的前置條件（待人工決定）。
     **已決定（2026-10-22，TASK-077）：使用者決定關閉公開註冊。** 這是 Supabase 後台的設定（Authentication 的
-    「Allow new users to sign up」），不受版控，**本專案無法驗證是否已關閉**，由使用者在後台操作。關閉不影響現有功能：
+    「Allow new users to sign up」），不受版控，**本專案無法驗證**；**使用者已於 2026-10-22 回報已在後台關閉**（未經本專案獨立驗證）。關閉不影響現有功能：
     應用程式碼從不呼叫 `signUp`，種子腳本與測試都用 service_role 的 `admin.createUser`。之後的 Demo 體驗帳戶也應走
     伺服器端 service_role 建立，不依賴公開註冊。
   - **已決定（2026-10-22，TASK-077）：designer001 先不啟用 MFA。** 使用者接受「唯一正式管理員只靠密碼保護」的殘留風險
