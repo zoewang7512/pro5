@@ -2,7 +2,7 @@
   "id": "TASK-069",
   "title": "多位設計師 後台設計師列表操作與「基本資料」頁籤",
   "content": "新增、停用／重新啟用（含未來預約警告）、上下箭頭排序；/admin/designers/[id] 四頁籤框架與基本資料（名稱、IG、專長、簡介、頭像）。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -74,6 +74,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "動工前審查完成：architect（Approve with changes）、security-reviewer（Approve with changes），採納事項已寫入任務卡「動工前審查定案」。使用者於對話中決定：擴充 ImageUploadField（選填 onUpload/onRemove＋shape=circle）、一併修 AdminShell 側邊欄高亮。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過。"
     }
   ]
 }

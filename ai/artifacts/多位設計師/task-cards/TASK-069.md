@@ -8,7 +8,7 @@
 - 上層 User Story：管理設計師基本資料
 - 分軌：前後端串接（後台畫面＋`lib/admin/designers.ts` 寫入函式；資料表已由 TASK-067 建立）
 - 前置任務（dependsOn）：TASK-067
-- 狀態：驗證中（實作與驗證完成，待人工驗收；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」）
+- 狀態：完成（人工驗收通過，2026-10-22；人工已於 2026-10-21 核准；動工前 architect／security-reviewer 審查已於 2026-10-22 完成並採納，見「動工前審查定案」）
 - 風險等級：中（後台寫入與頭像上傳，沿用既有 Storage／表單模式）
 - Agent owner：Claude Code
 - 人工核准者：使用者
