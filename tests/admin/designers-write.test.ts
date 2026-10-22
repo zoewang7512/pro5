@@ -3,17 +3,22 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   countFutureAppointmentsForDesigner,
   createDesigner,
+  deletePortfolioImage,
   getDesigner,
   listDesignerServiceIds,
+  listPortfolio,
   parseDesignerAvatarPath,
+  parsePortfolioStoragePath,
   planDesignerOrderSwap,
   removeDesignerAvatar,
+  removePortfolioFile,
   setDesignerActive,
   setDesignerService,
   swapDesignerOrder,
   toBasicInfoPayload,
   updateDesignerBasicInfo,
   uploadDesignerAvatar,
+  uploadPortfolioImage,
   validateDesignerImageFile,
 } from "@/lib/admin/designers";
 import { reencodeImage } from "@/lib/admin/image-reencode";
@@ -684,5 +689,362 @@ describe("setDesignerService", () => {
     } as unknown as SupabaseClient;
     expect(await setDesignerService(client, ID, SERVICE_ID, true)).toEqual({ ok: false, error: { message: GENERIC } });
     expect(await setDesignerService(client, ID, SERVICE_ID, false)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+});
+
+// TASK-071：作品集。
+describe("parsePortfolioStoragePath", () => {
+  const good = `portfolio/${ID}/${UUID}.webp`;
+
+  it("只接受這位設計師自己的 portfolio/<id>/<uuid>.<jpg|png|webp>", () => {
+    expect(parsePortfolioStoragePath(good, ID)).toBe(good);
+    expect(parsePortfolioStoragePath(`portfolio/${ID}/${UUID}.jpg`, ID)).toBe(`portfolio/${ID}/${UUID}.jpg`);
+  });
+
+  it("拒絕：別位設計師、頭像路徑、多一層資料夾、路徑穿越、大寫副檔名、其他副檔名、null、大寫 designerId", () => {
+    for (const path of [
+      `portfolio/${OTHER_ID}/${UUID}.webp`,
+      `avatar/${ID}/${UUID}.webp`,
+      `portfolio/${ID}/x/${UUID}.webp`,
+      `portfolio/${ID}/../${UUID}.webp`,
+      `portfolio/${ID}/${UUID}.WEBP`,
+      `portfolio/${ID}/${UUID}.gif`,
+      `${good}?x`,
+      `x${good}`,
+      null,
+    ]) {
+      expect(parsePortfolioStoragePath(path, ID)).toBeNull();
+    }
+    expect(parsePortfolioStoragePath(good, ID.toUpperCase())).toBeNull();
+    expect(parsePortfolioStoragePath(good, ".*")).toBeNull();
+  });
+});
+
+describe("listPortfolio", () => {
+  it("明確欄位（不含 storage_path）、只查這位設計師、最新在前（created_at desc, id desc）", async () => {
+    const rows = [{ id: UUID, image_url: "u", created_at: "2026-10-22T00:00:00Z" }];
+    const { client, calls } = recordingClient({ designer_portfolio_images: [{ data: rows }] });
+
+    expect(await listPortfolio(client, ID)).toEqual({ ok: true, data: rows });
+    expect(calls.find((c) => c.method === "select")?.args).toEqual(["id, image_url, created_at"]);
+    expect(eqArgs(calls)).toEqual([["designer_id", ID]]);
+    expect(calls.filter((c) => c.method === "order").map((c) => c.args)).toEqual([
+      ["created_at", { ascending: false }],
+      ["id", { ascending: false }],
+    ]);
+  });
+
+  it("id 不是小寫 uuid 不送查詢；查詢失敗回通用訊息", async () => {
+    const none = recordingClient({});
+    expect((await listPortfolio(none.client, ID.toUpperCase())).ok).toBe(false);
+    expect((await listPortfolio(none.client, "bad")).ok).toBe(false);
+    expect(none.calls).toHaveLength(0);
+
+    const { client } = recordingClient({ designer_portfolio_images: [{ error: { message: "relation boom" } }] });
+    expect(await listPortfolio(client, ID)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+});
+
+describe("uploadPortfolioImage", () => {
+  const newPath = `portfolio/${ID}/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.webp`;
+  const newUrl = `${BASE_URL}/storage/v1/object/public/designer-assets/${newPath}`;
+  const ROW = { id: UUID, image_url: newUrl, created_at: "2026-10-22T00:00:00Z" };
+  const LIMIT = "已達 12 張上限，請先刪除舊作品";
+  const pngFile = () => new File(["x"], "a.png", { type: "image/png" });
+  const T = "designer_portfolio_images";
+
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", BASE_URL);
+    vi.mocked(reencodeImage).mockResolvedValue({
+      ok: true,
+      blob: new Blob(["y"], { type: "image/webp" }),
+      extension: "webp",
+    });
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    vi.mocked(reencodeImage).mockReset();
+  });
+
+  it("成功：以長邊 1600 重新編碼、上傳 blob（upsert false、cacheControl 300）、insert 剛好三個欄位", async () => {
+    const upload = vi.fn(async () => ({ error: null }));
+    const remove = vi.fn();
+    const { client, calls, buckets } = recordingClient({ [T]: [{ data: [ROW] }] }, { upload, remove });
+    const file = pngFile();
+
+    expect(await uploadPortfolioImage(client, ID, file)).toEqual({ ok: true, data: ROW });
+    expect(reencodeImage).toHaveBeenCalledWith(file, { maxDimension: 1600 });
+    expect(buckets.every((b) => b === "designer-assets")).toBe(true);
+    const [path, body, options] = upload.mock.calls[0] as unknown as [string, Blob, Record<string, unknown>];
+    expect(path).toBe(newPath);
+    expect(body.type).toBe("image/webp");
+    expect(options).toEqual({ contentType: "image/webp", upsert: false, cacheControl: "300" });
+    expect(calls.find((c) => c.method === "insert")?.args[0]).toEqual({
+      designer_id: ID,
+      image_url: newUrl,
+      storage_path: newPath,
+    });
+    expect(calls.find((c) => c.method === "select")?.args).toEqual(["id, image_url, created_at"]);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("前置驗證失敗、designerId 不是小寫 uuid、重新編碼失敗：不重新編碼或不上傳（不退回上傳原檔）", async () => {
+    const upload = vi.fn();
+    const { client } = recordingClient({}, { upload });
+
+    expect(await uploadPortfolioImage(client, ID, new File(["x"], "a.gif", { type: "image/gif" }))).toEqual({
+      ok: false,
+      error: { message: "檔案格式需為 JPG／PNG／WebP" },
+    });
+    expect((await uploadPortfolioImage(client, ID.toUpperCase(), pngFile())).ok).toBe(false);
+    expect(reencodeImage).not.toHaveBeenCalled();
+
+    vi.mocked(reencodeImage).mockResolvedValue({ ok: false, message: "圖片解析度過大，請換一張較小的圖片" });
+    expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({
+      ok: false,
+      error: { message: "圖片解析度過大，請換一張較小的圖片" },
+    });
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("Storage 上傳失敗：順手清掉可能已寫入的新檔，不 insert", async () => {
+    const upload = vi.fn(async () => ({ error: { message: "storage boom" } }));
+    const remove = vi.fn(async () => ({ data: [], error: null }));
+    const { client, calls } = recordingClient({}, { upload, remove });
+
+    expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(remove).toHaveBeenCalledWith([newPath]);
+    expect(calls.some((c) => c.method === "insert")).toBe(false);
+  });
+
+  it("第 13 張（P0001＋PORTFOLIO_LIMIT 前綴）：回上限文案，補刪剛上傳的新檔", async () => {
+    const remove = vi.fn(async () => ({ data: [{}], error: null }));
+    const { client } = recordingClient(
+      { [T]: [{ error: { code: "P0001", message: "PORTFOLIO_LIMIT: 每位設計師最多 12 張作品" } }] },
+      { remove },
+    );
+
+    expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: false, error: { message: LIMIT } });
+    expect(remove).toHaveBeenCalledWith([newPath]);
+  });
+
+  it("P0001 但沒有前綴、或有前綴但 code 不是 P0001：不當成上限，回通用訊息（確定沒寫入，仍補刪）", async () => {
+    for (const error of [
+      { code: "P0001", message: "something else" },
+      { code: "23514", message: "PORTFOLIO_LIMIT: fake" },
+    ]) {
+      const remove = vi.fn(async () => ({ data: [{}], error: null }));
+      const { client } = recordingClient({ [T]: [{ error }] }, { remove });
+      expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: false, error: { message: GENERIC } });
+      expect(remove).toHaveBeenCalledWith([newPath]);
+    }
+  });
+
+  it("確定失敗的 SQLSTATE（23503、42501）：回通用訊息，不外洩原始訊息，補刪新檔", async () => {
+    for (const code of ["23503", "42501"]) {
+      const remove = vi.fn(async () => ({ data: [{}], error: null }));
+      const { client } = recordingClient(
+        { [T]: [{ error: { code, message: "boom", details: "Key (designer_id)=(x)" } }] },
+        { remove },
+      );
+      expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: false, error: { message: GENERIC } });
+      expect(remove).toHaveBeenCalledWith([newPath]);
+    }
+  });
+
+  it("結果不明（code 為空字串、\"20\"、沒有 code）：重讀，列已存在就視為成功且絕不補刪", async () => {
+    for (const code of ["", "20", undefined]) {
+      const remove = vi.fn();
+      const { client, calls } = recordingClient(
+        { [T]: [{ error: { code, message: "fetch failed" } }, { data: ROW }] },
+        { remove },
+      );
+
+      expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: true, data: ROW });
+      expect(remove).not.toHaveBeenCalled();
+      // 重讀用 designer_id＋storage_path 兩個條件。
+      expect(eqArgs(calls)).toEqual([
+        ["designer_id", ID],
+        ["storage_path", newPath],
+      ]);
+    }
+  });
+
+  it("沒有 error 但不是剛好 1 列：同樣先重讀，不直接補刪", async () => {
+    const remove = vi.fn();
+    const { client } = recordingClient({ [T]: [{ data: [] }, { data: ROW }] }, { remove });
+    expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: true, data: ROW });
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("結果不明且重讀確定沒有這一列：才補刪新檔", async () => {
+    const remove = vi.fn(async () => ({ data: [{}], error: null }));
+    const { client } = recordingClient({ [T]: [{ error: { code: "", message: "x" } }, { data: null }] }, { remove });
+
+    expect(await uploadPortfolioImage(client, ID, pngFile())).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(remove).toHaveBeenCalledWith([newPath]);
+  });
+
+  it("結果不明且重讀也失敗（錯誤、例外）：一律不刪檔（寧可留下孤兒檔）", async () => {
+    const remove = vi.fn();
+    const withReadError = recordingClient(
+      { [T]: [{ error: { code: "", message: "x" } }, { error: { message: "read boom" } }] },
+      { remove },
+    );
+    expect(await uploadPortfolioImage(withReadError.client, ID, pngFile())).toEqual({
+      ok: false,
+      error: { message: GENERIC },
+    });
+
+    // insert 與重讀都沒有預排結果 → 兩次都丟出例外。
+    const allThrow = recordingClient({}, { remove });
+    expect(await uploadPortfolioImage(allThrow.client, ID, pngFile())).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("deletePortfolioImage", () => {
+  const T = "designer_portfolio_images";
+  const IMAGE_ID = "5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e";
+  const PATH = `portfolio/${ID}/${UUID}.webp`;
+  const methods = (calls: RecordedCall[]) => calls.map((c) => c.method);
+
+  it("成功：先讀回 storage_path，再 delete（id＋designer_id 兩個 eq、select 回 1 列），最後才刪檔", async () => {
+    const remove = vi.fn(async () => ({ data: [{ name: "x" }], error: null }));
+    const { client, calls } = recordingClient(
+      { [T]: [{ data: { storage_path: PATH } }, { data: [{ id: IMAGE_ID }] }] },
+      { remove },
+    );
+
+    expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({
+      ok: true,
+      data: { cleanupWarning: false, retryPath: null },
+    });
+    expect(methods(calls)).toEqual(["select", "eq", "eq", "maybeSingle", "delete", "eq", "eq", "select"]);
+    expect(eqArgs(calls)).toEqual([
+      ["id", IMAGE_ID],
+      ["designer_id", ID],
+      ["id", IMAGE_ID],
+      ["designer_id", ID],
+    ]);
+    expect(remove).toHaveBeenCalledWith([PATH]);
+  });
+
+  it("找不到這張（可能已被別的分頁刪除）：回提示，不 delete、不刪檔", async () => {
+    const remove = vi.fn();
+    const { client, calls } = recordingClient({ [T]: [{ data: null }] }, { remove });
+
+    expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({
+      ok: false,
+      error: { message: "這張作品已不存在，請重新整理頁面。" },
+    });
+    expect(methods(calls)).not.toContain("delete");
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("delete 回 0 列（RLS 擋下或別處已刪）：失敗，絕不呼叫 remove", async () => {
+    const remove = vi.fn();
+    const { client } = recordingClient({ [T]: [{ data: { storage_path: PATH } }, { data: [] }] }, { remove });
+    expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({ ok: false, error: { message: GENERIC } });
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("檔案沒刪成功（remove 回空陣列或錯誤）：資料列已刪，回警告與可重試的路徑", async () => {
+    for (const result of [
+      { data: [], error: null },
+      { data: null, error: { message: "boom" } },
+    ]) {
+      const remove = vi.fn(async () => result);
+      const { client } = recordingClient(
+        { [T]: [{ data: { storage_path: PATH } }, { data: [{ id: IMAGE_ID }] }] },
+        { remove },
+      );
+      expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({
+        ok: true,
+        data: { cleanupWarning: true, retryPath: PATH },
+      });
+    }
+  });
+
+  it("資料列的 storage_path 不屬於這位設計師（被竄改）：仍刪資料列，但不 remove，警告且沒有重試路徑", async () => {
+    const remove = vi.fn();
+    const { client } = recordingClient(
+      {
+        [T]: [{ data: { storage_path: `portfolio/${OTHER_ID}/${UUID}.webp` } }, { data: [{ id: IMAGE_ID }] }],
+      },
+      { remove },
+    );
+    expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({
+      ok: true,
+      data: { cleanupWarning: true, retryPath: null },
+    });
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("delete 結果不明：重讀發現列已不在 → 照樣用先前讀到的路徑刪檔", async () => {
+    const remove = vi.fn(async () => ({ data: [{}], error: null }));
+    const { client } = recordingClient(
+      { [T]: [{ data: { storage_path: PATH } }, { error: { code: "", message: "fetch failed" } }, { data: null }] },
+      { remove },
+    );
+    expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({
+      ok: true,
+      data: { cleanupWarning: false, retryPath: null },
+    });
+    expect(remove).toHaveBeenCalledWith([PATH]);
+  });
+
+  it("delete 結果不明：重讀發現列還在、或重讀失敗 → 失敗且不動檔案", async () => {
+    for (const reread of [{ data: { id: IMAGE_ID } }, { error: { message: "read boom" } }]) {
+      const remove = vi.fn();
+      const { client } = recordingClient(
+        { [T]: [{ data: { storage_path: PATH } }, { error: { code: "", message: "x" } }, reread] },
+        { remove },
+      );
+      expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({ ok: false, error: { message: GENERIC } });
+      expect(remove).not.toHaveBeenCalled();
+    }
+  });
+
+  it("大寫 designerId、不是 uuid 的 imageId：不送任何請求", async () => {
+    const { client, calls } = recordingClient({});
+    expect((await deletePortfolioImage(client, ID.toUpperCase(), IMAGE_ID)).ok).toBe(false);
+    expect((await deletePortfolioImage(client, ID, "not-a-uuid")).ok).toBe(false);
+    expect((await deletePortfolioImage(client, ID, IMAGE_ID.toUpperCase())).ok).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("請求丟出例外時回通用訊息，不往外拋", async () => {
+    const client = {
+      from: () => {
+        throw new Error("fetch failed");
+      },
+    } as unknown as SupabaseClient;
+    expect(await deletePortfolioImage(client, ID, IMAGE_ID)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+});
+
+describe("removePortfolioFile", () => {
+  const PATH = `portfolio/${ID}/${UUID}.webp`;
+
+  it("只刪這位設計師自己的作品集檔案，remove 剛好刪到 1 個才算成功", async () => {
+    const remove = vi.fn(async () => ({ data: [{}], error: null }));
+    const { client, buckets } = recordingClient({}, { remove });
+    expect(await removePortfolioFile(client, ID, PATH)).toEqual({ ok: true, data: undefined });
+    expect(remove).toHaveBeenCalledWith([PATH]);
+    expect(buckets).toEqual(["designer-assets"]);
+
+    const none = vi.fn(async () => ({ data: [], error: null }));
+    expect((await removePortfolioFile(recordingClient({}, { remove: none }).client, ID, PATH)).ok).toBe(false);
+  });
+
+  it("別位設計師的路徑、頭像路徑：不呼叫 remove", async () => {
+    const remove = vi.fn();
+    const { client } = recordingClient({}, { remove });
+    expect((await removePortfolioFile(client, ID, `portfolio/${OTHER_ID}/${UUID}.webp`)).ok).toBe(false);
+    expect((await removePortfolioFile(client, ID, `avatar/${ID}/${UUID}.webp`)).ok).toBe(false);
+    expect(remove).not.toHaveBeenCalled();
   });
 });

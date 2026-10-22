@@ -1,6 +1,6 @@
 // 後台上傳圖片前，在瀏覽器用 canvas 重新編碼（TASK-069，security-reviewer／architect 審查）：
 //   - 去除 EXIF（GPS、拍攝時間）：圖片會公開顯示在顧客預約頁，不能把原檔直接上傳。
-//   - 縮小尺寸：頭像最大顯示約 120px，長邊 1024px 綽綽有餘，也避免 PNG 退回時超過 5MB。
+//   - 縮小尺寸：頭像最大顯示約 120px，長邊 1024px（預設）綽綽有餘，也避免 PNG 退回時超過 5MB；作品集傳 maxDimension 用 1600。
 //   - 擋掉多格式混合檔案（只上傳 canvas 重新編碼後的 blob）。
 // 失敗一律中止，任何分支都不得退回上傳原始 File。只有後台用，且會用到 DOM，所以不放 lib/designers.ts
 // （前台 anon 也會匯入那個檔案）。TASK-071 作品集上傳會重用。
@@ -10,6 +10,8 @@ export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const IMAGE_MAX_SOURCE_DIMENSION = 8000;
 export const IMAGE_MAX_SOURCE_PIXELS = 40_000_000;
 export const IMAGE_OUTPUT_MAX_DIMENSION = 1024;
+// 作品集會在前台全螢幕放大檢視（高解析手機約需 1100 實體像素寬），1024 會偏糊；頭像維持預設 1024。
+export const PORTFOLIO_OUTPUT_MAX_DIMENSION = 1600;
 const OUTPUT_QUALITY = 0.85;
 
 // 與 designer-assets bucket 的 allowed_mime_types／Storage policy 的副檔名白名單一致。
@@ -25,15 +27,19 @@ export function extensionForImageMime(mime: string): string | null {
   return Object.hasOwn(IMAGE_EXTENSIONS, mime) ? IMAGE_EXTENSIONS[mime] : null;
 }
 
-// 回傳輸出尺寸（長邊縮到 1024，不放大小圖）；原圖超過上限回傳 null。
-export function planReencodeSize(width: number, height: number): { width: number; height: number } | null {
+// 回傳輸出尺寸（長邊縮到 maxDimension，預設 1024，不放大小圖）；原圖超過上限回傳 null。
+export function planReencodeSize(
+  width: number,
+  height: number,
+  maxDimension: number = IMAGE_OUTPUT_MAX_DIMENSION,
+): { width: number; height: number } | null {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) return null;
   if (width > IMAGE_MAX_SOURCE_DIMENSION || height > IMAGE_MAX_SOURCE_DIMENSION) return null;
   if (width * height > IMAGE_MAX_SOURCE_PIXELS) return null;
 
   const longest = Math.max(width, height);
-  if (longest <= IMAGE_OUTPUT_MAX_DIMENSION) return { width, height };
-  const scale = IMAGE_OUTPUT_MAX_DIMENSION / longest;
+  if (longest <= maxDimension) return { width, height };
+  const scale = maxDimension / longest;
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 
@@ -57,7 +63,10 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | n
 
 // 先試 webp；瀏覽器不支援時（例如部分 Safari）toBlob 會悄悄改輸出 PNG 或回傳 null，這時改輸出 JPEG
 // （先填白底，否則透明區會變黑）。副檔名與 contentType 一律依實際 blob.type 決定，不寫死。
-export async function reencodeImage(file: File): Promise<ReencodeResult> {
+export async function reencodeImage(
+  file: File,
+  options: { maxDimension?: number } = {},
+): Promise<ReencodeResult> {
   let bitmap: ImageBitmap;
   try {
     // from-image：依 EXIF 方向轉正，直拍的手機照不會橫躺。
@@ -68,7 +77,7 @@ export async function reencodeImage(file: File): Promise<ReencodeResult> {
 
   const canvas = document.createElement("canvas");
   try {
-    const size = planReencodeSize(bitmap.width, bitmap.height);
+    const size = planReencodeSize(bitmap.width, bitmap.height, options.maxDimension);
     if (!size) return { ok: false, message: MESSAGE_TOO_LARGE };
 
     canvas.width = size.width;

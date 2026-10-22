@@ -53,6 +53,33 @@ export function resolveDesignerAssetUrl(url: string | null): string | null {
   }
 }
 
+// 作品集圖片網址的白名單（比 resolveDesignerAssetUrl 更嚴，TASK-071 動工前安全審查）。資料庫的
+// image_url constraint 只驗「以 storage_path 結尾」，直接寫入的 image_url 可以長成
+// `…/designer-assets/avatar/<B>/x.webp?portfolio/<A>/y.webp`，讓 A 的作品集顯示 B 的頭像或別位設計師的
+// 作品。所以顯示作品時必須再要求：沒有 query／hash，且 pathname 完整錨定為「這一列 designer_id」自己的
+// portfolio 路徑。designerId 必須是資料庫回傳的小寫 uuid（才能安全組進正規式，Storage policy 也只接受小寫）。
+// 前台（TASK-074）與後台共用；回傳 null 的列後台仍要畫成可刪除的佔位格，前台不顯示。
+const PORTFOLIO_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const LOWERCASE_DESIGNER_ID_PATTERN = new RegExp(`^${PORTFOLIO_UUID}$`);
+
+export function resolvePortfolioImageUrl(url: string | null, designerId: string): string | null {
+  if (!LOWERCASE_DESIGNER_ID_PATTERN.test(designerId)) return null;
+  const resolved = resolveDesignerAssetUrl(url);
+  if (!resolved) return null;
+
+  const parsed = new URL(resolved);
+  if (parsed.search !== "" || parsed.hash !== "") return null;
+
+  const pattern = new RegExp(
+    `^/storage/v1/object/public/designer-assets/portfolio/${designerId}/${PORTFOLIO_UUID}\\.(jpg|png|webp)$`,
+  );
+  return pattern.test(parsed.pathname) ? resolved : null;
+}
+
+export function portfolioLimitMessage(max: number = DESIGNER_PORTFOLIO_MAX_IMAGES): string {
+  return `已達 ${max} 張上限，請先刪除舊作品`;
+}
+
 // 沒有頭像時，前後台都顯示名字首字的預設頭像。用 Array.from 取第一個 code point，避免把
 // 代理對（例如少數漢字）從中間切開。
 export function designerInitial(name: string): string {

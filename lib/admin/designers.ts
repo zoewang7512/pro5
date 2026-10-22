@@ -4,14 +4,15 @@ import {
   normalizeDesignerBio,
   normalizeInstagramHandle,
   normalizeSpecialties,
+  portfolioLimitMessage,
   resolveDesignerAssetUrl,
   type Designer,
 } from "@/lib/designers";
 import type { Result } from "./appointments";
-import { IMAGE_MAX_BYTES, extensionForImageMime, reencodeImage } from "./image-reencode";
+import { IMAGE_MAX_BYTES, PORTFOLIO_OUTPUT_MAX_DIMENSION, extensionForImageMime, reencodeImage } from "./image-reencode";
 
 // 設計師管理頁的資料存取，只給後台用（前台共用的型別與驗證在 lib/designers.ts）。TASK-067 建立讀取，
-// TASK-069 新增基本資料的寫入，TASK-070 新增設計師服務的開關（作品集、請假由 TASK-071～072 接續）。與前台不同：這裡不過濾
+// TASK-069 新增基本資料的寫入，TASK-070 新增設計師服務的開關，TASK-071 新增作品集（請假由 TASK-072 接續）。與前台不同：這裡不過濾
 // is_active，後台需要同時看到啟用中與停用中的設計師（RLS 對 is_admin() 放行全部）。
 //
 // 寫入一律走 supabase-js 直接操作資料表：RLS 的 is_admin()（要求 aal2）加欄位層級 GRANT 是權限邊界
@@ -350,7 +351,7 @@ async function swapAvatarUrl(
 }
 
 // 刪除 Storage 物件並確認剛好刪掉 1 個（Supabase remove() 缺 select 權限時不報錯、只回空陣列）。
-async function removeAvatarObject(supabase: SupabaseClient, path: string): Promise<boolean> {
+async function removeDesignerAssetObject(supabase: SupabaseClient, path: string): Promise<boolean> {
   try {
     const { data, error } = await supabase.storage.from("designer-assets").remove([path]);
     return !error && Array.isArray(data) && data.length === 1;
@@ -373,7 +374,7 @@ async function cleanupOldAvatar(
   if (oldUrl === null) return false;
   const oldPath = parseDesignerAvatarPath(oldUrl, designerId);
   if (oldPath === null) return true;
-  return !(await removeAvatarObject(supabase, oldPath));
+  return !(await removeDesignerAssetObject(supabase, oldPath));
 }
 
 // 上傳新頭像：重新編碼 → 上傳新檔 → CAS 更新資料列 → 刪舊檔。Storage 沒有 update policy，更換＝新檔＋刪舊檔。
@@ -419,7 +420,7 @@ export async function uploadDesignerAvatar(
   }
 
   // 確定沒寫入：補刪剛上傳的新檔（失敗時留下孤兒檔，列入已知限制）。
-  await removeAvatarObject(supabase, path);
+  await removeDesignerAssetObject(supabase, path);
   return { ok: false, error: outcome === "conflict" ? { message: MESSAGE_CONFLICT } : INTERNAL_ERROR };
 }
 
@@ -442,4 +443,204 @@ export async function removeDesignerAvatar(
     if (!reread.ok || reread.data !== null) return { ok: false, error: INTERNAL_ERROR };
   }
   return { ok: true, data: { cleanupWarning: await cleanupOldAvatar(supabase, designerId, oldUrl) } };
+}
+
+// ---------------------------------------------------------------------------------------------
+// 作品集（TASK-071）。流程比照頭像：先上傳 Storage、成功後才寫資料列；刪除先刪資料列、成功後才刪檔，
+// 絕不先刪檔。判定「結果不明」不能看 error 有沒有 code：中斷的請求 code 可能是 "20"（AbortError）或 ""，
+// 閘道 5xx 則沒有 code——只有 PORTFOLIO_LIMIT 與 5 碼 SQLSTATE 才算確定沒寫入，其餘一律重讀資料庫，
+// 重讀失敗就不動任何檔案（寧可留下孤兒檔，也不刪掉正在使用的圖）。
+// ---------------------------------------------------------------------------------------------
+
+export type PortfolioImage = { id: string; image_url: string; created_at: string };
+
+// storage_path 刻意不選也不放進型別：刪除時一律從資料庫重讀，不給畫面層任何誘因去相信前端傳回來的路徑。
+const PORTFOLIO_COLUMNS = "id, image_url, created_at";
+const PORTFOLIO_CACHE_CONTROL = "300";
+const SQLSTATE_PATTERN = /^[0-9A-Z]{5}$/;
+const MESSAGE_PORTFOLIO_GONE = "這張作品已不存在，請重新整理頁面。";
+
+// 只有「這位設計師自己的作品集路徑」才回傳，否則 null（呼叫端就不刪檔）。designerId 必須是小寫 uuid。
+export function parsePortfolioStoragePath(path: string | null, designerId: string): string | null {
+  if (path === null || !LOWERCASE_ID_PATTERN.test(designerId)) return null;
+  const match = new RegExp(`^portfolio/${designerId}/(${STORAGE_UUID})\\.(jpg|png|webp)$`).exec(path);
+  return match ? `portfolio/${designerId}/${match[1]}.${match[2]}` : null;
+}
+
+// 最新在前（created_at desc, id desc）；TASK-073／074 的前台用同一個排序，前後台看到的「最新」才一致。
+export async function listPortfolio(supabase: SupabaseClient, designerId: string): Promise<Result<PortfolioImage[]>> {
+  if (!LOWERCASE_ID_PATTERN.test(designerId)) return { ok: false, error: INTERNAL_ERROR };
+  try {
+    const { data, error } = await supabase
+      .from("designer_portfolio_images")
+      .select(PORTFOLIO_COLUMNS)
+      .eq("designer_id", designerId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
+    if (error || !data) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: data as PortfolioImage[] };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+async function readPortfolioRowByPath(
+  supabase: SupabaseClient,
+  designerId: string,
+  path: string,
+): Promise<Result<PortfolioImage | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("designer_portfolio_images")
+      .select(PORTFOLIO_COLUMNS)
+      .eq("designer_id", designerId)
+      .eq("storage_path", path)
+      .maybeSingle();
+    if (error) return { ok: false, error: INTERNAL_ERROR };
+    return { ok: true, data: (data as PortfolioImage | null) ?? null };
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+}
+
+// 上傳一張作品：驗證 → 重新編碼（webp、去 EXIF、長邊 1600）→ 上傳 → insert 一列。第 13 張由資料庫 trigger
+// 擋下（P0001＋PORTFOLIO_LIMIT 前綴），前端的張數判斷只是體驗優化。
+export async function uploadPortfolioImage(
+  supabase: SupabaseClient,
+  designerId: string,
+  file: File,
+): Promise<Result<PortfolioImage>> {
+  if (!LOWERCASE_ID_PATTERN.test(designerId)) return { ok: false, error: INTERNAL_ERROR };
+
+  const validationError = validateDesignerImageFile(file);
+  if (validationError) return { ok: false, error: { message: validationError } };
+
+  const encoded = await reencodeImage(file, { maxDimension: PORTFOLIO_OUTPUT_MAX_DIMENSION });
+  if (!encoded.ok) return { ok: false, error: { message: encoded.message } };
+
+  // 路徑由程式產生（小寫 designerId＋新的 uuid＋依實際 blob.type 決定的副檔名），不用使用者檔名；
+  // 這個路徑只屬於這次呼叫，所以下面「確定沒寫入」時補刪它不會誤刪別人的檔案。
+  const path = `portfolio/${designerId}/${crypto.randomUUID()}.${encoded.extension}`;
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from("designer-assets")
+      .upload(path, encoded.blob, { contentType: encoded.blob.type, upsert: false, cacheControl: PORTFOLIO_CACHE_CONTROL });
+    if (uploadError) {
+      // 網路錯誤時物件可能其實已經寫入，順手清掉（路徑是新的，不會誤刪）。
+      await removeDesignerAssetObject(supabase, path);
+      return { ok: false, error: INTERNAL_ERROR };
+    }
+  } catch {
+    await removeDesignerAssetObject(supabase, path);
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+
+  const imageUrl = supabase.storage.from("designer-assets").getPublicUrl(path).data.publicUrl;
+
+  try {
+    const { data, error } = await supabase
+      .from("designer_portfolio_images")
+      .insert({ designer_id: designerId, image_url: imageUrl, storage_path: path })
+      .select(PORTFOLIO_COLUMNS);
+    if (!error && data && data.length === 1) return { ok: true, data: data[0] as PortfolioImage };
+
+    if (error && error.code === "P0001" && (error.message ?? "").startsWith("PORTFOLIO_LIMIT")) {
+      await removeDesignerAssetObject(supabase, path);
+      return { ok: false, error: { message: portfolioLimitMessage() } };
+    }
+    if (error && SQLSTATE_PATTERN.test(error.code ?? "")) {
+      await removeDesignerAssetObject(supabase, path);
+      return { ok: false, error: INTERNAL_ERROR };
+    }
+  } catch {
+    // 結果不明：往下重讀。
+  }
+
+  // 結果不明（逾時、網路中斷、閘道錯誤、沒有 error 卻不是剛好 1 列）：伺服器可能其實已經寫入。
+  const reread = await readPortfolioRowByPath(supabase, designerId, path);
+  if (!reread.ok) return { ok: false, error: INTERNAL_ERROR };
+  if (reread.data) return { ok: true, data: reread.data };
+  await removeDesignerAssetObject(supabase, path);
+  return { ok: false, error: INTERNAL_ERROR };
+}
+
+export type PortfolioDeleteOutcome = {
+  // 資料列已刪除，但檔案沒能確認刪掉（照片可能仍可由原網址讀到）。
+  cleanupWarning: boolean;
+  // 可以讓店長按「重試刪除檔案」的路徑；路徑驗證不過時為 null（只能聯絡管理者）。
+  retryPath: string | null;
+};
+
+// 刪除一張作品：先用 id＋designer_id 讀回 storage_path（不信任前端傳入）→ 刪資料列（要求剛好 1 列）→ 刪檔
+// （要求 remove() 剛好刪 1 個）。delete 結果不明時重讀：列已不在就照樣刪檔，列還在就回失敗；0 列（別的分頁
+// 已刪，或權限不足）不呼叫 remove。
+export async function deletePortfolioImage(
+  supabase: SupabaseClient,
+  designerId: string,
+  imageId: string,
+): Promise<Result<PortfolioDeleteOutcome>> {
+  if (!LOWERCASE_ID_PATTERN.test(designerId) || !LOWERCASE_ID_PATTERN.test(imageId)) {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+
+  let storagePath: string | null;
+  try {
+    const { data, error } = await supabase
+      .from("designer_portfolio_images")
+      .select("storage_path")
+      .eq("id", imageId)
+      .eq("designer_id", designerId)
+      .maybeSingle();
+    if (error) return { ok: false, error: INTERNAL_ERROR };
+    if (!data) return { ok: false, error: { message: MESSAGE_PORTFOLIO_GONE } };
+    storagePath = parsePortfolioStoragePath((data as { storage_path: string }).storage_path, designerId);
+  } catch {
+    return { ok: false, error: INTERNAL_ERROR };
+  }
+
+  let unknown = false;
+  try {
+    const { data, error } = await supabase
+      .from("designer_portfolio_images")
+      .delete()
+      .eq("id", imageId)
+      .eq("designer_id", designerId)
+      .select("id");
+    if (!error && data && data.length === 0) return { ok: false, error: INTERNAL_ERROR };
+    if (error || !data || data.length !== 1) unknown = true;
+  } catch {
+    unknown = true;
+  }
+
+  if (unknown) {
+    try {
+      const { data, error } = await supabase
+        .from("designer_portfolio_images")
+        .select("id")
+        .eq("id", imageId)
+        .eq("designer_id", designerId)
+        .maybeSingle();
+      // 讀不到結果，或列還在（沒刪成功）：回失敗，不動檔案。
+      if (error || data) return { ok: false, error: INTERNAL_ERROR };
+    } catch {
+      return { ok: false, error: INTERNAL_ERROR };
+    }
+  }
+
+  if (storagePath === null) return { ok: true, data: { cleanupWarning: true, retryPath: null } };
+  const removed = await removeDesignerAssetObject(supabase, storagePath);
+  return { ok: true, data: { cleanupWarning: !removed, retryPath: removed ? null : storagePath } };
+}
+
+// 「重試刪除檔案」：路徑重新過一次白名單，只能刪這位設計師自己的作品集檔案。
+export async function removePortfolioFile(
+  supabase: SupabaseClient,
+  designerId: string,
+  path: string,
+): Promise<Result<void>> {
+  const safePath = parsePortfolioStoragePath(path, designerId);
+  if (safePath === null) return { ok: false, error: INTERNAL_ERROR };
+  return (await removeDesignerAssetObject(supabase, safePath))
+    ? { ok: true, data: undefined }
+    : { ok: false, error: INTERNAL_ERROR };
 }

@@ -6,7 +6,9 @@ import {
   normalizeDesignerBio,
   normalizeInstagramHandle,
   normalizeSpecialties,
+  portfolioLimitMessage,
   resolveDesignerAssetUrl,
+  resolvePortfolioImageUrl,
   validateDesignerBio,
   validateDesignerName,
   validateDesignerSpecialties,
@@ -103,6 +105,66 @@ describe("resolveDesignerAssetUrl", () => {
   it("NEXT_PUBLIC_SUPABASE_URL 未設定時一律回傳 null（避免退化成字面 undefined/… 前綴誤判通過）", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     expect(resolveDesignerAssetUrl(avatarUrl)).toBeNull();
+  });
+});
+
+describe("resolvePortfolioImageUrl（TASK-071 動工前安全審查：image_url 只驗結尾，顯示層要更嚴）", () => {
+  const base = "https://project-ref.supabase.co";
+  const A = "3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6b";
+  const B = "11111111-2222-4333-8444-555555555555";
+  const U = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+  const own = `${base}/storage/v1/object/public/designer-assets/portfolio/${A}/${U}.webp`;
+
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", base);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("這位設計師自己的作品集網址（jpg／png／webp）通過，回傳正規化後的 href", () => {
+    expect(resolvePortfolioImageUrl(own, A)).toBe(own);
+    expect(resolvePortfolioImageUrl(own.replace(".webp", ".jpg"), A)).toBe(own.replace(".webp", ".jpg"));
+    expect(resolvePortfolioImageUrl(own.replace(".webp", ".png"), A)).toBe(own.replace(".webp", ".png"));
+  });
+
+  it("帶 query 或 hash 的網址一律拒絕（資料庫 constraint 只驗結尾，攻擊者可用 ?portfolio/A/… 湊出結尾）", () => {
+    const avatarOfB = `${base}/storage/v1/object/public/designer-assets/avatar/${B}/${U}.webp`;
+    expect(resolvePortfolioImageUrl(`${avatarOfB}?portfolio/${A}/${U}.webp`, A)).toBeNull();
+    expect(resolvePortfolioImageUrl(`${avatarOfB}#portfolio/${A}/${U}.webp`, A)).toBeNull();
+    expect(resolvePortfolioImageUrl(`${own}?x=1`, A)).toBeNull();
+    expect(resolvePortfolioImageUrl(`${own}#x`, A)).toBeNull();
+  });
+
+  it("別位設計師的作品、頭像、多一層資料夾、其他副檔名、大寫副檔名一律拒絕", () => {
+    const at = (tail: string) => `${base}/storage/v1/object/public/designer-assets/${tail}`;
+    expect(resolvePortfolioImageUrl(at(`portfolio/${B}/${U}.webp`), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(at(`avatar/${A}/${U}.webp`), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(at(`portfolio/${A}/x/${U}.webp`), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(at(`portfolio/${A}/${U}.gif`), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(at(`portfolio/${A}/${U}.WEBP`), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(at(`portfolio/${A}/${U}`), A)).toBeNull();
+  });
+
+  it("外部網域、編碼斜線、路徑穿越、null、空字串一律拒絕", () => {
+    expect(resolvePortfolioImageUrl(own.replace(base, "https://evil.example.com"), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(own.replace(`/portfolio/${A}/`, `/portfolio%2F${A}/`), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(own.replace("/designer-assets/portfolio/", "/designer-assets/../x/"), A)).toBeNull();
+    expect(resolvePortfolioImageUrl(null, A)).toBeNull();
+    expect(resolvePortfolioImageUrl("", A)).toBeNull();
+  });
+
+  it("designerId 不是小寫 uuid（大寫、含正規式字元）一律回傳 null，不組進正規式", () => {
+    expect(resolvePortfolioImageUrl(own, A.toUpperCase())).toBeNull();
+    expect(resolvePortfolioImageUrl(own, ".*")).toBeNull();
+    expect(resolvePortfolioImageUrl(own, "")).toBeNull();
+  });
+});
+
+describe("portfolioLimitMessage", () => {
+  it("預設用 12 張上限；可傳入其他上限", () => {
+    expect(portfolioLimitMessage()).toBe("已達 12 張上限，請先刪除舊作品");
+    expect(portfolioLimitMessage(3)).toBe("已達 3 張上限，請先刪除舊作品");
   });
 });
 

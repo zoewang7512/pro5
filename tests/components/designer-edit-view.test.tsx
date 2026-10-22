@@ -48,6 +48,16 @@ vi.mock("@/app/admin/_components/DesignerServicesTab", () => ({
   ),
 }));
 
+// 作品集頁籤有自己的測試：這裡換成簡單替身，只驗證常駐掛載與頁籤標籤上的張數。
+vi.mock("@/app/admin/_components/DesignerPortfolioTab", () => ({
+  DesignerPortfolioTab: (props: { designerId: string; onCountChange: (count: number) => void }) => (
+    <div data-testid="portfolio-tab">
+      <span>{`作品集：${props.designerId}`}</span>
+      <button onClick={() => props.onCountChange(8)}>模擬回報八張</button>
+    </div>
+  ),
+}));
+
 const ID = "3f2b8c1e-9d4a-4e6f-8a7b-1c2d3e4f5a6b";
 const DESIGNER: Designer = {
   id: ID,
@@ -104,15 +114,15 @@ describe("DesignerEditView", () => {
     expect(await screen.findByText("已停用")).toBeInTheDocument();
   });
 
-  it("切到其他頁籤顯示占位內容；「基本資料」面板保持掛載（未儲存的輸入不會不見）", async () => {
+  it("切到「請假」頁籤顯示占位內容；「基本資料」面板保持掛載（未儲存的輸入不會不見）", async () => {
     vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
     const user = userEvent.setup({ delay: null });
     render(<DesignerEditView designerId={ID} />);
     await screen.findByText("表單：林小美");
 
     await user.type(screen.getByLabelText("未儲存的輸入"), "草稿");
-    await user.click(screen.getByRole("tab", { name: "作品集" }));
-    expect(screen.getByText("作品集管理即將開放。")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "請假" }));
+    expect(screen.getByText("請假日設定即將開放。")).toBeInTheDocument();
     expect(screen.getByTestId("basic-form")).not.toBeVisible();
 
     await user.click(screen.getByRole("tab", { name: "基本資料" }));
@@ -153,6 +163,41 @@ describe("DesignerEditView", () => {
     const tab = screen.getByRole("tab", { name: /提供服務/ });
     expect(tab).toHaveTextContent("提供服務5");
     expect(screen.getByLabelText("已開啟 5 項")).toBeInTheDocument();
+  });
+
+  it("「作品集」面板載入後常駐掛載（隱藏），用資料庫回傳的設計師 id；切頁籤不卸載；新增模式不掛載", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    render(<DesignerEditView designerId={ID.toUpperCase()} />);
+
+    expect(await screen.findByText(`作品集：${ID}`)).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-tab")).not.toBeVisible();
+
+    await user.click(screen.getByRole("tab", { name: "作品集" }));
+    expect(screen.getByTestId("portfolio-tab")).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "基本資料" }));
+    expect(screen.getByTestId("portfolio-tab")).toBeInTheDocument();
+
+    cleanup();
+    render(<DesignerEditView designerId={null} />);
+    expect(screen.queryByTestId("portfolio-tab")).toBeNull();
+  });
+
+  it("「作品集」頁籤標籤在回報前沒有數字，回報後顯示張數；與「提供服務」的數字互不影響，無障礙名稱各自不同", async () => {
+    vi.mocked(getDesigner).mockResolvedValue({ ok: true, data: DESIGNER });
+    const user = userEvent.setup({ delay: null });
+    render(<DesignerEditView designerId={ID} />);
+    await screen.findByText("表單：林小美");
+    expect(screen.queryByLabelText(/共 d+ 張作品/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "模擬回報八張", hidden: true }));
+    expect(screen.getByRole("tab", { name: /作品集/ })).toHaveTextContent("作品集8");
+    expect(screen.getByLabelText("共 8 張作品")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/已開啟/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "模擬回報五項", hidden: true }));
+    expect(screen.getByLabelText("已開啟 5 項")).toBeInTheDocument();
+    expect(screen.getByLabelText("共 8 張作品")).toBeInTheDocument();
   });
 
   it("基本資料儲存後，麵包屑與標題同步更新名稱", async () => {

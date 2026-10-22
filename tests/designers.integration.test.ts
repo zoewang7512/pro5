@@ -29,15 +29,20 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   countFutureAppointmentsForDesigner,
   createDesigner as createDesignerAdmin,
+  deletePortfolioImage,
   listDesignerServiceIds,
   listDesigners,
+  listPortfolio,
   removeDesignerAvatar,
+  removePortfolioFile,
   setDesignerActive,
   setDesignerService,
   swapDesignerOrder,
   updateDesignerBasicInfo,
   uploadDesignerAvatar,
+  uploadPortfolioImage,
 } from "@/lib/admin/designers";
+import { resolvePortfolioImageUrl } from "@/lib/designers";
 
 // Node 環境沒有 canvas／createImageBitmap：重新編碼本身有單元測試（tests/lib/image-reencode.test.ts），
 // 這裡只替換成固定輸出（1x1 PNG），讓上傳流程（Storage policy、CAS、刪舊檔）打真實專案。
@@ -2617,6 +2622,235 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       const active = await anonClient.from("designer_services").select("service_id").eq("designer_id", activeDesignerId);
       expect(active.error).toBeNull();
       expect(active.data).toEqual([{ service_id: testServiceId }]);
+    });
+  });
+
+  // TASK-071：作品集上傳／刪除（真實 admin／非管理員 session）。reencodeImage 被替換成固定的 1x1 PNG（副檔名 png），
+  // 其餘全部打真實專案。隔離規則：設計師是 service_role 建立的 `__TEST__dz-` 設計師，絕不碰預設設計師；檔案路徑都在
+  // 這些測試設計師的 portfolio/<id>/ 底下，afterAll 的 sweep 會清除。
+  describe("TASK-071：作品集上傳／刪除（真實 admin session）", () => {
+    const LIMIT_MESSAGE = "已達 12 張上限，請先刪除舊作品";
+    const png = (name = "a.png") => new File([TINY_PNG], name, { type: "image/png" });
+
+    async function rowsOf(designerId: string) {
+      const { data, error } = await serviceRoleClient
+        .from("designer_portfolio_images")
+        .select("id, image_url, storage_path, created_at")
+        .eq("designer_id", designerId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    }
+
+    async function fetchOnce(fileUrl: string) {
+      const res = await fetch(fileUrl);
+      await res.arrayBuffer();
+      return res;
+    }
+
+    // 以 service_role 預先放入 count 張「有真實檔案」的作品（一次 insert 多列，trigger 在語句結尾一次數齊）。
+    async function seedPortfolio(designerId: string, count: number) {
+      const rows = Array.from({ length: count }, () => portfolioRow(designerId, `portfolio/${designerId}/${randomUUID()}.png`));
+      await Promise.all(
+        rows.map(async (row) => {
+          const upload = await serviceRoleClient.storage
+            .from(BUCKET)
+            .upload(row.storage_path, TINY_PNG, { contentType: "image/png" });
+          if (upload.error) throw upload.error;
+        }),
+      );
+      const { error } = await serviceRoleClient.from("designer_portfolio_images").insert(rows);
+      if (error) throw error;
+      return rows;
+    }
+
+    it("上傳：路徑 portfolio/<id>/<uuid>.png、image_url 等於 getPublicUrl(storage_path)、公開網址 200 且 cache-control 為 300 秒；listPortfolio 最新在前", async () => {
+      const id = await createDesigner();
+
+      const first = await uploadPortfolioImage(adminClient, id, png());
+      expect(first.ok).toBe(true);
+      if (!first.ok) return;
+      const second = await uploadPortfolioImage(adminClient, id, png("b.png"));
+      expect(second.ok).toBe(true);
+      if (!second.ok) return;
+
+      const rows = await rowsOf(id);
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row.storage_path).toMatch(new RegExp(`^portfolio/${id}/[0-9a-f-]{36}\\.png$`));
+        expect(row.image_url).toBe(publicUrl(row.storage_path));
+      }
+      expect(await listFolder(`portfolio/${id}`)).toHaveLength(2);
+
+      const res = await fetchOnce(first.data.image_url);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("image/png");
+      expect(res.headers.get("cache-control")).toContain("max-age=300");
+
+      const listed = await listPortfolio(adminClient, id);
+      expect(listed.ok).toBe(true);
+      if (!listed.ok) return;
+      expect(listed.data.map((image) => image.id)).toEqual([second.data.id, first.data.id]);
+      expect(listed.data[0]).not.toHaveProperty("storage_path");
+    });
+
+    it("第 13 張：函式回上限文案，資料列與檔案都維持 12 個（補刪的只有剛上傳的新檔，沒有誤刪既有檔案）", async () => {
+      const id = await createDesigner();
+      await seedPortfolio(id, 12);
+
+      const result = await uploadPortfolioImage(adminClient, id, png());
+
+      expect(result).toEqual({ ok: false, error: { message: LIMIT_MESSAGE } });
+      expect(await rowsOf(id)).toHaveLength(12);
+      expect(await listFolder(`portfolio/${id}`)).toHaveLength(12);
+    });
+
+    it("已有 11 張時並行上傳兩張：剛好一張成功、另一張回上限文案，資料列與檔案都是 12 個", async () => {
+      const id = await createDesigner();
+      await seedPortfolio(id, 11);
+
+      const results = await Promise.all([
+        uploadPortfolioImage(adminClient, id, png("a.png")),
+        uploadPortfolioImage(adminClient, id, png("b.png")),
+      ]);
+
+      expect(results.filter((r) => r.ok)).toHaveLength(1);
+      const failed = results.find((r) => !r.ok);
+      expect(failed).toEqual({ ok: false, error: { message: LIMIT_MESSAGE } });
+      const rows = await rowsOf(id);
+      expect(rows).toHaveLength(12);
+      const files = await listFolder(`portfolio/${id}`);
+      expect(files).toHaveLength(12);
+      expect(files.sort()).toEqual(rows.map((row) => row.storage_path).sort());
+    });
+
+    it("直接打 API 的第 13 張（繞過前端與函式）也被 trigger 擋下，錯誤是 P0001＋PORTFOLIO_LIMIT 前綴", async () => {
+      const id = await createDesigner();
+      await seedPortfolio(id, 12);
+
+      const { error } = await adminClient.from("designer_portfolio_images").insert(portfolioRow(id));
+
+      expect(error?.code).toBe("P0001");
+      expect(error?.message.startsWith("PORTFOLIO_LIMIT")).toBe(true);
+      expect(await rowsOf(id)).toHaveLength(12);
+    });
+
+    it("刪除：資料列消失、檔案真的被刪（公開網址回 400／404）；同設計師的其他作品與別位設計師的檔案都還在", async () => {
+      const id = await createDesigner();
+      const other = await createDesigner();
+      const keep = await uploadPortfolioImage(adminClient, id, png());
+      const target = await uploadPortfolioImage(adminClient, id, png("b.png"));
+      const otherUpload = await uploadPortfolioImage(adminClient, other, png("c.png"));
+      expect(keep.ok && target.ok && otherUpload.ok).toBe(true);
+      if (!keep.ok || !target.ok || !otherUpload.ok) return;
+
+      const deleted = await deletePortfolioImage(adminClient, id, target.data.id);
+
+      expect(deleted).toEqual({ ok: true, data: { cleanupWarning: false, retryPath: null } });
+      // 刻意不在刪除前 fetch 這個網址，避免 CDN 先快取了 200。
+      expect([400, 404]).toContain((await fetchOnce(target.data.image_url)).status);
+      expect((await rowsOf(id)).map((row) => row.id)).toEqual([keep.data.id]);
+      expect(await listFolder(`portfolio/${id}`)).toHaveLength(1);
+      expect((await fetchOnce(keep.data.image_url)).status).toBe(200);
+      expect((await fetchOnce(otherUpload.data.image_url)).status).toBe(200);
+      expect(await rowsOf(other)).toHaveLength(1);
+    });
+
+    it("刪除前先讀過公開網址（預熱 CDN 快取）：記錄刪除後仍能讀到的狀態（TASK-071 殘留風險 M3），不硬性要求 400／404", async () => {
+      const id = await createDesigner();
+      const uploaded = await uploadPortfolioImage(adminClient, id, png());
+      expect(uploaded.ok).toBe(true);
+      if (!uploaded.ok) return;
+      expect((await fetchOnce(uploaded.data.image_url)).status).toBe(200);
+
+      const deleted = await deletePortfolioImage(adminClient, id, uploaded.data.id);
+
+      expect(deleted).toEqual({ ok: true, data: { cleanupWarning: false, retryPath: null } });
+      const after = await fetchOnce(uploaded.data.image_url);
+      console.info(`[TASK-071] 預熱快取後刪除，公開網址狀態：${after.status}（cacheControl 300 秒）`);
+      expect(await listFolder(`portfolio/${id}`)).toEqual([]);
+    });
+
+    it("用 A 設計師的 id 搭配 B 的作品 id 刪除：失敗，B 的資料列與檔案都還在", async () => {
+      const a = await createDesigner();
+      const b = await createDesigner();
+      const upload = await uploadPortfolioImage(adminClient, b, png());
+      expect(upload.ok).toBe(true);
+      if (!upload.ok) return;
+
+      const result = await deletePortfolioImage(adminClient, a, upload.data.id);
+
+      expect(result.ok).toBe(false);
+      expect(await rowsOf(b)).toHaveLength(1);
+      expect((await fetchOnce(upload.data.image_url)).status).toBe(200);
+    });
+
+    it("刪除不存在的作品：回提示，不動任何資料", async () => {
+      const id = await createDesigner();
+      await seedPortfolio(id, 1);
+
+      const result = await deletePortfolioImage(adminClient, id, randomUUID());
+
+      expect(result).toEqual({ ok: false, error: { message: "這張作品已不存在，請重新整理頁面。" } });
+      expect(await rowsOf(id)).toHaveLength(1);
+      expect(await listFolder(`portfolio/${id}`)).toHaveLength(1);
+    });
+
+    it("非管理員與 anon：上傳失敗且不留下檔案或資料列；非管理員刪除失敗（0 列），資料列與檔案仍在", async () => {
+      const id = await createDesigner();
+      const [seeded] = await seedPortfolio(id, 1);
+      const before = await listFolder(`portfolio/${id}`);
+
+      for (const client of [nonAdminClient, anonClient]) {
+        expect((await uploadPortfolioImage(client, id, png())).ok).toBe(false);
+      }
+      expect(await rowsOf(id)).toHaveLength(1);
+      expect(await listFolder(`portfolio/${id}`)).toEqual(before);
+
+      const rowId = (await rowsOf(id))[0].id as string;
+      expect((await deletePortfolioImage(nonAdminClient, id, rowId)).ok).toBe(false);
+      expect((await deletePortfolioImage(anonClient, id, rowId)).ok).toBe(false);
+      expect(await rowsOf(id)).toHaveLength(1);
+      expect((await fetchOnce(seeded.image_url)).status).toBe(200);
+    });
+
+    it("removePortfolioFile：admin 刪得掉自己設計師的檔案；非管理員刪不掉；別位設計師的路徑與頭像路徑被擋下", async () => {
+      const id = await createDesigner();
+      const other = await createDesigner();
+      const [mine] = await seedPortfolio(id, 1);
+      const [theirs] = await seedPortfolio(other, 1);
+
+      expect((await removePortfolioFile(nonAdminClient, id, mine.storage_path)).ok).toBe(false);
+      expect(await listFolder(`portfolio/${id}`)).toHaveLength(1);
+
+      expect((await removePortfolioFile(adminClient, id, theirs.storage_path)).ok).toBe(false);
+      expect((await removePortfolioFile(adminClient, id, `avatar/${id}/${randomUUID()}.png`)).ok).toBe(false);
+      expect(await listFolder(`portfolio/${other}`)).toHaveLength(1);
+
+      expect(await removePortfolioFile(adminClient, id, mine.storage_path)).toEqual({ ok: true, data: undefined });
+      expect(await listFolder(`portfolio/${id}`)).toEqual([]);
+    });
+
+    it("資料庫放行被竄改的 image_url（帶 query 指到別人的檔案）——證明洞存在，顯示層的白名單必須擋下它", async () => {
+      const a = await createDesigner();
+      const b = await createDesigner();
+      const [victim] = await seedPortfolio(b, 1);
+      const storagePath = `portfolio/${a}/${randomUUID()}.png`;
+      const tampered = `${victim.image_url}?${storagePath}`;
+
+      const { error } = await serviceRoleClient
+        .from("designer_portfolio_images")
+        .insert({ designer_id: a, image_url: tampered, storage_path: storagePath });
+      expect(error).toBeNull();
+
+      const listed = await listPortfolio(adminClient, a);
+      expect(listed.ok).toBe(true);
+      if (!listed.ok) return;
+      expect(listed.data).toHaveLength(1);
+      expect(listed.data[0].image_url).toBe(tampered);
+      expect(resolvePortfolioImageUrl(listed.data[0].image_url, a)).toBeNull();
+      expect(resolvePortfolioImageUrl(victim.image_url, b)).toBe(victim.image_url);
     });
   });
 });

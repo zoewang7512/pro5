@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   IMAGE_MAX_BYTES,
+  PORTFOLIO_OUTPUT_MAX_DIMENSION,
   extensionForImageMime,
   planReencodeSize,
   reencodeImage,
@@ -41,6 +42,16 @@ describe("planReencodeSize", () => {
   });
   it("極端長寬比縮小後最短邊至少 1", () => {
     expect(planReencodeSize(8000, 1)).toEqual({ width: 1024, height: 1 });
+  });
+  it("可指定 maxDimension（作品集 1600）；未指定仍是 1024（頭像行為不變）", () => {
+    expect(planReencodeSize(4000, 2000, 1600)).toEqual({ width: 1600, height: 800 });
+    expect(planReencodeSize(1500, 1000, 1600)).toEqual({ width: 1500, height: 1000 });
+    expect(planReencodeSize(4000, 2000)).toEqual({ width: 1024, height: 512 });
+    expect(PORTFOLIO_OUTPUT_MAX_DIMENSION).toBe(1600);
+  });
+  it("maxDimension 不放寬原圖解析度上限", () => {
+    expect(planReencodeSize(8001, 100, 1600)).toBeNull();
+    expect(planReencodeSize(7000, 6000, 1600)).toBeNull();
   });
 });
 
@@ -87,6 +98,18 @@ describe("reencodeImage", () => {
     expect(result).toMatchObject({ ok: true, extension: "webp" });
     expect(requestedTypes).toEqual(["image/webp"]);
     expect(createImageBitmapMock).toHaveBeenCalledWith(file, { imageOrientation: "from-image" });
+  });
+
+  it("預設長邊縮到 1024；傳入 maxDimension 1600 時縮到 1600（作品集）", async () => {
+    const big = { width: 3200, height: 1600 };
+    const first = setup({ bitmap: big, blobs: [{ type: "image/webp", size: 1000 }] });
+    await reencodeImage(file);
+    expect(first.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1024, 512);
+
+    vi.restoreAllMocks();
+    const second = setup({ bitmap: big, blobs: [{ type: "image/webp", size: 1000 }] });
+    await reencodeImage(file, { maxDimension: 1600 });
+    expect(second.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1600, 800);
   });
 
   it("瀏覽器不支援 webp（回傳 png）時改輸出 jpeg，並先填白底", async () => {
