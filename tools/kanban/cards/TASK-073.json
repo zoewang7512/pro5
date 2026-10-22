@@ -2,7 +2,7 @@
   "id": "TASK-073",
   "title": "多位設計師 前台「選擇設計師」步驟、服務列表過濾、時段與送出串接、成功頁設計師",
   "content": "Variant B 橫向頭像列＋預覽卡；沒有設計師提供的服務不顯示；把選擇傳給兩支 RPC；成功頁顯示（不指定時顯示被安排的設計師）。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -91,6 +91,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "已改 BOOKING_LIMIT_EXCEEDED 文案為「你的聯絡資訊目前有太多筆待確認的預約…」（通用說法，不區分電話或 email），新增 tests/booking/error-messages.test.ts；tsc、tests/booking 71 項、eslint 通過。仍在 Verify，等待人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "人工驗收通過，轉 Done。"
     }
   ]
 }
