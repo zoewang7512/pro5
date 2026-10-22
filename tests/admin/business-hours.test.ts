@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   findAffectedAppointments,
   getAllBusinessHours,
+  hasBusinessHoursChanges,
   isAppointmentOutsideHours,
   updateBusinessHours,
   validateBusinessHoursRow,
@@ -223,5 +224,59 @@ describe("findAffectedAppointments", () => {
     const result = await findAffectedAppointments(client, NEW_ROWS);
 
     expect(result).toEqual({ ok: true, data: [] });
+  });
+});
+
+describe("hasBusinessHoursChanges（TASK-082）", () => {
+  function week(): Map<number, BusinessHoursInput> {
+    const map = new Map<number, BusinessHoursInput>();
+    for (const weekday of [0, 1, 2, 3, 4, 5, 6]) {
+      map.set(weekday, { weekday, open_time: "10:00", close_time: "19:00", is_closed: false });
+    }
+    return map;
+  }
+
+  it("七列完全相同：沒有變更", () => {
+    expect(hasBusinessHoursChanges(week(), week())).toBe(false);
+  });
+
+  it("切換公休：有變更", () => {
+    const rows = week();
+    rows.set(3, { weekday: 3, open_time: "", close_time: "", is_closed: true });
+    expect(hasBusinessHoursChanges(rows, week())).toBe(true);
+  });
+
+  it("改開店時間：有變更", () => {
+    const rows = week();
+    rows.set(2, { weekday: 2, open_time: "11:00", close_time: "19:00", is_closed: false });
+    expect(hasBusinessHoursChanges(rows, week())).toBe(true);
+  });
+
+  it("改打烊時間：有變更", () => {
+    const rows = week();
+    rows.set(5, { weekday: 5, open_time: "10:00", close_time: "20:00", is_closed: false });
+    expect(hasBusinessHoursChanges(rows, week())).toBe(true);
+  });
+
+  it("七列中任何一列不同都算有變更（含週日 weekday=0）", () => {
+    for (const weekday of [0, 1, 2, 3, 4, 5, 6]) {
+      const rows = week();
+      rows.set(weekday, { weekday, open_time: "10:30", close_time: "19:00", is_closed: false });
+      expect(hasBusinessHoursChanges(rows, week())).toBe(true);
+    }
+  });
+
+  it("改了再改回原值：沒有變更", () => {
+    const rows = week();
+    rows.set(1, { weekday: 1, open_time: "11:00", close_time: "19:00", is_closed: false });
+    rows.set(1, { weekday: 1, open_time: "10:00", close_time: "19:00", is_closed: false });
+    expect(hasBusinessHoursChanges(rows, week())).toBe(false);
+  });
+
+  it("列數不同或缺列：視為有變更（保守判定）", () => {
+    const rows = week();
+    rows.delete(6);
+    expect(hasBusinessHoursChanges(rows, week())).toBe(true);
+    expect(hasBusinessHoursChanges(week(), rows)).toBe(true);
   });
 });

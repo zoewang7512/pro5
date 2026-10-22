@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   findAffectedAppointments,
   getAllBusinessHours,
+  hasBusinessHoursChanges,
   updateBusinessHours,
   validateBusinessHoursRow,
   type AffectedAppointment,
@@ -30,6 +31,7 @@ import { formatAppointmentDateLabel, formatTaipeiTime } from "@/lib/admin/format
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ClosedDatesSection } from "./ClosedDatesSection";
+import { useUnsavedChangesGuard } from "./UnsavedChangesProvider";
 
 // 顯示順序「週一至週日」，資料庫的 weekday 是 0=週日...6=週六，故顯示順序把 0 移到最後。
 const DISPLAY_WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -65,7 +67,8 @@ function toEditableRows(rows: BusinessHoursRow[]): Map<number, BusinessHoursInpu
 type LoadState =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "loaded"; rows: Map<number, BusinessHoursInput> };
+  // savedRows：載入時或最近一次儲存成功後重新載入的值，只用來判定「有沒有未儲存變更」。
+  | { status: "loaded"; rows: Map<number, BusinessHoursInput>; savedRows: Map<number, BusinessHoursInput> };
 
 export function BusinessHoursForm() {
   const supabase = React.useMemo(() => createClient(), []);
@@ -88,7 +91,7 @@ export function BusinessHoursForm() {
   const loadRows = React.useCallback(async () => {
     const res = await getAllBusinessHours(supabase);
     if (res.ok) {
-      setState({ status: "loaded", rows: toEditableRows(res.data) });
+      setState({ status: "loaded", rows: toEditableRows(res.data), savedRows: toEditableRows(res.data) });
     } else {
       setState({ status: "error" });
     }
@@ -104,7 +107,7 @@ export function BusinessHoursForm() {
     getAllBusinessHours(supabase).then((res) => {
       if (cancelled) return;
       if (res.ok) {
-        setState({ status: "loaded", rows: toEditableRows(res.data) });
+        setState({ status: "loaded", rows: toEditableRows(res.data), savedRows: toEditableRows(res.data) });
       } else {
         setState({ status: "error" });
       }
@@ -115,6 +118,10 @@ export function BusinessHoursForm() {
   }, [supabase]);
 
   const rows = state.status === "loaded" ? state.rows : null;
+
+  // 未儲存變更提示（TASK-082）：載入中或載入失敗時回報乾淨；儲存成功後 loadRows() 會一併更新 savedRows。
+  const hasChanges = state.status === "loaded" && hasBusinessHoursChanges(state.rows, state.savedRows);
+  useUnsavedChangesGuard("business-hours", hasChanges);
 
   const errors = React.useMemo(() => {
     const map = new Map<number, string | null>();
@@ -133,7 +140,8 @@ export function BusinessHoursForm() {
       if (!current) return prev;
       const next = new Map(prev.rows);
       next.set(weekday, { ...current, ...patch });
-      return { status: "loaded", rows: next };
+      // 必須保留 savedRows，否則每次編輯都會把「已儲存的基準值」洗掉。
+      return { ...prev, rows: next };
     });
   }
 

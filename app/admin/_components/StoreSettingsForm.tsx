@@ -20,6 +20,7 @@ import {
 } from "@/lib/store-settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import { useUnsavedChangesGuard } from "./UnsavedChangesProvider";
 
 // TASK-029：頁面骨架＋唯讀顯示。TASK-030：「基本資訊」卡片接上編輯／驗證／儲存。
 // TASK-031：「品牌圖片」卡片接上 ImageUploadField（Logo/封面圖上傳／更換／移除）——沿用
@@ -69,6 +70,9 @@ function BasicInfoCard({ initial, supabase }: { initial: StoreSettings; supabase
     fields.address !== savedFields.address ||
     fields.phone !== savedFields.phone ||
     fields.description !== savedFields.description;
+
+  // 未儲存變更提示（TASK-082）。Logo／封面圖是即時上傳，不在這張卡片的狀態內，不影響判定。
+  useUnsavedChangesGuard("store-basic-info", hasChanges);
 
   function markTouched(field: keyof BasicInfoFields) {
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));

@@ -45,6 +45,27 @@ export function validateBusinessHoursRow(row: BusinessHoursInput): string | null
   return null;
 }
 
+// 未儲存變更判定（TASK-082）：與「載入時或最近一次儲存成功後」的每週設定逐列比對。
+// 兩邊都是經過 formatTimeInput 正規化的「HH:mm」或 ""，直接比對字串即可。
+export function hasBusinessHoursChanges(
+  rows: ReadonlyMap<number, BusinessHoursInput>,
+  savedRows: ReadonlyMap<number, BusinessHoursInput>,
+): boolean {
+  if (rows.size !== savedRows.size) return true;
+  for (const [weekday, row] of rows) {
+    const saved = savedRows.get(weekday);
+    if (!saved) return true;
+    if (
+      row.is_closed !== saved.is_closed ||
+      row.open_time !== saved.open_time ||
+      row.close_time !== saved.close_time
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function updateBusinessHours(
   supabase: SupabaseClient,
   rows: BusinessHoursInput[],

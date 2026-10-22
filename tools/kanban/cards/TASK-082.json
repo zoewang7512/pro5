@@ -2,7 +2,7 @@
   "id": "TASK-082",
   "title": "UI 設計系統 後台「未儲存變更」離開提示：商店基本資料、帳號設定、營業時間",
   "content": "套用共用機制到商店基本資料（BasicInfoCard）、帳號設定（顯示名稱、登入 Email；密碼區塊不納入）、營業時間（新增 dirty 判定 hasBusinessHoursChanges）。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -37,7 +37,7 @@
     "screenSpec": "ai/artifacts/專案設置/screen-spec-未儲存變更離開提示.md",
     "mockupDecision": "ai/artifacts/專案設置/mockup-decision-未儲存變更離開提示.md",
     "taskCard": "ai/artifacts/專案設置/task-cards/TASK-082.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-082.md",
     "pr": ""
   },
   "refs": [
@@ -47,9 +47,19 @@
     "lib/admin/business-hours.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過",
+      "npx vitest run --maxWorkers=3：最後一次 1160/1163，失敗皆為既有 5 秒逾時（基準 stash 後同項一樣逾時；每次失敗項目不同）；本卡新增測試全數通過",
+      "新增 41 項測試（hasBusinessHoursChanges 7、BusinessHoursForm 10、StoreSettingsForm 12、AccountSettingsView 10、均含沒有 Provider 的回歸）",
+      "突變測試：4 種錯誤（名稱不 trim、updateRow 洗掉 savedRows、密碼誤接 guard、忽略 close_time）測試皆能抓到並已還原驗證",
+      "瀏覽器走查（正式庫，一律不儲存）：三個表單的攔截／繼續編輯／Esc／放棄變更、商店資料改回原值不提示、只填密碼欄位不提示"
+    ],
+    "findings": [
+      "任務卡寫的測試路徑 tests/lib/business-hours.test.ts 不存在，實際是 tests/admin/business-hours.test.ts，已擴充後者",
+      "我新增的密碼欄位測試原本因逐字 user.type 四個欄位在全套並行下逾時，已改用 fireEvent.change",
+      "全套 5 秒逾時為既有環境問題，account-settings-view「新密碼與確認密碼不一致」在沒有本卡變更時一樣逾時"
+    ],
+    "residual": "瀏覽器上一頁不攔截；beforeunload 原生提示需人工在真實瀏覽器確認；密碼區塊不計入變更；refresh() 失敗時顯示名稱儲存後仍被判定有變更；亮色模式與登入 Email 欄位未做瀏覽器走查（單元測試涵蓋 Email）；截圖未存成專案檔；未做實作後 subagent 審查"
   },
   "comments": [
     {
@@ -66,6 +76,11 @@
       "name": "使用者",
       "time": "2026-10-22",
       "text": "核准 TASK-081／082／083 實作計畫（含 architect 7 項 MUST FIX 修正），開始做 TASK-081。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告。TASK-083 維持 Backlog（依賴本卡）。"
     }
   ]
 }

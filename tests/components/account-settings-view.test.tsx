@@ -6,8 +6,15 @@ import { renderWithTheme as render } from "../test-utils";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AdminProfileProvider } from "@/app/admin/_components/AdminProfileContext";
 import { AccountSettingsView } from "@/app/admin/_components/AccountSettingsView";
+import { UnsavedChangesProvider, useIsUnsavedDirty } from "@/app/admin/_components/UnsavedChangesProvider";
 
 afterEach(cleanup);
+
+// UnsavedChangesProvider（TASK-082 的未儲存變更測試）用到 useRouter／usePathname。
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/admin/account",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
 
 const {
   updateAdminPasswordMock,
@@ -633,5 +640,130 @@ describe("AccountSettingsView - 雙重驗證（MFA）", () => {
 
     expect(await screen.findByRole("button", { name: "啟用雙重驗證" })).toBeInTheDocument();
     expect(listMfaFactorsMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+// TASK-082：顯示名稱（account-name）與登入 Email（account-email）各自回報未儲存變更；密碼區塊不計入。
+describe("AccountSettingsView - 未儲存變更回報（TASK-082）", () => {
+  function Probe() {
+    const name = useIsUnsavedDirty("account-name");
+    const emailDirty = useIsUnsavedDirty("account-email");
+    return (
+      <>
+        <span data-testid="name-probe">{name ? "dirty" : "clean"}</span>
+        <span data-testid="email-probe">{emailDirty ? "dirty" : "clean"}</span>
+      </>
+    );
+  }
+
+  function renderWithGuard() {
+    return render(
+      <UnsavedChangesProvider>
+        <AdminProfileProvider
+          initialDisplayName="Alex"
+          initialAvatarUrl={null}
+          email="designer@example.com"
+          initialPendingEmail={null}
+        >
+          <ToastProvider>
+            <AccountSettingsView />
+            <Probe />
+          </ToastProvider>
+        </AdminProfileProvider>
+      </UnsavedChangesProvider>,
+    );
+  }
+
+  function expectProbes(name: "dirty" | "clean", email: "dirty" | "clean") {
+    expect(screen.getByTestId("name-probe")).toHaveTextContent(name);
+    expect(screen.getByTestId("email-probe")).toHaveTextContent(email);
+  }
+
+  it("沒有改動：兩個 key 都乾淨", () => {
+    renderWithGuard();
+    expectProbes("clean", "clean");
+  });
+
+  it("只改顯示名稱：只有 account-name 有變更", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    await user.type(screen.getByLabelText("顯示名稱"), "x");
+    expectProbes("dirty", "clean");
+  });
+
+  it("只改 Email：只有 account-email 有變更", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    await user.type(screen.getByLabelText("目前 Email", { exact: false }), "x");
+    expectProbes("clean", "dirty");
+  });
+
+  it("兩者都改：兩個 key 都有變更", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    await user.type(screen.getByLabelText("顯示名稱"), "x");
+    await user.type(screen.getByLabelText("目前 Email", { exact: false }), "x");
+    expectProbes("dirty", "dirty");
+  });
+
+  it("改回原值：回到乾淨", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    const nameField = screen.getByLabelText("顯示名稱");
+    await user.type(nameField, "x");
+    await user.type(nameField, "{Backspace}");
+    expectProbes("clean", "clean");
+  });
+
+  it("Email 只差大小寫與前後空白：不算變更（沿用 hasEmailChanges）", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    const emailField = screen.getByLabelText("目前 Email", { exact: false });
+    await user.clear(emailField);
+    await user.type(emailField, "  Designer@Example.com ");
+    expectProbes("clean", "clean");
+  });
+
+  it("只在密碼欄位輸入：不計入變更（目前密碼、新密碼、確認新密碼、Email 卡片的目前密碼）", async () => {
+    renderWithGuard();
+    // 用 fireEvent.change 一次設值：四個欄位逐字 user.type 在全套並行時會逾時。
+    fireEvent.change(getPasswordCardCurrentPasswordField(), { target: { value: "old-secret" } });
+    fireEvent.change(screen.getByLabelText("新密碼", { exact: true }), { target: { value: "new-secret-123" } });
+    fireEvent.change(screen.getByLabelText("確認新密碼", { exact: false }), { target: { value: "new-secret-123" } });
+    fireEvent.change(getEmailCardCurrentPasswordField(), { target: { value: "old-secret" } });
+    expect(getPasswordCardCurrentPasswordField()).toHaveValue("old-secret");
+    expectProbes("clean", "clean");
+  });
+
+  it("顯示名稱輸入「Zoe 」（尾端空白）並儲存成功後：回報乾淨（以 trim 後的值比對）", async () => {
+    rpcMock.mockImplementation(async (fn: string) =>
+      fn === "update_admin_profile"
+        ? { data: true, error: null }
+        : { data: [{ display_name: "Zoe", avatar_url: null }], error: null },
+    );
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    const nameField = screen.getByLabelText("顯示名稱");
+    await user.clear(nameField);
+    await user.type(nameField, "Zoe ");
+    expectProbes("dirty", "clean");
+
+    await user.click(screen.getAllByRole("button", { name: "儲存" })[0]);
+
+    await waitFor(() => expectProbes("clean", "clean"));
+    // 輸入框不會回寫 trim 後的值，仍保留尾端空白——這正是需要 trim 比對的原因。
+    expect(nameField).toHaveValue("Zoe ");
+  });
+
+  it("只輸入空白（trim 後等於原值）：不算變更", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWithGuard();
+    await user.type(screen.getByLabelText("顯示名稱"), "   ");
+    expectProbes("clean", "clean");
+  });
+
+  it("沒有 Provider 時照常運作（既有行為不變）", () => {
+    renderView();
+    expect(screen.getByLabelText("顯示名稱")).toHaveValue("Alex");
   });
 });

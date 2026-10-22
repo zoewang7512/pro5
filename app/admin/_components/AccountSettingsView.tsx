@@ -13,6 +13,7 @@ import Alert from "@mui/material/Alert";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAdminProfile } from "./AdminProfileContext";
+import { useUnsavedChangesGuard } from "./UnsavedChangesProvider";
 import {
   cancelMfaEnrollment,
   enrollMfa,
@@ -68,6 +69,9 @@ export function AccountSettingsView() {
   const nameValidationError = validateAdminDisplayName(nameInput);
   const showNameError = nameTouched || nameSubmitAttempted ? nameValidationError : null;
   const hasNameChanges = nameInput !== (displayName ?? "");
+  // 未儲存變更提示（TASK-082）：儲存時存的是 nameInput.trim()，輸入框不會回寫，所以這裡要用 trim 後的值比對，
+  // 否則輸入「Zoe 」存檔成功後會一直被判定有變更。不改動 hasNameChanges（它決定儲存鈕是否啟用，屬儲存邏輯）。
+  useUnsavedChangesGuard("account-name", nameInput.trim() !== (displayName ?? ""));
 
   const [avatarBusy, setAvatarBusy] = React.useState(false);
   const [avatarError, setAvatarError] = React.useState<string | null>(null);
@@ -251,6 +255,8 @@ export function AccountSettingsView() {
   // 避免送出一次沒有實質效果、卻仍會消耗寄信配額的變更請求（security-reviewer TASK-042
   // 審查發現）。
   const hasEmailChanges = emailInput.trim().toLowerCase() !== email.toLowerCase();
+  // 未儲存變更提示（TASK-082）。密碼區塊（兩處的目前密碼、新密碼、確認新密碼）刻意不接 guard。
+  useUnsavedChangesGuard("account-email", hasEmailChanges);
 
   async function handleUpdateEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

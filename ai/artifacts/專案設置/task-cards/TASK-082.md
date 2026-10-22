@@ -9,7 +9,7 @@
 - 上層 User Story：UI 設計系統
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-081（共用機制：`useUnsavedChangesGuard`、Provider、提示對話框、Sidebar／登出接線）
-- 狀態：**計畫待人工核准**；前置 TASK-081 完成後才可就緒
+- 狀態：**已驗證，待人工驗收**（計畫已於 2026-10-22 經使用者核准；實作與驗證完成，見 [驗證報告](../verification/TASK-082.md)）
 - 風險等級：中（前端互動；套用既有機制，不碰資料與權限）
 - Agent owner：Claude Code
 - 人工核准者：使用者
@@ -80,9 +80,8 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
+- 變更的檔案、執行過的指令、測試輸出：見 [驗證報告](../verification/TASK-082.md)。
+- 螢幕截圖：Browser 工具擷取，未存成專案檔案。
+- 與任務卡的差異：測試檔路徑實為 `tests/admin/business-hours.test.ts`（卡上的 `tests/lib/business-hours.test.ts` 不存在）。
 - 已知限制：瀏覽器上一頁／下一頁不攔截；密碼區塊不計入變更。
 - 後續任務：TASK-083
