@@ -63,7 +63,8 @@
       "npx vitest run --maxWorkers=3：1070/1072（2 項為 account-settings-view 的 5 秒逾時，單獨重跑 33/33 通過）",
       "整合測試依序執行（共 304 項）：rls 18、designers 122（修正後）、booking 23、admin-booking 16、services 17、booking-policy 7、business-hours 33、store-settings 11、account 17、mfa-rls 20、notifications 20，全數通過",
       "測前測後設定表快照與殘留比對：business_hours／closed_dates／admins 一致；__TEST__ 資料、孤兒檔、混接皆 0；auth 帳號 33 → 1",
-      "瀏覽器走查（正式資料庫，__TEST__ 資料，已清除）：新增設計師、開服務、上傳作品、前台指定與不指定各預約、聯集與自動指派、後台多選篩選、請假警告與標記、前台該日時段消失、停用、375px 與亮暗色"
+      "瀏覽器走查（正式資料庫，__TEST__ 資料，已清除）：新增設計師、開服務、上傳作品、前台指定與不指定各預約、聯集與自動指派、後台多選篩選、請假警告與標記、前台該日時段消失、停用、375px 與亮暗色",
+      "附錄 SQL（使用者於 SQL Editor 執行）：proacl 與 0018 套用前基準一致、內部函式 anon/authenticated 無 execute、is_admin() 含 aal2、四張表 RLS 開啟且未 force、storage.objects 11 條 policy 皆限 authenticated 且含 is_admin()"
     ],
     "findings": [
       "test:designers 掃除 auth 帳號大小寫比對錯誤（TASK-067 引入），正式庫累積 32 個測試帳號，已修並清除",
@@ -71,7 +72,7 @@
       "驗收標準 #2 兩個資料庫層缺口：簡介控制字元、請假日今天以後只在前端或函式層擋",
       "TASK-079 已完成並在 master（更正先前誤述）；designer001 未啟用 MFA；Supabase 公開註冊仍開著，皆待人工決定"
     ],
-    "residual": "proacl 等 SQL 證據待使用者執行附錄 SQL；確認信實收截圖待合併部署後（正式 Vercel 目前仍是 master 舊程式）；booking_policy／store_settings 比對只存雜湊；cron 內嵌失敗整批不寄；UPDATE webhook 依賴不能改派；get_available_slots 無限流；未做實作後 subagent 審查"
+    "residual": "確認信實收截圖待合併部署後（正式 Vercel 目前仍是 master 舊程式）；booking_policy／store_settings 比對只存雜湊；cron 內嵌失敗整批不寄；UPDATE webhook 依賴不能改派；get_available_slots 無限流；未做實作後 subagent 審查"
   },
   "comments": [
     {
@@ -88,6 +89,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "驗證完成，轉 Verify，待人工驗收。合併 master 前仍有待人工處理事項，見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "已在 SQL Editor 執行附錄 SQL 並貼回輸出（proacl、is_admin aal2、RLS 旗標、storage policy）"
     }
   ]
 }

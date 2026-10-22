@@ -3,13 +3,13 @@
 ## 摘要
 
 - 任務：TASK-077 多位設計師 前後端串接驗證、端到端走查與文件同步（整個「多位設計師」Epic 的整合驗證）
-- 結果：**自動化驗證與走查通過；有 3 項需要你動手或決定才能完成**（見「待人工處理」）。尚未合併 master。
+- 結果：**自動化驗證、走查與 SQL 檢查皆通過；剩下需要使用者決定或動手的事項**（見「待人工處理」：designer001 的 MFA、公開註冊、確認信實收、合併 master）。尚未合併 master。
 - 驗證者：實作 agent（Claude Code）。動工前 architect、security-reviewer 的審查意見**不等同人工核准**；product／ui／architecture／security／
   test／code_review 關卡待人工核准。
 
 ## 待人工處理（合併 master 前）
 
-1. **`proacl` 等 SQL 證據（我沒有 SQL 通道）**：請在 Supabase SQL Editor 貼上本報告最後的「附錄 SQL」（唯讀、包在 `begin read only … rollback`），把輸出貼回來，我補進報告。
+1. ~~**`proacl` 等 SQL 證據**~~ **已完成（2026-10-22）**：使用者在 SQL Editor 執行附錄 SQL 並貼回，`proacl`、`is_admin()` aal2、四張表 RLS 旗標、`storage.objects` 全部 policy 皆符合預期，見下方「合併前 SQL／資料檢查」。
 2. **designer001（唯一正式管理員）尚未啟用 MFA**：TASK-079（`is_admin()` 強制 aal2）**已完成並在 master**（`234e6f7`、`13d9970`、`b450c2b`，本分支已包含 master），
    但它只對「已啟用 MFA」的帳號生效，所以目前這個唯一的管理員仍只靠密碼保護。本 Epic 新增了只靠這組密碼保護的寫入面（公開 bucket 上傳、可竄改前台設計師頁、
    關閉服務或標請假即可讓前台無法預約）。security-reviewer 評為中風險、與既有「管理員密碼外洩」同類，沒有新的攻擊類型。
@@ -83,7 +83,10 @@
 | (1b) 殘留 auth 帳號、`admins` 額外列 | ✅ auth 只剩 1 位（管理員）；`admins` 筆數與基準一致 |
 | (2) 沒有「上架中但沒有任何啟用設計師」的服務 | ✅ `active_services_without_active_designer = []` |
 | (2b) 測試設計師沒有混接到真實服務、真實設計師沒有混接到測試服務 | ✅ 兩個方向皆 0 |
-| (3) 兩支 RPC 的 `proacl` 與 0018 套用前一致 | ⏳ **待你執行附錄 SQL**。（TASK-068 驗證報告已有「套用前後一致」的紀錄；本次是合併前複驗） |
+| (3) 兩支 RPC 的 `proacl` 與 0018 套用前一致 | ✅ **使用者於 2026-10-22 在 SQL Editor 執行並貼回**（第一次只貼到第 4 段，因 SQL Editor 只顯示最後一段結果；之後改用合併成單一查詢的版本取得其餘三項）。`create_appointment`、`get_available_slots`：`postgres`／`anon`／`authenticated`／`service_role` 皆可 execute，與 TASK-068 記錄的套用前基準一致，參數含 `p_designer_id`（亦證明 0018 已套用）。內部函式 `_designer_is_eligible`、`_designer_is_free`、`_email_dedupe_key`、`designer_portfolio_limit_check` 只有 `postgres`、`service_role`，anon 與 authenticated 不能直接呼叫。`designer_specialties_valid` 為 `postgres`／`authenticated`／`service_role`，與 0017 刻意授權範圍一致（check constraint 執行時需要）。所有 ACL 都沒有 PUBLIC 項目 |
+| (3b) `is_admin()` 含 aal2 判斷（0016） | ✅ `is_admin_checks_aal2 = true` |
+| (3c) 四張設計師表的 RLS 旗標 | ✅ `designers`、`designer_services`、`designer_portfolio_images`、`designer_leaves` 皆 `relrowsecurity = true`、`relforcerowsecurity = false` |
+| (4) `storage.objects` 全部 policy（附錄 SQL 第 4 段，使用者 2026-10-22 貼回） | ✅ 共 11 條，**全部只授權 `{authenticated}` 且都含 `is_admin()`**，沒有 anon／public 的 policy，沒有寬鬆的手動 policy。`designer-assets` 只有 select／insert／delete 三條，**沒有 update policy**（不能覆寫）；insert 限定路徑兩層、第一層 `avatar`／`portfolio`、第二層 `^[0-9a-f-]{36}$`、副檔名 jpg／png／webp，與 0017 設計一致。`admin-assets` 與 `store-assets` 的 policy 也只對管理員開放 |
 | 0017／0018 已套用 | ✅ 間接證據：`test:designers` 122 項（含 `p_designer_id` 參數呼叫與四張新表）在真實專案全過 |
 
 所有查詢唯讀，輸出只有計數與 id，不含顧客姓名、電話、email。
