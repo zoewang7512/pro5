@@ -25,8 +25,8 @@
     "human_approval_recorded": false
   },
   "gates": {
-    "product": false,
-    "ui": false,
+    "product": true,
+    "ui": true,
     "architecture": false,
     "security": false,
     "test": false,
@@ -34,8 +34,8 @@
   },
   "links": {
     "featureSpec": "ai/artifacts/專案設置/feature-spec-未儲存變更離開提示.md",
-    "screenSpec": "",
-    "mockupDecision": "",
+    "screenSpec": "ai/artifacts/專案設置/screen-spec-未儲存變更離開提示.md",
+    "mockupDecision": "ai/artifacts/專案設置/mockup-decision-未儲存變更離開提示.md",
     "taskCard": "ai/artifacts/專案設置/task-cards/TASK-081.md",
     "verificationReport": "",
     "pr": ""
@@ -47,7 +47,10 @@
     "app/admin/_components/BookingPolicyForm.tsx",
     "app/admin/_components/BusinessHoursForm.tsx",
     "app/admin/_components/AccountSettingsView.tsx",
-    "components/ui/ConfirmDialog.tsx"
+    "components/ui/ConfirmDialog.tsx",
+    "ai/artifacts/專案設置/mockups/unsaved-changes-variant-a.html",
+    "ai/artifacts/專案設置/mockups/unsaved-changes-variant-b.html",
+    "ai/artifacts/專案設置/mockups/unsaved-changes-variant-c.html"
   ],
   "evidence": {
     "commands": [],
@@ -69,6 +72,21 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "功能規格書草稿已產出（含 5 項假設 A1～A5 待使用者核准時確認）。尚未進入就緒，等待人工核准規格，之後走 ui-mockup-gate 與 implementation-plan。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "核准功能規格書（含假設 A1～A5），進入 ui-mockup-gate。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-22",
+      "text": "ui-mockup-gate：已產出畫面規格、決策紀錄與 3 個 mockup 變體（A 只有對話框／B 對話框＋頁籤圓點／C 對話框列變更欄位＋儲存列提示），建議 B，等待使用者選定。選定前不得實作。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-22",
+      "text": "選定 mockup 變體 B（對話框＋「基本資料」頁籤圓點）。"
     }
   ]
 }
