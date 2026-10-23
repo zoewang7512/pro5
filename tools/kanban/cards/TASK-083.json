@@ -2,7 +2,7 @@
   "id": "TASK-083",
   "title": "UI 設計系統 後台「未儲存變更」離開提示：設計師基本資料、頁籤圓點、服務項目對話框",
   "content": "設計師基本資料（含新增模式、專長標籤輸入中）、麵包屑攔截、「基本資料」頁籤未儲存圓點（變體 B，MUI Badge variant=dot）、服務項目新增／編輯對話框（背景／Esc／取消）。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "",
   "agent": "Claude Code",
@@ -80,6 +80,11 @@
       "name": "Claude Code",
       "time": "2026-10-22",
       "text": "實作與驗證完成，轉 Verify，待人工驗收。詳見驗證報告；走查抓到兩個問題（焦點掉到 body、亮色圓點對比 2.995:1）已修正並驗證。TASK-081／082／083 皆完成後才合併 master。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-23",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }
