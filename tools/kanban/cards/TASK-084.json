@@ -1,0 +1,111 @@
+{
+  "id": "TASK-084",
+  "title": "稽核紀錄 資料表與寫入機制（0019_audit_log、lib/admin/audit-log.ts、單元與整合測試、清掃腳本）",
+  "content": "建立只增不減的 audit_log 與永不 throw 的 recordAdminAction，含事件目錄、describeAuditEntry、listAuditLog、test:audit-log 權限矩陣與清掃腳本。簡版 A：不碰預約寫入路徑、沒有 trigger。",
+  "stage": "verify",
+  "risk": "medium",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-23",
+  "epic": "稽核紀錄",
+  "userStory": "稽核紀錄資料表與寫入機制",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-001",
+    "TASK-002",
+    "TASK-003",
+    "TASK-004",
+    "TASK-005",
+    "TASK-006",
+    "TASK-007",
+    "TASK-008",
+    "TASK-009",
+    "TASK-063",
+    "TASK-064",
+    "TASK-065",
+    "TASK-066",
+    "TASK-081",
+    "TASK-082",
+    "TASK-083",
+    "TASK-079"
+  ],
+  "order": 84,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/稽核紀錄/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/稽核紀錄/task-cards/TASK-084.md",
+    "verificationReport": "ai/artifacts/稽核紀錄/verification/TASK-084.md",
+    "pr": ""
+  },
+  "refs": [
+    "supabase/migrations/0019_audit_log.sql",
+    "supabase/migrations/0019_audit_log_down.sql",
+    "lib/admin/audit-log.ts",
+    "tests/admin/audit-log.test.ts",
+    "tests/audit-log.integration.test.ts",
+    "vitest.audit-log.config.ts",
+    "scripts/sweep-audit-test-rows.mjs",
+    "ai/context/decisions.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過",
+      "npx vitest run tests/admin/audit-log.test.ts：63 項通過",
+      "全套（--testTimeout=60000 --maxWorkers=4）：1271／1272，唯一失敗為既有並行不穩定（單跑通過）",
+      "security-reviewer 複審 0019：無高／中風險，低風險 3 項已採納",
+      "npm run test:audit-log：23 項通過（首次 22／23：帶 id 的 insert 回 428C9 而非 42501，已修正斷言）",
+      "npm run test:rls 回歸：18 項通過",
+      "npm run sweep:audit-test-rows（dry-run）：0 筆殘留"
+    ],
+    "findings": [
+      "複審建議並已採納：revoke 含 public、event_type 正則改 [.]、補 actor_id set default、檔頭註明不要重跑"
+    ],
+    "residual": "僅以未啟用 MFA 的店長帳號驗證；保證邊界（可新增偽造紀錄、繞過後台不記、可能漏記）見 decisions.md；security／test／code_review 關卡待人工核准"
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-23",
+      "text": "選定「簡版 A」（後台函式內記錄）；完整版（資料庫 trigger、防竄改、9 張卡）擱置，文件保留在 完整版備案/。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-23",
+      "text": "依簡版重寫規格書、架構筆記與 3 張任務卡。規格書與任務卡等待使用者確認後才標記就緒。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "確認簡版規格書。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "程式、單元測試、決策紀錄與清掃腳本完成；0019 待人工套用到 Supabase 後執行整合測試，通過才轉 Verify。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "0019 已套用，整合測試 23 項與 test:rls 18 項通過，卡轉 Verify，待人工驗收。"
+    }
+  ]
+}

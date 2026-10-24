@@ -412,3 +412,49 @@
       已過期」案例會真的成立一筆帶 email 的預約（@example.invalid，Resend 於 API 層拒絕，不會真的寄出），其餘一律
       先以 null 建立再只更新 customer_email 那一欄，避開 0011／0012 的 webhook 觸發條件。
 ```
+
+## TASK-084～086（稽核紀錄，簡版 A，0019）：後台函式內記錄的操作日誌，擱置防竄改完整版
+
+```text
+日期：2026-10-24
+決策：用「簡版 A」做後台操作日誌——一張只增不減的 public.audit_log，加上由各後台寫入函式在
+      「原操作成功之後」呼叫的 recordAdminAction（lib/admin/audit-log.ts，永不 throw）。
+      不做資料庫 trigger、不做測試標記與密鑰、不做清除帳本；原完整版設計（9 張卡）保留在
+      ai/artifacts/稽核紀錄/完整版備案/。
+情境：使用者的初衷是「簡單記錄店長有過什麼操作」。後台寫入都由瀏覽器直接對 Supabase 進行，資料表只有
+      updated_at，事後無法回答「什麼時候誰改了什麼」。完整版（trigger 在資料庫層記錄所有寫入）能防繞過
+      與竄改，但要動預約寫入路徑、需要測試標記機制，成本與風險遠高於需求。
+考慮過的替代方案：
+  - 完整版（資料庫 trigger＋防竄改）：能記到繞過後台的操作，但碰預約寫入路徑（顧客預約的核心流程）、
+    要 9 張卡；使用者選擇擱置。升級路徑：保留備案文件，日後若出現「需要記到繞過後台的操作」或多位管理員，
+    再依備案升級，audit_log 欄位（含 actor_id）已預留。
+  - 只靠 updated_at／Supabase Auth logs：無法回答「改了什麼」。
+為何選這個：改動小、不碰既有寫入路徑與顧客流程、記錄失敗不影響原操作，且足以回答使用者的實際問題。
+權限與欄位（0019_audit_log.sql）：
+  - anon 零權限；authenticated 只有 select 與「欄位層級 insert」(event_type, entity_type, entity_id,
+    summary, changes)，不含 id、actor_id、created_at——操作者（default auth.uid()）與時間（default now()）
+    只能由資料庫決定，前端無法指定（寫法比照 0001 對 appointments 的 insert (欄位...)）。
+  - RLS 只有 select／insert 兩條 policy（is_admin()），沒有 update／delete policy 也沒有授權。
+  - service_role 只有 select、delete（delete 僅供整合測試清掃，不給 insert／update）。
+  - identity 欄位的 insert 不需對序列另外授權（security-reviewer 複審確認）。
+  - 複審後採納：revoke 含 public；event_type 正則用 [.] 取代 \. 以免依賴 standard_conforming_strings；
+    補 alter column actor_id set default 讓重跑收斂；檔頭註明「後續 migration 調整授權就不要重跑本檔」。
+保證邊界（如實記錄，這是操作日誌不是防竄改稽核）：
+  - 能防止：登入帳號修改或刪除既有紀錄、偽造操作者與時間。
+  - 不能防止：被盜用的店長 session 新增偽造紀錄；繞過後台的操作（直接打 Supabase API、service key、
+    SQL Editor）不會被記錄；資料庫 owner／service key 可改動資料表；使用者在寫入前關閉分頁會漏記；
+    記錄失敗只 console.warn（刻意不影響原操作），所以可能漏記。
+寫入函式的設計：
+  - recordAdminAction 永不 throw；失敗只印 error code（不印訊息內容）；文字值截斷 60 字；摘要／差異序列化
+    超過 3500 位元組（資料庫上限 4096，jsonb::text 較長，留餘裕）依序丟棄 changes、summary，仍保留事件與對象。
+  - 事件建構函式只接受規格白名單欄位，且 recordAdminAction 會再依事件白名單過濾 summary／changes 的鍵
+    （縱深防禦：即使呼叫端誤塞 customer_* 也寫不進去）；預約事件輸入型別不含顧客欄位。
+  - 沒有實際變動回傳 null（不記）；舊值讀不到時只記新值（changes 沒有 from）。
+  - 顯示文字（中文事件名、前後差異）由前端依事件代碼組成、不存資料庫；時間以 Intl 固定 Asia/Taipei，
+    不依賴執行環境時區；白名單外的 key 一律忽略。
+測試雜訊：整合測試以店長帳號呼叫來源函式會留下紀錄；帶 __TEST__ 名稱的可用
+      npm run sweep:audit-test-rows（預設 dry-run，--apply 才刪，可 --since）清除；不帶名稱的
+      （預約規則、營業時間還原）可能留下少量雜訊，屬已接受。
+部署順序：先在 Supabase SQL Editor 套用 0019，再部署前端（前端早於 0019 部署時 recordAdminAction 只會警告，
+      列表頁會顯示錯誤狀態）。回滾：Vercel 回滾前端 → 0019_audit_log_down（會刪除全部紀錄，先匯出）。
+```

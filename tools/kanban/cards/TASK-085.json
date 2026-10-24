@@ -1,0 +1,74 @@
+{
+  "id": "TASK-085",
+  "title": "稽核紀錄 記錄後台操作（16 個來源函式接上 recordAdminAction）",
+  "content": "預約完成／取消／改期、預約規則、營業時間、公休日、服務、設計師、設計師服務、請假日共 16 個函式成功後留紀錄；寫入前先讀舊值；操作失敗不留、紀錄失敗不影響操作；不含顧客個資。",
+  "stage": "backlog",
+  "risk": "medium",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-23",
+  "epic": "稽核紀錄",
+  "userStory": "記錄後台操作",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-084"
+  ],
+  "order": 85,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/稽核紀錄/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/稽核紀錄/task-cards/TASK-085.md",
+    "verificationReport": "ai/artifacts/稽核紀錄/verification/TASK-085.md",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/appointments.ts",
+    "lib/booking-policy.ts",
+    "lib/admin/business-hours.ts",
+    "lib/admin/closed-dates.ts",
+    "lib/admin/services.ts",
+    "lib/admin/designers.ts",
+    "tests/admin/audit-log-wiring.test.ts"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "使用者",
+      "time": "2026-10-23",
+      "text": "選定「簡版 A」（後台函式內記錄）；完整版（資料庫 trigger、防竄改、9 張卡）擱置，文件保留在 完整版備案/。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-23",
+      "text": "依簡版重寫規格書、架構筆記與 3 張任務卡。規格書與任務卡等待使用者確認後才標記就緒。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "確認簡版規格書。"
+    }
+  ]
+}
