@@ -39,6 +39,24 @@ describe("AdminShell 導覽項目", () => {
     expect(screen.getByRole("link", { name: "設計師" })).toHaveAttribute("href", "/admin/designers");
   });
 
+  it("「稽核紀錄」是最後一項，連到 /admin/audit-log", () => {
+    render(<AdminShell>content</AdminShell>);
+
+    const links = screen.getAllByRole("link");
+    const labels = links.map((link) => link.textContent);
+    expect(labels[labels.length - 1]).toBe("稽核紀錄");
+    expect(labels.indexOf("稽核紀錄")).toBe(labels.indexOf("帳號設定") + 1);
+    expect(screen.getByRole("link", { name: "稽核紀錄" })).toHaveAttribute("href", "/admin/audit-log");
+  });
+
+  it("在 /admin/audit-log 時只有「稽核紀錄」是使用中的導覽項目", () => {
+    pathnameMock.value = "/admin/audit-log";
+    render(<AdminShell>content</AdminShell>);
+
+    expect(screen.getByRole("link", { name: "稽核紀錄" })).toHaveClass("Mui-selected");
+    expect(screen.getByRole("link", { name: "帳號設定" })).not.toHaveClass("Mui-selected");
+  });
+
   it("在 /admin/designers 時只有「設計師」是使用中的導覽項目", () => {
     pathnameMock.value = "/admin/designers";
     render(<AdminShell>content</AdminShell>);

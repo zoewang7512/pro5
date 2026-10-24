@@ -96,6 +96,15 @@ function UsersIcon() {
   );
 }
 
+function ScrollTextIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <rect x="5" y="3.5" width="14" height="17" rx="2" />
+      <path d="M9 8h6M9 12h6M9 16h3.5" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean; icon: React.ReactNode }> = [
   { label: "預約", href: "/admin", icon: <CalendarIcon /> },
   { label: "設計師", href: "/admin/designers", icon: <UsersIcon /> },
@@ -104,6 +113,7 @@ const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean; icon: 
   { label: "預約規則", href: "/admin/booking-policy", icon: <ClipboardCheckIcon /> },
   { label: "商店設定", href: "/admin/store-settings", icon: <StorefrontIcon /> },
   { label: "帳號設定", href: "/admin/account", icon: <UserCircleIcon /> },
+  { label: "稽核紀錄", href: "/admin/audit-log", icon: <ScrollTextIcon /> },
 ];
 
 // 子路徑（例如 /admin/designers/new、/admin/designers/<id>）也算該導覽項目使用中；「預約」的

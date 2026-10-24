@@ -426,6 +426,46 @@ describe("describeAuditEntry", () => {
     ]);
   });
 
+  // Postgres jsonb 不保留鍵的寫入順序（短鍵排前面）：從資料庫讀回來的 changes 可能是 end_at 在 start_at 前。
+  // 顯示順序必須固定為「開始→結束」「價格→時長→緩衝」，不依資料庫回傳順序。
+  it("差異依固定順序顯示，不受 jsonb 鍵順序影響", () => {
+    const rescheduled = describeAuditEntry({
+      event_type: "appointment.rescheduled",
+      summary: {},
+      changes: {
+        end_at: { from: "2026-10-24T08:00:00.000Z", to: "2026-10-25T08:00:00.000Z" },
+        start_at: { from: "2026-10-24T07:00:00.000Z", to: "2026-10-25T07:00:00.000Z" },
+      },
+    });
+    expect(rescheduled.diffs).toEqual(["開始時間：10/24 15:00 → 10/25 15:00", "結束時間：10/24 16:00 → 10/25 16:00"]);
+
+    const created = describeAuditEntry({
+      event_type: "service.created",
+      summary: { service_name: "剪髮" },
+      changes: { price: { to: 600 }, buffer_minutes: { to: 0 }, duration_minutes: { to: 30 } },
+    });
+    expect(created.diffs).toEqual(["價格：NT$600", "時長：30 分鐘", "緩衝時間：0 分鐘"]);
+
+    const hours = describeAuditEntry({
+      event_type: "business_hours.updated",
+      summary: { weekdays: [1, 3] },
+      changes: {
+        weekday_3_is_closed: { from: false, to: true },
+        weekday_1_is_closed: { from: false, to: true },
+        weekday_3_open_time: { from: "10:00", to: null },
+        weekday_1_close_time: { from: "19:00", to: null },
+        weekday_1_open_time: { from: "10:00", to: null },
+      },
+    });
+    expect(hours.diffs).toEqual([
+      "週一開店時間：10:00 → 未設定",
+      "週一打烊時間：19:00 → 未設定",
+      "週一公休：否 → 是",
+      "週三開店時間：10:00 → 未設定",
+      "週三公休：否 → 是",
+    ]);
+  });
+
   it("跨日換算：UTC 前一天 20:00 是台北隔天 04:00", () => {
     const description = describeAuditEntry({
       event_type: "appointment.rescheduled",

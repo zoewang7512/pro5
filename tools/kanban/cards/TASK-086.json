@@ -26,7 +26,7 @@
   },
   "gates": {
     "product": true,
-    "ui": false,
+    "ui": true,
     "architecture": false,
     "security": false,
     "test": false,
@@ -73,6 +73,21 @@
       "name": "使用者",
       "time": "2026-10-24",
       "text": "確認簡版規格書。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "Phase 3 完成：畫面規格書與 3 個 mockup 變體（A 表格＋Chip／B 日期分組活動流／C 可展開列）已產出，使用者選定 A。已實作 AuditLogView、/admin/audit-log、Sidebar 最後一項，元件測試 21 項＋Sidebar 2 項通過，tsc／lint 乾淨；project-map／decisions／design-system 已更新。待辦：登入後的瀏覽器走查與深淺色截圖、build、整合測試重跑、security-reviewer 總覽、人工驗收。stage 維持 backlog：前置 TASK-084／085 仍在 verify，dependsOn 防呆不允許推進。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "走查（測試資料）：66 筆紀錄的載入更多、預約／設定類別皆正確；發現 jsonb 鍵順序導致差異顯示順序顛倒，已修 describeAuditEntry 內部迭代順序並新增測試；測試資料已清除。security-reviewer 總覽審查無 Critical／High／Medium。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "人工驗收通過。看板轉 Done 待 TASK-084／085 先核准（dependsOn 防呆）。"
     }
   ]
 }

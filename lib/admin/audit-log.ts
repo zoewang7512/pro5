@@ -602,6 +602,17 @@ function fieldDef(key: string): { label: string; format: ValueFormat } | null {
   return Object.prototype.hasOwnProperty.call(FIELD_DEFS, key) ? FIELD_DEFS[key] : null;
 }
 
+// 差異的顯示順序：一般欄位依 FIELD_DEFS 宣告順序；營業時間依「星期→開店→打烊→公休」。
+// Postgres jsonb 不保留鍵的寫入順序（短鍵排前面），不能依資料庫回傳順序顯示。
+const WEEKDAY_FIELD_ORDER = Object.keys(WEEKDAY_FIELD_DEFS);
+
+function changeRank(key: string): number {
+  const weekday = WEEKDAY_CHANGE_KEY.exec(key);
+  if (weekday) return 1000 + Number(weekday[1]) * 10 + WEEKDAY_FIELD_ORDER.indexOf(weekday[2]);
+  const index = Object.keys(FIELD_DEFS).indexOf(key);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -638,7 +649,8 @@ export function describeAuditEntry(entry: Pick<AuditLogRow, "event_type" | "summ
   const changes = entry.changes && typeof entry.changes === "object" ? entry.changes : {};
 
   const diffs: string[] = [];
-  for (const [key, raw] of Object.entries(changes)) {
+  const orderedChanges = Object.entries(changes).sort(([a], [b]) => changeRank(a) - changeRank(b));
+  for (const [key, raw] of orderedChanges) {
     // 白名單外的 key 一律忽略（資料庫內容不可信，不讓未知欄位進到畫面）。
     if (known && !isAllowedChangeKey(entry.event_type as AuditEventType, key)) continue;
     const def = fieldDef(key);
