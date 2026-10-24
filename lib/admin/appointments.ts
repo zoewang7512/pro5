@@ -1,5 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "./week-range";
+import {
+  buildAppointmentRescheduledEvent,
+  buildAppointmentStatusEvent,
+  readAuditValue,
+  recordAdminAction,
+  type AppointmentAuditInfo,
+} from "./audit-log";
 
 // 薄封裝：型別 + 查詢函式，統一把 Supabase 查詢錯誤轉成 Result<T>，
 // 寫法比照 lib/booking/api.ts（這裡是直接 table 查詢，不需要處理 RPC 的 {ok,...} 信封）。
@@ -118,6 +125,41 @@ export async function getAppointmentDetail(
   return { ok: true, data: { ...toWeekAppointment(row), customer_phone: row.customer_phone } };
 }
 
+// 稽核紀錄用的寫入前讀取（單一查詢）：只取預約編號、時間、狀態、服務名稱、設計師名稱，
+// 不含 customer_*、access_token。讀不到回 null，只記新值，不阻擋原操作。
+type AuditAppointmentRow = {
+  start_at: string;
+  end_at: string;
+  status: string;
+  designers: { name: string } | { name: string }[] | null;
+  services: { name: string } | { name: string }[] | null;
+};
+
+function readAppointmentForAudit(supabase: SupabaseClient, appointmentId: string) {
+  return readAuditValue<AuditAppointmentRow>(() =>
+    supabase
+      .from("appointments")
+      .select("id, start_at, end_at, status, designers(name), services(name)")
+      .eq("id", appointmentId)
+      .maybeSingle(),
+  );
+}
+
+function auditNameOf(embed: AuditAppointmentRow["designers"]): string | null {
+  const row = Array.isArray(embed) ? embed[0] : embed;
+  return typeof row?.name === "string" ? row.name : null;
+}
+
+function toAppointmentAuditInfo(appointmentId: string, row: AuditAppointmentRow | null): AppointmentAuditInfo {
+  return {
+    appointmentId,
+    serviceName: auditNameOf(row?.services ?? null),
+    designerName: auditNameOf(row?.designers ?? null),
+    startAt: row?.start_at ?? null,
+    endAt: row?.end_at ?? null,
+  };
+}
+
 async function updateAppointmentStatus(
   supabase: SupabaseClient,
   appointmentId: string,
@@ -128,6 +170,8 @@ async function updateAppointmentStatus(
   // 本次呼叫就會因為找不到符合條件的列而自然落入下面「RLS 阻擋／找不到列」的分支失敗，
   // 不會把已結束的預約悄悄改回 pending 的狀態機（例如已取消卻被重新標記完成，
   // 導致重新落入 appointments_no_overlap 排除集合佔用時段）。
+  const before = await readAppointmentForAudit(supabase, appointmentId);
+
   const { data, error } = await supabase
     .from("appointments")
     .update({ status })
@@ -147,6 +191,16 @@ async function updateAppointmentStatus(
   if (!data || data.length === 0) {
     return { ok: false, error: INTERNAL_ERROR };
   }
+
+  await recordAdminAction(
+    supabase,
+    buildAppointmentStatusEvent(
+      status === "completed" ? "appointment.completed" : "appointment.cancelled",
+      toAppointmentAuditInfo(appointmentId, before),
+      before?.status ?? null,
+      status,
+    ),
+  );
 
   return { ok: true, data: undefined };
 }
@@ -184,6 +238,8 @@ export async function rescheduleAppointment(
   // session 改期，本次送出仍會用陳舊資料成功覆寫，畫面顯示「已更新」但時段其實是錯的
   // （lost update）。不符合時自然落入下面的空結果分支，回傳失敗，使用者需要重新開啟
   // Modal 看最新狀態再試一次。
+  const before = await readAppointmentForAudit(supabase, appointmentId);
+
   const { data, error } = await supabase
     .from("appointments")
     // reminder_sent_at 一併重設回 null（TASK-054 審查發現的修正）：若這筆預約
@@ -214,6 +270,23 @@ export async function rescheduleAppointment(
   if (!data || data.length === 0) {
     return { ok: false, error: { code: "INTERNAL_ERROR", message: RESCHEDULE_ERROR_MESSAGES.INTERNAL_ERROR } };
   }
+
+  // 改期到「原時段」（時段清單會排除這筆預約自己，所以選得到）沒有實際變動，不記錄；
+  // 以時間戳比較而非字串（前端的 ...Z 與資料庫的 +00:00 格式可能不同）。
+  const unchanged =
+    before !== null &&
+    Date.parse(newStartAt) === Date.parse(currentStartAt) &&
+    Date.parse(newEndAt) === Date.parse(before.end_at);
+  if (unchanged) return { ok: true, data: undefined };
+
+  await recordAdminAction(
+    supabase,
+    buildAppointmentRescheduledEvent(
+      { ...toAppointmentAuditInfo(appointmentId, before), startAt: newStartAt, endAt: newEndAt },
+      // 樂觀鎖保證舊開始時間就是 currentStartAt；舊結束時間取自寫入前的讀取。
+      before ? { startAt: currentStartAt, endAt: before.end_at } : null,
+    ),
+  );
 
   return { ok: true, data: undefined };
 }

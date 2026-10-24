@@ -210,8 +210,46 @@ function truncateEntityId(entityId: string): string {
 }
 
 // ============================================================
+// 舊值／名稱讀取（接線用，永不 throw）
+// ============================================================
+
+// 寫入前讀舊值、寫入後查名稱：任何失敗（error、例外、查無）都回 null，呼叫端只記新值，不阻擋原操作。
+export async function readAuditValue<T>(
+  read: () => PromiseLike<{ data: T | null; error: unknown }>,
+): Promise<T | null> {
+  try {
+    const { data, error } = await read();
+    return error || data === null || data === undefined ? null : data;
+  } catch {
+    return null;
+  }
+}
+
+// 設計師／服務的名稱查詢（只 select name，不用 `*`）。
+export async function lookupName(
+  supabase: SupabaseClient,
+  table: "designers" | "services",
+  id: string,
+): Promise<string | null> {
+  const row = await readAuditValue<{ name?: unknown }>(() =>
+    supabase.from(table).select("name").eq("id", id).maybeSingle(),
+  );
+  return typeof row?.name === "string" ? row.name : null;
+}
+
+// ============================================================
 // 事件建構函式（只接受白名單欄位）
 // ============================================================
+
+// 摘要只放有值的欄位：名稱或時間讀不到（null／空字串）就省略，不寫入空值。
+function compactSummary(values: Record<string, AuditScalar | number[] | undefined>): AuditSummary {
+  const result: AuditSummary = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (value === null || value === undefined || value === "") continue;
+    result[key] = value;
+  }
+  return result;
+}
 
 // 欄位前後比對：before 為 null（讀不到舊值）時，所有欄位只記新值；否則只記有變動的欄位。
 function diffFields<K extends string>(
@@ -232,22 +270,23 @@ function diffFields<K extends string>(
   return changes;
 }
 
+// 名稱與時間取自寫入前的單一查詢；讀不到就是 null（摘要省略，事件與對象編號仍會記錄）。
 export type AppointmentAuditInfo = {
   appointmentId: string;
-  serviceName: string;
-  designerName: string;
-  startAt: string;
-  endAt: string;
+  serviceName: string | null;
+  designerName: string | null;
+  startAt: string | null;
+  endAt: string | null;
 };
 
 function appointmentSummary(info: AppointmentAuditInfo): AuditSummary {
-  return {
+  return compactSummary({
     appointment_id: info.appointmentId,
     service_name: info.serviceName,
     designer_name: info.designerName,
     start_at: info.startAt,
     end_at: info.endAt,
-  };
+  });
 }
 
 export function buildAppointmentStatusEvent(
@@ -267,7 +306,7 @@ export function buildAppointmentStatusEvent(
 }
 
 export function buildAppointmentRescheduledEvent(
-  info: AppointmentAuditInfo,
+  info: AppointmentAuditInfo & { startAt: string; endAt: string },
   before: { startAt: string; endAt: string } | null,
 ): AuditEntry {
   const changes: AuditChanges =
@@ -363,7 +402,7 @@ export function buildServiceCreatedEvent(serviceId: string, values: ServiceAudit
     eventType: "service.created",
     entityType: "service",
     entityId: serviceId,
-    summary: { service_name: values.name },
+    summary: compactSummary({ service_name: values.name }),
     changes: diffFields(["price", "duration_minutes", "buffer_minutes"], null, values),
   };
 }
@@ -379,27 +418,27 @@ export function buildServiceUpdatedEvent(
     eventType: "service.updated",
     entityType: "service",
     entityId: serviceId,
-    summary: { service_name: after.name },
+    summary: compactSummary({ service_name: after.name }),
     changes,
   };
 }
 
-export function buildServiceActiveEvent(serviceId: string, serviceName: string, isActive: boolean): AuditEntry {
+export function buildServiceActiveEvent(serviceId: string, serviceName: string | null, isActive: boolean): AuditEntry {
   return {
     eventType: isActive ? "service.activated" : "service.deactivated",
     entityType: "service",
     entityId: serviceId,
-    summary: { service_name: serviceName },
+    summary: compactSummary({ service_name: serviceName }),
     changes: {},
   };
 }
 
-export function buildDesignerCreatedEvent(designerId: string, designerName: string): AuditEntry {
+export function buildDesignerCreatedEvent(designerId: string, designerName: string | null): AuditEntry {
   return {
     eventType: "designer.created",
     entityType: "designer",
     entityId: designerId,
-    summary: { designer_name: designerName },
+    summary: compactSummary({ designer_name: designerName }),
     changes: {},
   };
 }
@@ -415,17 +454,17 @@ export function buildDesignerUpdatedEvent(
     eventType: "designer.updated",
     entityType: "designer",
     entityId: designerId,
-    summary: { designer_name: afterName },
+    summary: compactSummary({ designer_name: afterName }),
     changes: { name: beforeName === null ? { to: afterName } : { from: beforeName, to: afterName } },
   };
 }
 
-export function buildDesignerActiveEvent(designerId: string, designerName: string, isActive: boolean): AuditEntry {
+export function buildDesignerActiveEvent(designerId: string, designerName: string | null, isActive: boolean): AuditEntry {
   return {
     eventType: isActive ? "designer.activated" : "designer.deactivated",
     entityType: "designer",
     entityId: designerId,
-    summary: { designer_name: designerName },
+    summary: compactSummary({ designer_name: designerName }),
     changes: {},
   };
 }
@@ -433,22 +472,22 @@ export function buildDesignerActiveEvent(designerId: string, designerName: strin
 export function buildDesignerServiceEvent(info: {
   designerId: string;
   serviceId: string;
-  designerName: string;
-  serviceName: string;
+  designerName: string | null;
+  serviceName: string | null;
   enabled: boolean;
 }): AuditEntry {
   return {
     eventType: info.enabled ? "designer_service.enabled" : "designer_service.disabled",
     entityType: "designer_service",
     entityId: `${info.designerId}:${info.serviceId}`,
-    summary: { designer_name: info.designerName, service_name: info.serviceName },
+    summary: compactSummary({ designer_name: info.designerName, service_name: info.serviceName }),
     changes: {},
   };
 }
 
 export function buildDesignerLeaveEvent(info: {
   designerId: string;
-  designerName: string;
+  designerName: string | null;
   date: string;
   added: boolean;
 }): AuditEntry {
@@ -456,7 +495,7 @@ export function buildDesignerLeaveEvent(info: {
     eventType: info.added ? "designer_leave.added" : "designer_leave.removed",
     entityType: "designer_leave",
     entityId: `${info.designerId}:${info.date}`,
-    summary: { designer_name: info.designerName, date: info.date },
+    summary: compactSummary({ designer_name: info.designerName, date: info.date }),
     changes: {},
   };
 }

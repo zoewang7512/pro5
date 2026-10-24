@@ -7,6 +7,17 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listAuditLog, recordAdminAction } from "../lib/admin/audit-log";
+import { cancelAppointment, markAppointmentCompleted, rescheduleAppointment } from "../lib/admin/appointments";
+import { addClosedDate, removeClosedDate } from "../lib/admin/closed-dates";
+import {
+  addDesignerLeave,
+  removeDesignerLeave,
+  setDesignerActive,
+  setDesignerService,
+  updateDesignerBasicInfo,
+} from "../lib/admin/designers";
+import { createService, setServiceActive, updateService } from "../lib/admin/services";
+import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -346,5 +357,225 @@ describe("audit_log 權限矩陣（真實 Supabase 專案）", () => {
       const { data } = await serviceRoleClient.from("audit_log").select("id").eq("entity_id", entityId);
       expect(data).toEqual([]);
     });
+  });
+});
+
+// TASK-085：店長以測試資料實際呼叫後台函式後，audit_log 讀得到對應事件。
+// 預約規則與營業時間不在這裡呼叫（會暫時改動正式環境的設定，且 test:booking-policy／test:business-hours 已涵蓋
+// 寫入函式本身）；那兩個函式的接線由 tests/admin/audit-log-wiring.test.ts 驗證。
+// 清掃：本套件自己追蹤產生的 entity_id（含不帶 __TEST__ 名稱的公休日紀錄）並在 afterAll 以 service_role 刪除。
+describe("後台函式留下稽核紀錄（真實 Supabase 專案）", () => {
+  const TAG = `${MARKER}-wire`;
+  // 3 年後，避開正式環境的真實預約；公休日用 2099 年，避開真實公休日。
+  const FAR = 3 * 365 * 24 * 60 * 60 * 1000;
+  const CLOSED_DATE = "2099-06-15";
+  const LEAVE_DATE = "2099-06-20";
+
+  let serviceRoleClient: SupabaseClient;
+  let adminClient: SupabaseClient;
+  let serviceId: string;
+  let designerId: string;
+  let designerName: string;
+  const appointmentIds: string[] = [];
+  const trackedEntityIds: string[] = [];
+
+  async function eventsFor(entityId: string) {
+    const { data, error } = await serviceRoleClient
+      .from("audit_log")
+      .select("event_type, entity_type, entity_id, summary, changes, actor_id")
+      .eq("entity_id", entityId)
+      .order("id", { ascending: true });
+    expect(error).toBeNull();
+    return data ?? [];
+  }
+
+  async function makeAppointment(offsetMinutes: number): Promise<{ id: string; startAt: string; endAt: string }> {
+    const startAt = new Date(Date.now() + FAR + offsetMinutes * 60_000).toISOString();
+    const endAt = new Date(Date.now() + FAR + (offsetMinutes + 30) * 60_000).toISOString();
+    // customer_email 一律不填（null）：0012 的 Database Webhook 在 email 非 null 時才會寄信。
+    const { data, error } = await serviceRoleClient
+      .from("appointments")
+      .insert({
+        service_id: serviceId,
+        designer_id: designerId,
+        customer_name: `${TAG} fixture`,
+        start_at: startAt,
+        end_at: endAt,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    appointmentIds.push(data.id);
+    trackedEntityIds.push(data.id);
+    return { id: data.id, startAt, endAt };
+  }
+
+  beforeAll(async () => {
+    serviceRoleClient = newClient(serviceRoleKey!);
+    adminClient = newClient(anonKey!);
+    const { error } = await adminClient.auth.signInWithPassword({ email: designerEmail!, password: designerPassword! });
+    if (error) throw error;
+
+    // 服務透過 createService 建立（本身就是被測對象），再用 service_role 以名稱取回 id。
+    const created = await createService(adminClient, {
+      name: `${TAG} svc`,
+      price: 600,
+      durationMinutes: 30,
+      bufferMinutes: 0,
+      description: "",
+    });
+    expect(created.ok).toBe(true);
+    const { data: svc, error: svcError } = await serviceRoleClient
+      .from("services")
+      .select("id")
+      .eq("name", `${TAG} svc`)
+      .single();
+    if (svcError) throw svcError;
+    serviceId = svc.id;
+    trackedEntityIds.push(serviceId);
+
+    const designer = await createTestDesigner(serviceRoleClient, { tag: "wire", serviceIds: [serviceId] });
+    designerId = designer.id;
+    designerName = designer.name;
+    trackedEntityIds.push(designerId, `${designerId}:${serviceId}`, `${designerId}:${LEAVE_DATE}`, CLOSED_DATE);
+  });
+
+  afterAll(async () => {
+    const errors: unknown[] = [];
+    await adminClient?.auth.signOut();
+    // 公休日若測試中途失敗可能殘留，先確實移除再清其他資料。
+    await serviceRoleClient?.from("closed_dates").delete().eq("date", CLOSED_DATE);
+    if (serviceRoleClient && appointmentIds.length > 0) {
+      const { error } = await serviceRoleClient.from("appointments").delete().in("id", appointmentIds);
+      if (error) errors.push(error);
+    }
+    if (serviceRoleClient && designerId) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, [designerId]);
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (serviceRoleClient && serviceId) {
+      const { error } = await serviceRoleClient.from("services").delete().eq("id", serviceId);
+      if (error) errors.push(error);
+    }
+    if (serviceRoleClient) {
+      const { error } = await serviceRoleClient.from("audit_log").delete().in("entity_id", trackedEntityIds);
+      if (error) errors.push(error);
+    }
+    if (errors.length > 0) throw errors[0];
+  });
+
+  const serviceInput = (price: number, description: string) => ({
+    name: `${TAG} svc`,
+    price,
+    durationMinutes: 30,
+    bufferMinutes: 0,
+    description,
+  });
+
+  it("createService／updateService／setServiceActive：留下 created／updated／deactivated 事件", async () => {
+    const created = await eventsFor(serviceId);
+    expect(created.map((e) => e.event_type)).toEqual(["service.created"]);
+    expect(created[0].summary).toEqual({ service_name: `${TAG} svc` });
+    expect(created[0].changes).toEqual({ price: { to: 600 }, duration_minutes: { to: 30 }, buffer_minutes: { to: 0 } });
+
+    expect((await updateService(adminClient, serviceId, serviceInput(700, "x"))).ok).toBe(true);
+    // 只改描述：追蹤欄位沒變，不記錄。
+    expect((await updateService(adminClient, serviceId, serviceInput(700, "y"))).ok).toBe(true);
+    expect((await setServiceActive(adminClient, serviceId, false)).ok).toBe(true);
+
+    const events = await eventsFor(serviceId);
+    expect(events.map((e) => e.event_type)).toEqual(["service.created", "service.updated", "service.deactivated"]);
+    expect(events[1].changes).toEqual({ price: { from: 600, to: 700 } });
+    expect(events[2].summary).toEqual({ service_name: `${TAG} svc` });
+  });
+
+  it("setDesignerService／addDesignerLeave／removeDesignerLeave：留下事件，重複操作不重複記錄", async () => {
+    // fixture 已先對服務開啟（直接寫入，不經被測函式）：先關閉再開啟，才是兩次真實變動。
+    expect((await setDesignerService(adminClient, designerId, serviceId, false)).ok).toBe(true);
+    expect((await setDesignerService(adminClient, designerId, serviceId, true)).ok).toBe(true);
+    // 23505：已經開啟，不記錄。
+    expect((await setDesignerService(adminClient, designerId, serviceId, true)).ok).toBe(true);
+
+    expect((await addDesignerLeave(adminClient, designerId, LEAVE_DATE)).ok).toBe(true);
+    expect((await addDesignerLeave(adminClient, designerId, LEAVE_DATE)).ok).toBe(true);
+    expect((await removeDesignerLeave(adminClient, designerId, LEAVE_DATE)).ok).toBe(true);
+
+    const service = await eventsFor(`${designerId}:${serviceId}`);
+    expect(service.map((e) => e.event_type)).toEqual(["designer_service.disabled", "designer_service.enabled"]);
+    expect(service[0].summary).toEqual({ designer_name: designerName, service_name: `${TAG} svc` });
+
+    const leave = await eventsFor(`${designerId}:${LEAVE_DATE}`);
+    expect(leave.map((e) => e.event_type)).toEqual(["designer_leave.added", "designer_leave.removed"]);
+    expect(leave[0].summary).toEqual({ designer_name: designerName, date: LEAVE_DATE });
+  });
+
+  it("預約：完成／取消／改期留下事件，摘要不含顧客個資；失敗的操作不留紀錄", async () => {
+    const toComplete = await makeAppointment(0);
+    const toCancel = await makeAppointment(60);
+    const toMove = await makeAppointment(120);
+
+    expect((await markAppointmentCompleted(adminClient, toComplete.id)).ok).toBe(true);
+    expect((await cancelAppointment(adminClient, toCancel.id)).ok).toBe(true);
+    // 已取消的預約再取消：失敗，不再記錄。
+    expect((await cancelAppointment(adminClient, toCancel.id)).ok).toBe(false);
+    const newStart = new Date(new Date(toMove.startAt).getTime() + 180 * 60_000).toISOString();
+    const newEnd = new Date(new Date(toMove.endAt).getTime() + 180 * 60_000).toISOString();
+    expect((await rescheduleAppointment(adminClient, toMove.id, toMove.startAt, newStart, newEnd)).ok).toBe(true);
+
+    const completed = await eventsFor(toComplete.id);
+    expect(completed.map((e) => e.event_type)).toEqual(["appointment.completed"]);
+    expect(completed[0].changes).toEqual({ status: { from: "pending", to: "completed" } });
+
+    const cancelled = await eventsFor(toCancel.id);
+    expect(cancelled.map((e) => e.event_type)).toEqual(["appointment.cancelled"]);
+    expect(cancelled[0].summary).toMatchObject({
+      appointment_id: toCancel.id,
+      service_name: `${TAG} svc`,
+      designer_name: designerName,
+    });
+
+    const moved = await eventsFor(toMove.id);
+    expect(moved.map((e) => e.event_type)).toEqual(["appointment.rescheduled"]);
+    expect(Date.parse(moved[0].changes.start_at.from)).toBe(Date.parse(toMove.startAt));
+    expect(Date.parse(moved[0].changes.start_at.to)).toBe(Date.parse(newStart));
+
+    expect(JSON.stringify([completed, cancelled, moved])).not.toMatch(/customer|access_token|fixture/);
+    // 操作者由資料庫帶入，不是前端指定。
+    expect(cancelled[0].actor_id).not.toBeNull();
+  });
+
+  it("setDesignerActive／updateDesignerBasicInfo：停用與改名留下事件；沒改名稱不記錄", async () => {
+    expect((await setDesignerActive(adminClient, designerId, false)).ok).toBe(true);
+    // 狀態沒變：不記錄。
+    expect((await setDesignerActive(adminClient, designerId, false)).ok).toBe(true);
+    const renamed = `${designerName}b`;
+    expect(
+      (await updateDesignerBasicInfo(adminClient, designerId, { name: renamed, instagram: "", specialties: [], bio: "" })).ok,
+    ).toBe(true);
+    // 只改簡介，名稱沒變：不記錄。
+    expect(
+      (await updateDesignerBasicInfo(adminClient, designerId, { name: renamed, instagram: "", specialties: [], bio: "測試簡介" })).ok,
+    ).toBe(true);
+
+    const events = await eventsFor(designerId);
+    expect(events.map((e) => e.event_type)).toEqual(["designer.deactivated", "designer.updated"]);
+    expect(events[0].summary).toEqual({ designer_name: designerName });
+    expect(events[1].changes).toEqual({ name: { from: designerName, to: renamed } });
+    expect(JSON.stringify(events)).not.toContain("測試簡介");
+  });
+
+  it("addClosedDate／removeClosedDate：留下事件，重複加入同一天不重複記錄", async () => {
+    expect((await addClosedDate(adminClient, CLOSED_DATE)).ok).toBe(true);
+    expect((await addClosedDate(adminClient, CLOSED_DATE)).ok).toBe(true);
+    expect((await removeClosedDate(adminClient, CLOSED_DATE)).ok).toBe(true);
+    // 已不存在：冪等成功，不記錄。
+    expect((await removeClosedDate(adminClient, CLOSED_DATE)).ok).toBe(true);
+
+    const events = await eventsFor(CLOSED_DATE);
+    expect(events.map((e) => e.event_type)).toEqual(["closed_date.added", "closed_date.removed"]);
+    expect(events[0].summary).toEqual({ date: CLOSED_DATE });
   });
 });

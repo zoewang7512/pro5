@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AdminError, Result } from "./appointments";
 import { getWeekday } from "./week-range";
 import { toTaipeiDate } from "./format";
+import { buildBusinessHoursEvent, recordAdminAction } from "./audit-log";
 
 // 營業時間設定頁的資料存取。查詢風格比照 lib/admin/reschedule-slots.ts 的
 // getBusinessHoursForWeekday()——同一張 business_hours 表，這裡是一次查全部 7 列的批次版本。
@@ -77,6 +78,9 @@ export async function updateBusinessHours(
     is_closed: row.is_closed,
   }));
 
+  // 稽核紀錄：寫入前先讀舊值（讀不到就只記新值，不阻擋原操作）。
+  const before = await getAllBusinessHours(supabase).catch(() => null);
+
   // .select("weekday") 讓我們拿到實際受影響的列數：business_hours 的 7 列都已存在
   // （由 seed script 建立），這裡的 upsert 對每個 weekday 實際上都是 UPDATE 語意；
   // 比照 TASK-010 記錄的既知行為——RLS 阻擋 UPDATE 會回傳成功但空結果，不是拋錯，
@@ -93,6 +97,9 @@ export async function updateBusinessHours(
     // 擋過一次，理論上不會走到這裡，這是最後防線。
     return { ok: false, error: INTERNAL_ERROR };
   }
+
+  // 一次儲存只記一筆、只列有變動的星期；完全沒變動時 builder 回傳 null，不記錄。
+  await recordAdminAction(supabase, buildBusinessHoursEvent(before?.ok ? before.data : null, rows));
   return { ok: true, data: undefined };
 }
 

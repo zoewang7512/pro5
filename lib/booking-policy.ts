@@ -71,6 +71,22 @@ export function validateCancelWindowHours(value: string): string | null {
   return null;
 }
 
+// 稽核紀錄（TASK-085）：動態 import 而非靜態 import——顧客前台（BookingFlow）會 import 本檔，
+// 靜態引入 lib/admin/* 會讓前台反向依賴後台模組（見檔頭）。只有後台儲存時才會載入；
+// 任何失敗（含載入失敗）都只略過，不影響儲存結果。
+async function recordPolicyChange(
+  supabase: SupabaseClient,
+  before: BookingPolicy | null,
+  after: BookingPolicy,
+): Promise<void> {
+  try {
+    const { buildBookingPolicyEvent, recordAdminAction } = await import("./admin/audit-log");
+    await recordAdminAction(supabase, buildBookingPolicyEvent(before, after));
+  } catch {
+    // 紀錄失敗不影響原操作。
+  }
+}
+
 export async function updateBookingPolicy(
   supabase: SupabaseClient,
   input: BookingPolicyInput,
@@ -83,20 +99,22 @@ export async function updateBookingPolicy(
     return { ok: false, error: INTERNAL_ERROR };
   }
 
+  // 稽核紀錄：寫入前先讀舊值（讀不到就只記新值，不阻擋原操作）。
+  const before = await getBookingPolicy(supabase).catch(() => null);
+
   // .select("id") 讓我們拿到實際受影響的列數：RLS 擋掉 UPDATE 時 PostgREST 回傳成功但
   // 0 筆受影響，不是拋錯，必須檢查實際受影響列數，不能只看 error 是否為 null（既有教訓，
   // 見 lib/admin/business-hours.ts updateBusinessHours 的既有寫法）。
-  const { data, error } = await supabase
-    .from("booking_policy")
-    .update({
-      min_lead_time_hours: Number(input.min_lead_time_hours),
-      cancel_window_hours: input.cancel_window_hours.trim().length === 0 ? null : Number(input.cancel_window_hours),
-    })
-    .eq("id", 1)
-    .select("id");
+  const next = {
+    min_lead_time_hours: Number(input.min_lead_time_hours),
+    cancel_window_hours: input.cancel_window_hours.trim().length === 0 ? null : Number(input.cancel_window_hours),
+  };
+  const { data, error } = await supabase.from("booking_policy").update(next).eq("id", 1).select("id");
 
   if (error || !data || data.length !== 1) {
     return { ok: false, error: INTERNAL_ERROR };
   }
+
+  await recordPolicyChange(supabase, before?.ok ? before.data : null, next);
   return { ok: true, data: undefined };
 }

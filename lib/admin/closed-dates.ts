@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AdminError, Result } from "./appointments";
 import type { AffectedAppointment } from "./business-hours";
 import { addDays } from "./week-range";
+import { buildClosedDateEvent, recordAdminAction } from "./audit-log";
 
 // 公休日設定的資料存取。查詢與寫入風格比照 lib/admin/business-hours.ts。
 
@@ -34,6 +35,11 @@ export async function getAllClosedDates(supabase: SupabaseClient): Promise<Resul
 // .select("date") 比照 updateBusinessHours 的既有教訓：RLS 阻擋寫入時可能回傳成功但
 // 空結果，只看 error 是否為 null 不夠，要確認至少有 1 筆實際回傳。
 export async function addClosedDate(supabase: SupabaseClient, date: string): Promise<Result<void>> {
+  // 稽核紀錄：upsert 對已存在的日期是無害 no-op，不算實際變動；寫入前先查是否已存在
+  // （查不到結果就當作新增，不阻擋原操作）。
+  const existing = await isDateClosed(supabase, date).catch(() => null);
+  const alreadyClosed = existing?.ok === true && existing.data;
+
   const { data, error } = await supabase
     .from("closed_dates")
     .upsert({ date }, { onConflict: "date", ignoreDuplicates: false })
@@ -43,6 +49,9 @@ export async function addClosedDate(supabase: SupabaseClient, date: string): Pro
     return { ok: false, error: INTERNAL_ERROR };
   }
 
+  if (!alreadyClosed) {
+    await recordAdminAction(supabase, buildClosedDateEvent("closed_date.added", date));
+  }
   return { ok: true, data: undefined };
 }
 
@@ -65,8 +74,11 @@ export async function removeClosedDate(supabase: SupabaseClient, date: string): 
     if (stillClosed.data) {
       return { ok: false, error: INTERNAL_ERROR };
     }
+    // 冪等路徑：本來就不存在，沒有實際變動，不記錄。
+    return { ok: true, data: undefined };
   }
 
+  await recordAdminAction(supabase, buildClosedDateEvent("closed_date.removed", date));
   return { ok: true, data: undefined };
 }
 

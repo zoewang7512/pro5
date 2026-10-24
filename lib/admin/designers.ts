@@ -9,6 +9,16 @@ import {
   type Designer,
 } from "@/lib/designers";
 import type { Result } from "./appointments";
+import {
+  buildDesignerActiveEvent,
+  buildDesignerCreatedEvent,
+  buildDesignerLeaveEvent,
+  buildDesignerServiceEvent,
+  buildDesignerUpdatedEvent,
+  lookupName,
+  readAuditValue,
+  recordAdminAction,
+} from "./audit-log";
 import type { BusinessHoursRow } from "./business-hours";
 import { addDays, getTaipeiToday, getWeekday } from "./week-range";
 import { IMAGE_MAX_BYTES, PORTFOLIO_OUTPUT_MAX_DIMENSION, extensionForImageMime, reencodeImage } from "./image-reencode";
@@ -107,6 +117,8 @@ export async function setDesignerService(
     if (enabled) {
       const { error } = await supabase.from("designer_services").insert({ designer_id: designerId, service_id: serviceId });
       if (error && error.code !== "23505") return { ok: false, error: INTERNAL_ERROR };
+      // 23505＝本來就已開啟（冪等），沒有實際變動，不記錄。
+      if (!error) await recordDesignerServiceChange(supabase, designerId, serviceId, true);
       return { ok: true, data: undefined };
     }
 
@@ -117,10 +129,25 @@ export async function setDesignerService(
       .eq("service_id", serviceId)
       .select("service_id");
     if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+    await recordDesignerServiceChange(supabase, designerId, serviceId, false);
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, error: INTERNAL_ERROR };
   }
+}
+
+// 稽核紀錄：寫入成功後才查設計師與服務名稱（查不到就只記編號，不阻擋原操作）。
+async function recordDesignerServiceChange(
+  supabase: SupabaseClient,
+  designerId: string,
+  serviceId: string,
+  enabled: boolean,
+): Promise<void> {
+  const [designerName, serviceName] = await Promise.all([
+    lookupName(supabase, "designers", designerId),
+    lookupName(supabase, "services", serviceId),
+  ]);
+  await recordAdminAction(supabase, buildDesignerServiceEvent({ designerId, serviceId, designerName, serviceName, enabled }));
 }
 
 const DESIGNER_COLUMNS = "id, name, bio, specialties, instagram_handle, avatar_url, is_active, sort_order";
@@ -174,11 +201,14 @@ export async function createDesigner(
   if (lastError) return { ok: false, error: INTERNAL_ERROR };
   const nextSortOrder = last && last.length > 0 ? (last[0].sort_order as number) + 1 : 0;
 
+  const payload = toBasicInfoPayload(input);
   const { data, error } = await supabase
     .from("designers")
-    .insert({ ...toBasicInfoPayload(input), sort_order: nextSortOrder, is_active: true })
+    .insert({ ...payload, sort_order: nextSortOrder, is_active: true })
     .select("id");
   if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+
+  await recordAdminAction(supabase, buildDesignerCreatedEvent(data[0].id as string, payload.name));
   return { ok: true, data: { id: data[0].id as string } };
 }
 
@@ -189,18 +219,32 @@ export async function updateDesignerBasicInfo(
   id: string,
   input: DesignerBasicInfoInput,
 ): Promise<Result<void>> {
-  const { data, error } = await supabase
-    .from("designers")
-    .update(toBasicInfoPayload(input))
-    .eq("id", id)
-    .select("id");
+  // 稽核紀錄：只記名稱變動；寫入前先讀舊名稱（讀不到就只記新名稱，不阻擋原操作）。
+  const beforeName = await lookupName(supabase, "designers", id);
+
+  const payload = toBasicInfoPayload(input);
+  const { data, error } = await supabase.from("designers").update(payload).eq("id", id).select("id");
   if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+
+  await recordAdminAction(supabase, buildDesignerUpdatedEvent(id, beforeName, payload.name));
   return { ok: true, data: undefined };
 }
 
 export async function setDesignerActive(supabase: SupabaseClient, id: string, isActive: boolean): Promise<Result<void>> {
+  // 稽核紀錄：寫入前讀名稱與目前狀態；狀態本來就相同（沒有實際變動）時不記錄。
+  const before = await readAuditValue<{ name?: unknown; is_active?: unknown }>(() =>
+    supabase.from("designers").select("name, is_active").eq("id", id).maybeSingle(),
+  );
+
   const { data, error } = await supabase.from("designers").update({ is_active: isActive }).eq("id", id).select("id");
   if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+
+  if (before?.is_active !== isActive) {
+    await recordAdminAction(
+      supabase,
+      buildDesignerActiveEvent(id, typeof before?.name === "string" ? before.name : null, isActive),
+    );
+  }
   return { ok: true, data: undefined };
 }
 
@@ -740,6 +784,11 @@ export async function addDesignerLeave(
   try {
     const { error } = await supabase.from("designer_leaves").insert({ designer_id: designerId, date });
     if (error && error.code !== "23505") return { ok: false, error: INTERNAL_ERROR };
+    // 23505＝本來就已請假（冪等），沒有實際變動，不記錄。
+    if (!error) {
+      const designerName = await lookupName(supabase, "designers", designerId);
+      await recordAdminAction(supabase, buildDesignerLeaveEvent({ designerId, designerName, date, added: true }));
+    }
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, error: INTERNAL_ERROR };
@@ -762,6 +811,9 @@ export async function removeDesignerLeave(
       .eq("date", date)
       .select("date");
     if (error || !data || data.length !== 1) return { ok: false, error: INTERNAL_ERROR };
+
+    const designerName = await lookupName(supabase, "designers", designerId);
+    await recordAdminAction(supabase, buildDesignerLeaveEvent({ designerId, designerName, date, added: false }));
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, error: INTERNAL_ERROR };

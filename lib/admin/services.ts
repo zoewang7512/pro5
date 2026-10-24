@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AdminService } from "@/lib/booking/types";
 import type { Result } from "./appointments";
+import {
+  buildServiceActiveEvent,
+  buildServiceCreatedEvent,
+  buildServiceUpdatedEvent,
+  readAuditValue,
+  recordAdminAction,
+  type ServiceAuditValues,
+} from "./audit-log";
 
 // 服務項目管理頁的資料存取。與顧客端 lib/booking/api.ts 的 getServices() 不同之處：
 // 這裡不過濾 is_active，後台需要同時看到上架與下架中的項目。
@@ -49,6 +57,16 @@ export function validateServiceBuffer(raw: string): string | null {
   return value >= 0 && value <= 120 ? null : message;
 }
 
+// 稽核紀錄只記名稱、價格、時長、緩衝時間（描述不記）。名稱與資料庫寫入值一樣先 trim。
+function toServiceAuditValues(input: ServiceInput): ServiceAuditValues {
+  return {
+    name: input.name.trim(),
+    price: input.price,
+    duration_minutes: input.durationMinutes,
+    buffer_minutes: input.bufferMinutes,
+  };
+}
+
 export type ServiceInput = {
   name: string;
   price: number;
@@ -74,6 +92,8 @@ export async function createService(supabase: SupabaseClient, input: ServiceInpu
   if (error || !data || data.length !== 1) {
     return { ok: false, error: INTERNAL_ERROR };
   }
+
+  await recordAdminAction(supabase, buildServiceCreatedEvent(String(data[0].id), toServiceAuditValues(input)));
   return { ok: true, data: undefined };
 }
 
@@ -86,6 +106,11 @@ export async function updateService(
   id: string,
   input: ServiceInput,
 ): Promise<Result<void>> {
+  // 稽核紀錄：寫入前先讀舊值（讀不到就只記新值，不阻擋原操作）。
+  const before = await readAuditValue<ServiceAuditValues>(() =>
+    supabase.from("services").select("name, price, duration_minutes, buffer_minutes").eq("id", id).maybeSingle(),
+  );
+
   const { data, error } = await supabase
     .from("services")
     .update({
@@ -101,6 +126,8 @@ export async function updateService(
   if (error || !data || data.length !== 1) {
     return { ok: false, error: INTERNAL_ERROR };
   }
+
+  await recordAdminAction(supabase, buildServiceUpdatedEvent(id, before, toServiceAuditValues(input)));
   return { ok: true, data: undefined };
 }
 
@@ -112,10 +139,22 @@ export async function setServiceActive(
   id: string,
   isActive: boolean,
 ): Promise<Result<void>> {
+  // 稽核紀錄：寫入前讀名稱與目前狀態；狀態本來就相同（沒有實際變動）時不記錄。
+  const before = await readAuditValue<{ name?: unknown; is_active?: unknown }>(() =>
+    supabase.from("services").select("name, is_active").eq("id", id).maybeSingle(),
+  );
+
   const { data, error } = await supabase.from("services").update({ is_active: isActive }).eq("id", id).select("id");
 
   if (error || !data || data.length !== 1) {
     return { ok: false, error: INTERNAL_ERROR };
+  }
+
+  if (before?.is_active !== isActive) {
+    await recordAdminAction(
+      supabase,
+      buildServiceActiveEvent(id, typeof before?.name === "string" ? before.name : null, isActive),
+    );
   }
   return { ok: true, data: undefined };
 }

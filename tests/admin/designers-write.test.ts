@@ -93,6 +93,11 @@ function recordingClient(plan: Record<string, Step[]>, storage?: StorageMocks) {
   return { client, calls, buckets };
 }
 
+// TASK-085：寫入函式會在前後多讀舊值／名稱、多寫一筆 audit_log；既有斷言只針對被測的資料表。
+const forTable = (calls: RecordedCall[], table: string) => calls.filter((c) => c.table === table);
+// updateDesignerBasicInfo／setDesignerActive 在寫入前會先讀一次舊值（designers 表的第一步）。
+const PRE_READ = { data: { name: "舊名稱", is_active: true } };
+
 const updates = (calls: RecordedCall[]) => calls.filter((c) => c.method === "update").map((c) => c.args[0]);
 
 describe("getDesigner", () => {
@@ -202,7 +207,7 @@ describe("createDesigner", () => {
 
 describe("updateDesignerBasicInfo／setDesignerActive", () => {
   it("更新只送 4 個基本資料欄位，並用 id 過濾", async () => {
-    const { client, calls } = recordingClient({ designers: [{ data: [{ id: ID }] }] });
+    const { client, calls } = recordingClient({ designers: [PRE_READ, { data: [{ id: ID }] }] });
     expect((await updateDesignerBasicInfo(client, ID, BLANK)).ok).toBe(true);
 
     expect(Object.keys(updates(calls)[0] as object).sort()).toEqual(["bio", "instagram_handle", "name", "specialties"]);
@@ -210,23 +215,23 @@ describe("updateDesignerBasicInfo／setDesignerActive", () => {
   });
 
   it("RLS 悄悄擋下（0 列）或出錯時回傳通用錯誤，不外洩原始錯誤", async () => {
-    const blocked = recordingClient({ designers: [{ data: [] }] });
+    const blocked = recordingClient({ designers: [PRE_READ, { data: [] }] });
     expect((await updateDesignerBasicInfo(blocked.client, ID, BLANK)).ok).toBe(false);
 
-    const failed = recordingClient({ designers: [{ error: { message: "Failing row contains (secret)" } }] });
+    const failed = recordingClient({ designers: [PRE_READ, { error: { message: "Failing row contains (secret)" } }] });
     expect(await updateDesignerBasicInfo(failed.client, ID, BLANK)).toEqual({ ok: false, error: { message: GENERIC } });
   });
 
   it("setDesignerActive 只送 is_active", async () => {
-    const { client, calls } = recordingClient({ designers: [{ data: [{ id: ID }] }] });
+    const { client, calls } = recordingClient({ designers: [PRE_READ, { data: [{ id: ID }] }] });
     expect((await setDesignerActive(client, ID, false)).ok).toBe(true);
     expect(updates(calls)[0]).toEqual({ is_active: false });
   });
 
   it("setDesignerActive 0 列或錯誤時失敗", async () => {
-    expect((await setDesignerActive(recordingClient({ designers: [{ data: [] }] }).client, ID, true)).ok).toBe(false);
+    expect((await setDesignerActive(recordingClient({ designers: [PRE_READ, { data: [] }] }).client, ID, true)).ok).toBe(false);
     expect(
-      (await setDesignerActive(recordingClient({ designers: [{ error: { code: "42501" } }] }).client, ID, true)).ok,
+      (await setDesignerActive(recordingClient({ designers: [PRE_READ, { error: { code: "42501" } }] }).client, ID, true)).ok,
     ).toBe(false);
   });
 });
@@ -623,7 +628,7 @@ describe("setDesignerService", () => {
     expect(await setDesignerService(client, ID, SERVICE_ID, true)).toEqual({ ok: true, data: undefined });
     const insert = calls.find((c) => c.method === "insert");
     expect(insert?.args[0]).toEqual({ designer_id: ID, service_id: SERVICE_ID });
-    expect(calls.map((c) => c.method)).toEqual(["insert"]);
+    expect(forTable(calls, "designer_services").map((c) => c.method)).toEqual(["insert"]);
   });
 
   it("開啟時主鍵衝突（23505）視為成功（冪等）", async () => {
@@ -650,12 +655,13 @@ describe("setDesignerService", () => {
     const { client, calls } = recordingClient({ designer_services: [{ data: [{ service_id: SERVICE_ID }] }] });
 
     expect(await setDesignerService(client, ID, SERVICE_ID, false)).toEqual({ ok: true, data: undefined });
-    expect(calls.map((c) => c.method)).toEqual(["delete", "eq", "eq", "select"]);
-    expect(eqArgs(calls)).toEqual([
+    const written = forTable(calls, "designer_services");
+    expect(written.map((c) => c.method)).toEqual(["delete", "eq", "eq", "select"]);
+    expect(eqArgs(written)).toEqual([
       ["designer_id", ID],
       ["service_id", SERVICE_ID],
     ]);
-    expect(calls.find((c) => c.method === "select")?.args).toEqual(["service_id"]);
+    expect(written.find((c) => c.method === "select")?.args).toEqual(["service_id"]);
   });
 
   it("關閉時刪到 0 列（被 RLS 擋下或別處已關閉）不當成功；多於 1 列、錯誤也失敗", async () => {
@@ -1059,7 +1065,7 @@ describe("addDesignerLeave", () => {
   it("insert 一列 {designer_id, date}，不用 upsert", async () => {
     const { client, calls } = recordingClient({ designer_leaves: [{}] });
     expect(await addDesignerLeave(client, ID, FUTURE)).toEqual({ ok: true, data: undefined });
-    expect(calls.map((c) => [c.table, c.method])).toEqual([["designer_leaves", "insert"]]);
+    expect(forTable(calls, "designer_leaves").map((c) => [c.table, c.method])).toEqual([["designer_leaves", "insert"]]);
     expect(calls[0].args[0]).toEqual({ designer_id: ID, date: FUTURE });
   });
 
@@ -1107,12 +1113,13 @@ describe("removeDesignerLeave", () => {
   it("delete 同時帶 designer_id 與 date 兩個 eq，並用 select 確認刪掉 1 列", async () => {
     const { client, calls } = recordingClient({ designer_leaves: [{ data: [{ date: DATE }] }] });
     expect(await removeDesignerLeave(client, ID, DATE)).toEqual({ ok: true, data: undefined });
-    expect(calls.map((c) => c.method)).toEqual(["delete", "eq", "eq", "select"]);
-    expect(calls.filter((c) => c.method === "eq").map((c) => c.args)).toEqual([
+    const written = forTable(calls, "designer_leaves");
+    expect(written.map((c) => c.method)).toEqual(["delete", "eq", "eq", "select"]);
+    expect(written.filter((c) => c.method === "eq").map((c) => c.args)).toEqual([
       ["designer_id", ID],
       ["date", DATE],
     ]);
-    expect(calls.find((c) => c.method === "select")?.args[0]).toBe("date");
+    expect(written.find((c) => c.method === "select")?.args[0]).toBe("date");
   });
 
   it("過去的請假日也可以移除（只擋新增，不擋移除）", async () => {
