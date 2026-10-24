@@ -2,7 +2,7 @@
   "id": "TASK-085",
   "title": "稽核紀錄 記錄後台操作（16 個來源函式接上 recordAdminAction）",
   "content": "預約完成／取消／改期、預約規則、營業時間、公休日、服務、設計師、設計師服務、請假日共 16 個函式成功後留紀錄；寫入前先讀舊值；操作失敗不留、紀錄失敗不影響操作；不含顧客個資。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "medium",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -90,6 +90,11 @@
       "name": "使用者",
       "time": "2026-10-24",
       "text": "指示 commit 到 feat/audit_log，並刪除 16 筆測試雜訊。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "驗收通過，轉 Done"
     }
   ]
 }

@@ -2,7 +2,7 @@
   "id": "TASK-086",
   "title": "稽核紀錄 列表畫面與驗收（/admin/audit-log：Phase 3 mockup、元件、Sidebar、串接、人工驗收）",
   "content": "含 Phase 3 關卡：先產出畫面規格書與 2～3 個 mockup 變體並由使用者選定才可就緒。類別篩選、載入更多、載入中／空／錯誤狀態；更新 project-map／decisions。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -49,9 +49,20 @@
     "ai/context/project-map.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過（修正差異順序後再跑一次）",
+      "npx vitest run tests/admin tests/components/audit-log-view.test.tsx：524 項通過；admin-shell 33 項（含新增 2 項）通過",
+      "全套 78 檔／1356 項，1355 通過（唯一失敗 designer-portfolio-tab 為既有並行不穩定，單獨重跑 11 項全過）",
+      "npm run test:audit-log：28 項通過；npm run sweep:audit-test-rows（dry-run）：0 筆",
+      "瀏覽器走查（正式庫）：預約規則改 2 小時再改回 1 小時，列表兩筆紀錄正確；使用者同意後以 __TEST__ 資料（不寄信）產生 66 筆紀錄，驗證載入更多（50＋16、無重複）、預約／設定類別、淺色與深色，之後已清除",
+      "security-reviewer 對 Epic 總覽審查：無 Critical／High／Medium"
+    ],
+    "findings": [
+      "jsonb 不保留鍵順序，導致改期差異顯示「結束→開始」、新增服務「價格→緩衝→時長」；既有測試以寫入順序給資料而抓不到；已修 describeAuditEntry 內部迭代順序（不改對外介面）並新增測試（修前失敗）",
+      "整合測試與走查腳本結尾的 signOut 為全域登出，會踢掉瀏覽器登入（發生兩次，請使用者重新登入）",
+      "新增公休日（正式資料）被系統擋下，改以測試資料與單元／整合測試涵蓋"
+    ],
+    "residual": "公休日與錯誤狀態未在瀏覽器目視（有測試涵蓋）；對象與時間欄不含年份（時間欄 title 有）；保證邊界與日誌可能漏記等見 project-map.md「稽核紀錄」；後續：日期區間與預約編號篩選、設定異動通知、升級完整版、services.name 長度限制、updateBookingPolicy 真實資料庫整合驗證；已 commit 134e051，尚未 push／部署"
   },
   "comments": [
     {
@@ -88,6 +99,11 @@
       "name": "使用者",
       "time": "2026-10-24",
       "text": "人工驗收通過。看板轉 Done 待 TASK-084／085 先核准（dependsOn 防呆）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "驗收通過，轉 Done（前置 TASK-084／085 已核准轉 Done）"
     }
   ]
 }
