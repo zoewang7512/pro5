@@ -2,7 +2,7 @@
   "id": "TASK-088",
   "title": "儀表板與報表 報表資料層（lib/admin/reports.ts：期間、分頁查詢、彙總、趨勢、設計師篩選）",
   "content": "口徑集中一處：預約量＝非取消、營收＝已完成快照價、預估＝待完成；日期以台北時間歸屬；單期間最多 5000 列，超過回錯誤。含單元與整合測試。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "low",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -75,6 +75,11 @@
       "name": "Claude Code",
       "time": "2026-10-25",
       "text": "報表資料層完成：reports.ts（期間、分頁查詢、彙總、趨勢、篩選）、designer-filter 型別放寬、單元 71 項（三時區一致）與整合 19 項通過，tsc／lint／build 通過。已轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過，TASK-088 轉 Done。"
     }
   ]
 }
