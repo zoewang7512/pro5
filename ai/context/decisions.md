@@ -548,3 +548,49 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     錯誤時隱藏 chip 列（不拿別的期間的數字冒充，勾選保留）。規格書「錯誤時篩選仍可操作」因此縮減為「工具列仍可操作」。
   - 設計師清單載入失敗時降級為不顯示 chip 列（與預約週曆一致），報表照常顯示全部設計師。
 影響：匯出（TASK-093）吃 ReportsView 同一份計算結果；日後若資料量逼近 5000 列／月，需做資料庫端彙總。
+```
+
+## TASK-093（儀表板與報表 匯出 Excel）：瀏覽器端產生、write-excel-file@4.1.1、字串型別防公式注入
+
+```text
+日期：2026-10-25
+決策：
+  1. 匯出在瀏覽器端產生：lib/admin/reports-export.ts 直接吃畫面已算好的結果（期間、設計師名稱、totals、ranking、
+     trend），不重新查詢、不新增伺服器端點，因此沒有新的授權面，也和畫面天然一致。輸入型別只有彙總結果，
+     型別上拿不到任何 customer_*。
+  2. 套件：write-excel-file@4.1.1（精確版本，package.json 無 ^）。npm view 事實：MIT；唯一相依 fflate；專司寫入、
+     有 browser／node／universal 三個入口；最後發布 2026-06-08。瀏覽器端以動態 import("write-excel-file/browser")
+     載入，只有按下匯出才下載該 chunk（build 產物中獨立成 chunk，不在報表頁的主 bundle）。spike 結果：browser
+     入口在 Next 16（Turbopack）build 與開發伺服器都可用，不需要改用 universal。
+     fflate@0.8.3 另列 devDependency（精確版本），只供測試解開 xlsx 讀回驗證。
+  3. 公式注入：所有文字儲存格一律以 type: String 寫入（xlsx 的共用字串，不是 <f> 公式），Excel／Google 試算表
+     不會執行；因此不改動文字內容（不加 ' 前綴，避免服務／設計師名稱被改字）。只有明確指定 type: "Formula" 才會
+     產生公式，匯出模組不使用。讀回測試固定驗證：名稱為 =SUM(1)、+1、-1、@x、Tab 開頭時，工作表 XML 不含 <f>，
+     該儲存格為共用字串且內容原樣。（規格書原寫「加前綴」，改為此做法，已同步於架構筆記 §5。）
+  4. 檔名：報表_<期間>_<設計師>.xlsx；清理 \ / : * ? " < > |、控制字元（含 DEL）、連續的點（避免 ..）與前後空白；
+     整個檔名 ≤ 80 字元（以 code point 截斷，不切壞代理對）；清理後為空回退為「全部設計師」。
+  5. 下載：Blob＋暫時的 <a download>＋URL.revokeObjectURL（延後 1 秒，避免部分瀏覽器 click 後立刻 revoke 讓下載失敗）；
+     失敗一律丟泛用錯誤「匯出失敗，請稍後再試。」，不帶套件或瀏覽器的細節。按鈕用 ref 守衛，連點只觸發一次。
+情境：店長要把報表頁籤目前看到的數字交給會計或留存；單一店長、每月預約量約數百筆。
+考慮過的替代方案：
+  - xlsx（SheetJS）：npm 上的 0.18.5 有已知漏洞（原型污染、ReDoS），修正版只在官方 CDN 發佈、不在 npm，無法用 lockfile
+    與 npm audit 管理。否決。
+  - exceljs：相依樹大且老（archiver／unzipper／uuid 8 等），最後發布 2024-12，體積遠大於只需寫三張簡單工作表的需求。否決。
+  - 伺服器端產生（Route Handler）：要新增端點、授權與重複查詢，且資料本來就在頁面上；否決（見決策 1）。
+  - CSV：沒有多工作表、沒有數值格式與欄寬，中文在 Excel 還要處理 BOM；規格書非目標。
+已知限制（security-reviewer 2026-10-25，Low）：
+  - 套件內部的共用字串表是一般物件（initializeSharedStrings.js 的 `{}`）：服務／設計師名稱剛好是 `constructor`、
+    `__proto__`、`toString` 等 Object.prototype 成員時，該儲存格會寫成 `function Object() { [native code] }` 之類的
+    內容、Excel 開檔會跳修復對話框。只影響完整性（不是注入、不是 prototype pollution），名稱只有店長能寫；
+    不在匯出端偷改文字，列為已知限制，向上游回報，必要時以 patch-package 改成 Object.create(null)。
+  - 公式注入的殘留風險：字串儲存格開檔不會被計算；但使用者在該格按 F2＋Enter、另存 CSV 再開、或經純文字剪貼簿貼回，
+    Excel 會重新解析成公式。目前匯出內容只有店長自己寫的名稱，屬自己攻擊自己；**日後若匯出顧客可控的文字
+    （姓名、備註），必須重新評估（屆時需加 ' 前綴或改寫規則）**。
+  - fflate 的非同步 zip 只在單一檔案 ≥160KB 時才用 Worker（blob: URL）；日後若加上 CSP 且匯出可能超過此大小，
+    需要 `worker-src blob:`。
+  - 檔名清理另移除 Cc／Cf／Zl／Zp 字元（RLO 雙向控制、零寬字元等），並避免清理後重新接成 ".."（先刪字元再處理點、
+    截斷後去掉結尾的點）；ZWJ 組合 emoji 因此會被拆開，屬可接受的外觀代價。
+影響：套件跑在店長的瀏覽器（同源、能碰 session）→ 供應鏈風險靠鎖版本＋動態載入＋lockfile＋讀碼審查緩解；
+      日後升級 write-excel-file 或 fflate 時，必須重跑 tests/admin/reports-export.test.ts（讀回測試）並複查 browser 入口
+      的原始碼是否新增網路／eval／儲存空間存取。若資料量逼近 5000 列／月，匯出會跟著改為資料庫端彙總的結果。
+```

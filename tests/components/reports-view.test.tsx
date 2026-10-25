@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithTheme as render } from "../test-utils";
+import * as React from "react";
+import { renderWithTheme } from "../test-utils";
 import { ReportsView } from "@/app/admin/_components/ReportsView";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 import { getDesignerFilterOptions, type DesignerFilterOption } from "@/lib/admin/designers";
 import { fetchReportAppointments, type ReportAppointment } from "@/lib/admin/reports";
+import { exportReportXlsx } from "@/lib/admin/reports-export";
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({}),
@@ -23,6 +26,12 @@ vi.mock("@/lib/admin/reports", async (importOriginal) => ({
   fetchReportAppointments: vi.fn(),
 }));
 
+// 匯出只替換下載動作；建構工作表與檔名有自己的單元測試（tests/admin/reports-export.test.ts）。
+vi.mock("@/lib/admin/reports-export", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/admin/reports-export")>()),
+  exportReportXlsx: vi.fn(),
+}));
+
 vi.mock("@/lib/admin/designers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/admin/designers")>()),
   getDesignerFilterOptions: vi.fn(),
@@ -33,6 +42,12 @@ vi.setConfig({ testTimeout: 30000 });
 
 const mockFetch = vi.mocked(fetchReportAppointments);
 const mockDesigners = vi.mocked(getDesignerFilterOptions);
+const mockExport = vi.mocked(exportReportXlsx);
+
+// ReportsView 用 useToast（匯出結果提示）；正式環境由 ThemeRegistry 提供 ToastProvider。
+function render(ui: React.ReactElement) {
+  return renderWithTheme(<ToastProvider>{ui}</ToastProvider>);
+}
 
 const MEI: DesignerFilterOption = { id: "d-mei", name: "林小美", avatar_url: null, is_active: true, sort_order: 1 };
 const JIE: DesignerFilterOption = { id: "d-jie", name: "陳阿傑", avatar_url: null, is_active: true, sort_order: 2 };
@@ -512,6 +527,154 @@ describe("ReportsView", () => {
 
       await user.click(screen.getByRole("button", { name: "上一個月" }));
       expect(await screen.findByTestId("summary-row")).toBeInTheDocument();
+    });
+  });
+
+describe("匯出 Excel", () => {
+    const EXPORT_NAME = "↓ 匯出 Excel（.xlsx）";
+
+    beforeEach(() => {
+      mockExport.mockResolvedValue("報表_2026-10_全部設計師.xlsx");
+    });
+
+    async function openTable(user: ReturnType<typeof userEvent.setup>) {
+      render(<ReportsView />);
+      await screen.findByTestId("revenue-main");
+      await user.click(screen.getByRole("tab", { name: "報表" }));
+      await screen.findByTestId("summary-row");
+    }
+
+    it("只在報表頁籤出現，儀表板頁籤不顯示", async () => {
+      const user = userEvent.setup({ delay: null });
+      render(<ReportsView />);
+      await screen.findByTestId("revenue-main");
+      expect(screen.queryByRole("button", { name: EXPORT_NAME })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("tab", { name: "報表" }));
+      expect(await screen.findByRole("button", { name: EXPORT_NAME })).toBeEnabled();
+
+      await user.click(screen.getByRole("tab", { name: "儀表板" }));
+      expect(screen.queryByRole("button", { name: EXPORT_NAME })).not.toBeInTheDocument();
+    });
+
+    it("收到的內容與畫面一致：期間、設計師、彙總、排行、趨勢", async () => {
+      const user = userEvent.setup({ delay: null });
+      await openTable(user);
+
+      await user.click(screen.getByRole("button", { name: EXPORT_NAME }));
+
+      expect(mockExport).toHaveBeenCalledTimes(1);
+      const data = mockExport.mock.calls[0][0];
+      expect(data.period).toMatchObject({ granularity: "month", from: "2026-10-01", to: "2026-10-31" });
+      expect(data.designerNames).toEqual([]);
+      expect(data.totals).toEqual({ booked: 3, completed: 2, pending: 1, cancelled: 1, revenue: 3000, estimated: 500 });
+      expect(data.ranking.map((row) => [row.name, row.count, row.revenue])).toEqual([
+        ["染髮", 2, 2000],
+        ["剪髮", 1, 1000],
+      ]);
+      expect(data.trend).toHaveLength(31);
+      expect(data.exportedAt).toBeInstanceOf(Date);
+      // 不為匯出新增任何查詢。
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("套用設計師篩選：匯出的是篩選後的數字與設計師名稱", async () => {
+      const user = userEvent.setup({ delay: null });
+      await openTable(user);
+      await user.click(screen.getByRole("button", { name: /陳阿傑/ }));
+
+      await user.click(screen.getByRole("button", { name: EXPORT_NAME }));
+
+      const data = mockExport.mock.calls[0][0];
+      expect(data.designerNames).toEqual(["陳阿傑"]);
+      expect(data.totals).toMatchObject({ booked: 1, revenue: 2000, cancelled: 1 });
+      expect(data.ranking.map((row) => row.name)).toEqual(["染髮"]);
+    });
+
+    it("匯出中：停用並顯示「匯出中…」，完成後恢復，顯示成功 Toast", async () => {
+      const user = userEvent.setup({ delay: null });
+      const pending = deferred<string>();
+      mockExport.mockReturnValue(pending.promise);
+      await openTable(user);
+
+      await user.click(screen.getByRole("button", { name: EXPORT_NAME }));
+
+      const busy = await screen.findByRole("button", { name: /匯出中…/ });
+      expect(busy).toBeDisabled();
+      expect(screen.queryByRole("button", { name: EXPORT_NAME })).not.toBeInTheDocument();
+
+      pending.resolve("報表_2026-10_全部設計師.xlsx");
+      expect(await screen.findByText("已匯出「報表_2026-10_全部設計師.xlsx」")).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: EXPORT_NAME })).toBeEnabled();
+    });
+
+    it("連點只觸發一次", async () => {
+      const user = userEvent.setup({ delay: null });
+      const pending = deferred<string>();
+      mockExport.mockReturnValue(pending.promise);
+      await openTable(user);
+
+      // 同一個 act 內連按兩次：React 還沒重繪（按鈕尚未停用），只有 ref 守衛擋得住第二次。
+      const button = screen.getByRole("button", { name: EXPORT_NAME });
+      act(() => {
+        button.click();
+        button.click();
+      });
+
+      expect(mockExport).toHaveBeenCalledTimes(1);
+      pending.resolve("x.xlsx");
+      await screen.findByText("已匯出「x.xlsx」");
+    });
+
+    it("失敗：顯示錯誤 Toast，按鈕恢復，可以再按一次重試", async () => {
+      const user = userEvent.setup({ delay: null });
+      mockExport.mockRejectedValueOnce(new Error("匯出失敗，請稍後再試。"));
+      await openTable(user);
+
+      await user.click(screen.getByRole("button", { name: EXPORT_NAME }));
+      expect(await screen.findByText("匯出失敗，請稍後再試。")).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: EXPORT_NAME })).toBeEnabled();
+
+      await user.click(screen.getByRole("button", { name: EXPORT_NAME }));
+      expect(mockExport).toHaveBeenCalledTimes(2);
+      // 成功 Toast 排在錯誤 Toast 後面（一次只顯示一則），這裡只確認第二次有成功送出且按鈕恢復。
+      expect(await screen.findByRole("button", { name: EXPORT_NAME })).toBeEnabled();
+    });
+
+    it("沒有資料時停用，也不會呼叫匯出", async () => {
+      const user = userEvent.setup({ delay: null });
+      mockFetch.mockResolvedValue(ok([]));
+      render(<ReportsView />);
+      await screen.findByText("此期間沒有預約");
+      await user.click(screen.getByRole("tab", { name: "報表" }));
+
+      const button = screen.getByRole("button", { name: EXPORT_NAME });
+      expect(button).toBeDisabled();
+      act(() => button.click());
+      expect(mockExport).not.toHaveBeenCalled();
+    });
+
+    it("載入中與錯誤時停用", async () => {
+      const user = userEvent.setup({ delay: null });
+      const pending = deferred<ReturnType<typeof ok>>();
+      mockFetch.mockReturnValue(pending.promise);
+      render(<ReportsView />);
+      await user.click(screen.getByRole("tab", { name: "報表" }));
+      expect(screen.getByRole("button", { name: EXPORT_NAME })).toBeDisabled();
+
+      pending.resolve(ok(monthData()));
+      await screen.findByTestId("summary-row");
+      expect(screen.getByRole("button", { name: EXPORT_NAME })).toBeEnabled();
+    });
+
+    it("錯誤狀態下停用", async () => {
+      const user = userEvent.setup({ delay: null });
+      mockFetch.mockResolvedValue(failed);
+      render(<ReportsView />);
+      await screen.findByText("無法載入報表，請稍後再試。");
+      await user.click(screen.getByRole("tab", { name: "報表" }));
+
+      expect(screen.getByRole("button", { name: EXPORT_NAME })).toBeDisabled();
     });
   });
 

@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
+import { useToast } from "@/components/ui/ToastProvider";
 import { createClient } from "@/lib/supabase/client";
 import { getDesignerFilterOptions, type DesignerFilterOption } from "@/lib/admin/designers";
 import {
@@ -22,6 +24,7 @@ import {
   type ReportAppointment,
   type ReportGranularity,
 } from "@/lib/admin/reports";
+import { EXPORT_ERROR_MESSAGE, exportReportXlsx } from "@/lib/admin/reports-export";
 import { buildServiceRanking } from "@/lib/admin/reports-ranking";
 import { getTaipeiToday } from "@/lib/admin/week-range";
 import { DesignerFilterChips } from "./DesignerFilterChips";
@@ -39,10 +42,12 @@ import { ServiceRankingTable } from "./ServiceRankingTable";
 // 查詢結果存 {key, status, appointments}，render 時比較目前期間與最後完成的 key 推導載入中
 // （寫法比照 AdminDashboard，避免違反 react-hooks/set-state-in-effect）。
 // 競態：每次 effect 重跑都會作廢前一次的回應（等同遞增請求序號），較慢的舊請求回來時丟棄。
+// 匯出 Excel（報表頁籤）吃的也是這份計算結果（彙總／排行／趨勢），不重新查詢。
 
 type FetchResult = { key: string; status: "loaded" | "error"; appointments: ReportAppointment[] };
 
 export function ReportsView() {
+  const { showToast } = useToast();
   const supabase = React.useMemo(() => createClient(), []);
   const today = React.useMemo(() => getTaipeiToday(), []);
 
@@ -58,6 +63,9 @@ export function ReportsView() {
   // 最後一次成功載入的資料，只給設計師 chip 列用：切換期間時 chip 維持可操作，不必換成骨架。
   const [lastLoaded, setLastLoaded] = React.useState<ReportAppointment[] | null>(null);
   const [refetchToken, setRefetchToken] = React.useState(0);
+  const [exporting, setExporting] = React.useState(false);
+  // 連點只觸發一次：state 要等下一次 render 才會停用按鈕，ref 立刻生效。
+  const exportingRef = React.useRef(false);
 
   const period = React.useMemo(() => getReportPeriod(granularity, anchor, today), [granularity, anchor, today]);
   const key = `${period.from}~${period.to}`;
@@ -119,6 +127,28 @@ export function ReportsView() {
   const trend = React.useMemo(() => buildTrend(period, visible), [period, visible]);
   const ranking = React.useMemo(() => buildServiceRanking(visible), [visible]);
 
+  async function handleExport() {
+    if (exportingRef.current || panelProps.status !== "ready") return;
+    exportingRef.current = true;
+    setExporting(true);
+    try {
+      const fileName = await exportReportXlsx({
+        period,
+        designerNames: designerChips.filter((chip) => effectiveDesignerIds.includes(chip.id)).map((chip) => chip.name),
+        totals,
+        ranking,
+        trend,
+        exportedAt: new Date(),
+      });
+      showToast(`已匯出「${fileName}」`, "success");
+    } catch {
+      showToast(EXPORT_ERROR_MESSAGE, "error");
+    } finally {
+      exportingRef.current = false;
+      setExporting(false);
+    }
+  }
+
   // 切粒度：本期（含今天）以今天為錨，其他期間以該期間的起始日為錨。
   function handleGranularityChange(next: ReportGranularity) {
     if (next === granularity) return;
@@ -173,6 +203,23 @@ export function ReportsView() {
               onPrevious={() => handleShift(-1)}
               onNext={() => handleShift(1)}
               onToday={() => setAnchor(today)}
+              actions={
+                tab === "table" && (
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    size="small"
+                    loading={exporting}
+                    loadingPosition="start"
+                    // 載入中／錯誤／沒有資料時沒有東西可匯出；匯出中 loading 會一併停用。
+                    disabled={panelProps.status !== "ready"}
+                    onClick={handleExport}
+                    sx={{ borderColor: "divider", fontWeight: 600 }}
+                  >
+                    {exporting ? "匯出中…" : "↓ 匯出 Excel（.xlsx）"}
+                  </Button>
+                )
+              }
             />
             <DesignerFilterChips
               loading={designerOptions === null || (chipSource === null && status === "loading")}
