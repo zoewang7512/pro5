@@ -1,0 +1,66 @@
+{
+  "id": "TASK-089",
+  "title": "儀表板與報表 TrendBarChart 圖表元件（純 CSS 堆疊長條、hover／focus 提示、方向鍵、無障礙資料表）",
+  "content": "跨頁共用元件，完成後登記回 design-system inventory；儀表板頁籤使用兩次。不引入圖表套件。",
+  "stage": "backlog",
+  "risk": "low",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-24",
+  "epic": "儀表板與報表",
+  "userStory": "查看預約數量與營收統計",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-088"
+  ],
+  "order": 89,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
+    "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-089.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "components/ui/PortfolioGrid.tsx",
+    "components/ui/MonthPicker.tsx",
+    "app/design-system/page.tsx"
+  ],
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "依已核准規格書與已選定 mockup 完成架構規劃與任務卡；等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    }
+  ]
+}

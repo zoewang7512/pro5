@@ -1,0 +1,793 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>儀表板與報表 Variant B · 營收主角摘要列＋並排雙圖＋橫條排行</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-50:#FBF4E2; --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E;
+    --success:#7A8B76; --warning:#C97A3D; --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); line-height: 1.5; }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+  p.page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 24px; max-width: 1000px; line-height: 1.7; }
+  .stack { display: flex; flex-direction: column; gap: 32px; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); margin-bottom: 8px; }
+  .screen { width: 1100px; background: var(--grey-100); border-radius: 16px; box-shadow: var(--shadow-1); display: flex; position: relative; overflow: hidden; }
+  .screen.narrow { width: 768px; }
+  .sidebar { width: 220px; background: var(--surface); padding: 24px 0; flex-shrink: 0; box-shadow: 1px 0 0 var(--grey-300); }
+  .screen.narrow .sidebar { width: 168px; }
+  .sidebar .logo { font-size: 18px; font-weight: 700; padding: 0 24px 24px; }
+  .nav-item { padding: 12px 24px; font-size: 16px; color: var(--grey-700); display: flex; gap: 12px; align-items: center; }
+  .screen.narrow .nav-item { padding: 12px 16px; font-size: 14px; }
+  .nav-item i { width: 20px; height: 20px; border-radius: 6px; background: var(--grey-300); flex-shrink: 0; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); font-weight: 600; }
+  .nav-item.active i { background: var(--primary-500); }
+  .nav-item .new { font-size: 11px; color: var(--primary-700); background: var(--primary-50); padding: 0 8px; border-radius: 999px; margin-left: auto; }
+  .main { flex: 1; min-width: 0; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .screen.narrow .main { padding: 24px; }
+  .head h2 { font-size: 24px; margin: 0; line-height: 1.25; }
+  .head .sub { font-size: 14px; color: var(--grey-700); margin-top: 4px; line-height: 1.7; }
+
+  /* 工具列：粒度切換＋期間導覽 */
+  .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .seg { display: inline-flex; }
+  .seg span { height: 36px; padding: 0 20px; display: inline-flex; align-items: center; font-size: 14px; font-weight: 500; color: var(--grey-700); background: var(--surface); border: 1px solid var(--grey-300); margin-left: -1px; }
+  .seg span:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); margin-left: 0; }
+  .seg span:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .seg span.on { background: var(--primary-500); border-color: var(--primary-500); color: #fff; font-weight: 600; }
+  .seg.sm span { height: 28px; padding: 0 12px; font-size: 13px; }
+  .pnav { display: inline-flex; align-items: center; gap: 8px; }
+  .pnav .arrow { width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; color: var(--grey-700); }
+  .pnav .cur { min-width: 160px; text-align: center; font-size: 16px; font-weight: 600; padding: 0 8px; }
+  .btn { height: 36px; padding: 0 16px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; }
+  .btn.outline { background: transparent; color: var(--grey-900); border: 1px solid var(--grey-300); font-weight: 600; }
+  .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+  .btn.dis { opacity: .5; }
+  .clear { font-size: 13px; font-weight: 600; color: var(--primary-700); padding: 0 8px; align-self: center; }
+
+  /* 設計師篩選 chip（沿用預約週曆樣式） */
+  .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .fchip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 4px; border-radius: 999px; border: 1px solid var(--grey-300); background: var(--surface); font-size: 13px; color: var(--grey-700); }
+  .fchip.all { padding: 0 16px; }
+  .fchip.on { background: var(--primary-500); border-color: var(--primary-500); color: #fff; font-weight: 600; }
+  .fchip .n { font-size: 11px; opacity: .8; }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 11px; flex-shrink: 0; }
+  .av1 { background: linear-gradient(135deg,#C9A36A,#7D5A3A); } .av2 { background: linear-gradient(135deg,#8E9C88,#4F5E4A); } .av3 { background: linear-gradient(135deg,#B78C7A,#6E4536); }
+
+  /* 面板、卡片 */
+  .panel { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 24px; }
+  .panel.flush { padding: 0; overflow: hidden; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .panel-head h3 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .panel-head .hint { font-size: 12px; color: var(--grey-700); }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .screen.narrow .kpis { grid-template-columns: repeat(2, 1fr); }
+  .kpi { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 24px; min-width: 0; }
+  .kpi .k { font-size: 13px; font-weight: 500; color: var(--grey-700); }
+  .kpi .v { font-size: 24px; font-weight: 700; line-height: 1.25; margin: 8px 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .kpi .v small { font-size: 14px; font-weight: 500; color: var(--grey-700); margin-left: 4px; }
+  .kpi .v.accent { color: var(--primary-700); }
+  .kpi .s { font-size: 12px; color: var(--grey-700); line-height: 1.5; }
+
+  /* 圖表（純 CSS 長條，已完成=實心主色、待完成=斜紋主色） */
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--grey-700); align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .sw { width: 12px; height: 12px; display: inline-block; }
+  .sw.a, .seg-a { background: var(--primary-500); }
+  .sw.b, .seg-b { background: repeating-linear-gradient(45deg, var(--primary-500) 0 2px, var(--primary-50) 2px 6px); box-shadow: inset 0 0 0 1px var(--primary-500); }
+  .chart { display: flex; gap: 8px; }
+  .yaxis { width: 40px; height: 180px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: 11px; color: var(--grey-700); line-height: 1; font-variant-numeric: tabular-nums; }
+  .plot { flex: 1; min-width: 0; position: relative; height: 204px; }
+  .grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--grey-200); }
+  .cols { position: absolute; inset: 0; display: flex; gap: 4px; }
+  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  .bars { height: 180px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .bars .stack1 { width: 100%; max-width: 32px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .xl { height: 24px; line-height: 24px; text-align: center; font-size: 11px; color: var(--grey-700); white-space: nowrap; overflow: visible; }
+  .xl.today { color: var(--primary-700); font-weight: 700; }
+  .col.today .xl::after { content: ""; }
+  .tip { position: absolute; left: 50%; transform: translateX(-50%); background: var(--grey-900); color: #fff; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; white-space: nowrap; z-index: 2; }
+  .tip b { font-weight: 700; }
+  .xl.off { visibility: hidden; }
+
+  /* 表格 */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--grey-700); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--grey-300); white-space: nowrap; background: var(--surface); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--grey-200); }
+  tr:last-child td { border-bottom: none; }
+  th.r, td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  td.rk { width: 48px; color: var(--grey-700); font-variant-numeric: tabular-nums; }
+  td.nm { font-weight: 600; }
+  .tag { display: inline-block; margin-left: 8px; font-size: 11px; padding: 0 8px; border-radius: 999px; background: var(--grey-200); color: var(--grey-700); font-weight: 500; }
+  .tag.today { background: var(--primary-50); color: var(--primary-700); }
+  .scroll { overflow-x: auto; }
+  .scroll table { min-width: 480px; }
+  .mute { color: var(--grey-500); }
+  tr.sum td { position: sticky; bottom: 0; font-weight: 700; background: var(--grey-100); border-top: 1px solid var(--grey-300); }
+  tr.today td { background: var(--primary-50); }
+
+  /* 狀態 */
+  .sk { background: var(--grey-200); border-radius: var(--radius-sm); }
+  .alert-err { background: var(--danger-light); color: var(--danger); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .empty { background: var(--info-light); color: #43617A; padding: 16px 20px; border-radius: var(--radius-sm); font-size: 14px; line-height: 1.7; }
+  .empty b { display: block; }
+</style></head><body>
+<h1 class="page-title serif">儀表板與報表 Variant B · 營收主角摘要列＋並排雙圖＋橫條排行</h1><p class="page-note">以營收為視覺主角：摘要列不用卡片，營收放大成 36px 主數字，其餘數字退到次要。預約量與營收各一張小長條圖並排（不需切換指標，一眼對照）；排行用橫條（長度＝預約量）取代表格，比較大小更直覺。</p><div class="stack"><div class="frame"><div class="label">1 · 預設（月・本月・全部設計師）</div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="">週</span><span class="on">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">2026 年 10 月</span><span class="arrow">›</span>
+      <span class="btn outline sm dis">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 110</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">42</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">35</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">33</span></span></div><div class="panel" style="display:flex;gap:24px 40px;align-items:flex-end;flex-wrap:wrap">
+      <div><div style="font-size:13px;color:var(--grey-700);font-weight:500">營收（已完成 95 筆）</div><div style="font-size:36px;font-weight:700;line-height:1.25;color:var(--primary-700);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$105,300</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:16px 40px;flex:1 1 360px;min-width:0"><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預約量</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">110 筆</div><div style="font-size:12px;color:var(--grey-700)">完成 95 ・ 待完成 15</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預估營收</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$11,200</div><div style="font-size:12px;color:var(--grey-700)">待完成，未計入營收</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">已取消</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">13 筆</div><div style="font-size:12px;color:var(--grey-700)">不計入預約量</div></div></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>預約量（每日）</h3><div class="legend"><span><i class="sw a"></i>已完成</span><span><i class="sw b"></i>待完成</span></div></div><div class="chart"><div class="yaxis"><span>8</span><span>4</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  ">1</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">2</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:135px"></div></div></div>
+      <div class="xl  off">3</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:158px"></div></div></div>
+      <div class="xl  off">4</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">5</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">6</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">7</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">8</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">9</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:158px"></div></div></div>
+      <div class="xl  ">10</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:158px"></div></div></div>
+      <div class="xl  off">11</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">12</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">13</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">14</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">15</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:135px"></div></div></div>
+      <div class="xl  off">16</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">17</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">18</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div><div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl today off">24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  ">25</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">26</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:45px"></div></div></div>
+      <div class="xl  off">27</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  off">28</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:45px"></div></div></div>
+      <div class="xl  off">29</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  ">30</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  off">31</div></div></div></div></div></div>
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>營收（每日）</h3><div class="legend"><span><i class="sw a"></i>營收（已完成）</span><span><i class="sw b"></i>預估（待完成）</span></div></div><div class="chart"><div class="yaxis"><span>12k</span><span>6k</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:39px"></div></div></div>
+      <div class="xl  ">1</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:39px"></div></div></div>
+      <div class="xl  off">2</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:137px"></div></div></div>
+      <div class="xl  off">3</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:156px"></div></div></div>
+      <div class="xl  off">4</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">5</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:33px"></div></div></div>
+      <div class="xl  off">6</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:72px"></div></div></div>
+      <div class="xl  off">7</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:39px"></div></div></div>
+      <div class="xl  off">8</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:45px"></div></div></div>
+      <div class="xl  off">9</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:109px"></div></div></div>
+      <div class="xl  ">10</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:77px"></div></div></div>
+      <div class="xl  off">11</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">12</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:75px"></div></div></div>
+      <div class="xl  off">13</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:66px"></div></div></div>
+      <div class="xl  off">14</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:75px"></div></div></div>
+      <div class="xl  ">15</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:65px"></div></div></div>
+      <div class="xl  off">16</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:87px"></div></div></div>
+      <div class="xl  off">17</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">18</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:74px"></div></div></div>
+      <div class="xl  ">20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:57px"></div></div></div>
+      <div class="xl  off">21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:45px"></div></div></div>
+      <div class="xl  off">23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:50px"></div><div class="seg-a" style="height:81px"></div></div></div>
+      <div class="xl today off">24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:9px"></div></div></div>
+      <div class="xl  ">25</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">26</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  off">27</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:47px"></div></div></div>
+      <div class="xl  off">28</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  off">29</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:9px"></div></div></div>
+      <div class="xl  ">30</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:9px"></div></div></div>
+      <div class="xl  off">31</div></div></div></div></div></div></div>
+    <div class="panel"><div class="panel-head"><h3>熱門服務排行</h3><span class="hint">橫條長度＝預約量</span></div>
+      <div style="display:flex;flex-direction:column;gap:16px"><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">1</span>
+        <span style="font-weight:600;min-width:0">剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:100%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">40</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$20,400</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">2</span>
+        <span style="font-weight:600;min-width:0">洗剪吹</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:68%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">27</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$17,600</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">3</span>
+        <span style="font-weight:600;min-width:0">韓系剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:57%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">23</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$17,100</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">4</span>
+        <span style="font-weight:600;min-width:0">漸層染髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:25%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">10</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$30,200</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">5</span>
+        <span style="font-weight:600;min-width:0">燙髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:13%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$14,000</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">6</span>
+        <span style="font-weight:600;min-width:0">護髮<span class="tag">已下架</span></span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:13%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$6,000</span></div></div></div></div></div></div>
+<div class="frame"><div class="label">2 · 週（本週）・切換到「營收」指標</div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="on">週</span><span class="">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">10/19（一）– 10/25（日）</span><span class="arrow">›</span>
+      <span class="btn outline sm dis">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 27</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">5</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">15</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">7</span></span></div><div class="panel" style="display:flex;gap:24px 40px;align-items:flex-end;flex-wrap:wrap">
+      <div><div style="font-size:13px;color:var(--grey-700);font-weight:500">營收（已完成 22 筆）</div><div style="font-size:36px;font-weight:700;line-height:1.25;color:var(--primary-700);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$25,100</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:16px 40px;flex:1 1 360px;min-width:0"><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預約量</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">27 筆</div><div style="font-size:12px;color:var(--grey-700)">完成 22 ・ 待完成 5</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預估營收</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$3,900</div><div style="font-size:12px;color:var(--grey-700)">待完成，未計入營收</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">已取消</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">2 筆</div><div style="font-size:12px;color:var(--grey-700)">不計入預約量</div></div></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>預約量（每日）</h3><div class="legend"><span><i class="sw a"></i>已完成</span><span><i class="sw b"></i>待完成</span></div></div><div class="chart"><div class="yaxis"><span>8</span><span>4</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">一 10/19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">二 10/20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  ">三 10/21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  ">四 10/22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">五 10/23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div><div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl today ">六 10/24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  ">日 10/25</div></div></div></div></div></div>
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>營收（每日）</h3><div class="legend"><span><i class="sw a"></i>營收（已完成）</span><span><i class="sw b"></i>預估（待完成）</span></div></div><div class="chart"><div class="yaxis"><span>10k</span><span>5k</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">一 10/19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:88px"></div></div></div>
+      <div class="xl  ">二 10/20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  ">三 10/21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:144px"></div></div></div>
+      <div class="xl  ">四 10/22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:54px"></div></div></div>
+      <div class="xl  ">五 10/23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:59px"></div><div class="seg-a" style="height:97px"></div></div></div>
+      <div class="xl today ">六 10/24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:11px"></div></div></div>
+      <div class="xl  ">日 10/25</div></div></div></div></div></div></div>
+    <div class="panel"><div class="panel-head"><h3>熱門服務排行</h3><span class="hint">橫條長度＝預約量</span></div>
+      <div style="display:flex;flex-direction:column;gap:16px"><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">1</span>
+        <span style="font-weight:600;min-width:0">剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:100%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">9</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$4,800</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">2</span>
+        <span style="font-weight:600;min-width:0">洗剪吹</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:89%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">8</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$4,000</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">3</span>
+        <span style="font-weight:600;min-width:0">韓系剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:67%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">6</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$4,500</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">4</span>
+        <span style="font-weight:600;min-width:0">漸層染髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:22%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">2</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$6,200</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">5</span>
+        <span style="font-weight:600;min-width:0">燙髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:22%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">2</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$5,600</span></div></div></div></div></div></div>
+<div class="frame"><div class="label">3 · 日（今天）・每小時趨勢</div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="on">日</span><span class="">週</span><span class="">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">10/24（六）</span><span class="arrow">›</span>
+      <span class="btn outline sm dis">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 8</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">1</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">5</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">2</span></span></div><div class="panel" style="display:flex;gap:24px 40px;align-items:flex-end;flex-wrap:wrap">
+      <div><div style="font-size:13px;color:var(--grey-700);font-weight:500">營收（已完成 4 筆）</div><div style="font-size:36px;font-weight:700;line-height:1.25;color:var(--primary-700);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$5,400</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:16px 40px;flex:1 1 360px;min-width:0"><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預約量</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">8 筆</div><div style="font-size:12px;color:var(--grey-700)">完成 4 ・ 待完成 4</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預估營收</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$3,300</div><div style="font-size:12px;color:var(--grey-700)">待完成，未計入營收</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">已取消</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">0 筆</div><div style="font-size:12px;color:var(--grey-700)">不計入預約量</div></div></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>預約量（每小時）</h3><div class="legend"><span><i class="sw a"></i>已完成</span><span><i class="sw b"></i>待完成</span></div></div><div class="chart"><div class="yaxis"><span>2</span><span>1</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">10:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">11:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">12:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">13:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">14:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  ">15:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  ">16:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">17:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  ">18:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  ">19:00</div></div></div></div></div></div>
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>營收（每小時）</h3><div class="legend"><span><i class="sw a"></i>營收（已完成）</span><span><i class="sw b"></i>預估（待完成）</span></div></div><div class="chart"><div class="yaxis"><span>4k</span><span>2k</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:144px"></div></div></div>
+      <div class="xl  ">10:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:36px"></div></div></div>
+      <div class="xl  ">11:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:36px"></div></div></div>
+      <div class="xl  ">12:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">13:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:27px"></div></div></div>
+      <div class="xl  ">14:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:36px"></div></div></div>
+      <div class="xl  ">15:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:36px"></div></div></div>
+      <div class="xl  ">16:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">17:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:41px"></div></div></div>
+      <div class="xl  ">18:00</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:36px"></div></div></div>
+      <div class="xl  ">19:00</div></div></div></div></div></div></div>
+    <div class="panel"><div class="panel-head"><h3>熱門服務排行</h3><span class="hint">橫條長度＝預約量</span></div>
+      <div style="display:flex;flex-direction:column;gap:16px"><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">1</span>
+        <span style="font-weight:600;min-width:0">洗剪吹</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:100%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$1,600</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">2</span>
+        <span style="font-weight:600;min-width:0">漸層染髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:20%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">1</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$3,200</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">3</span>
+        <span style="font-weight:600;min-width:0">剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:20%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">1</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$600</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">4</span>
+        <span style="font-weight:600;min-width:0">韓系剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:20%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">1</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$0</span></div></div></div></div></div></div>
+<div class="frame"><div class="label">4 · 設計師篩選（林小美＋陳阿傑，月）・彙總、趨勢、排行同步</div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="">週</span><span class="on">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">2026 年 10 月</span><span class="arrow">›</span>
+      <span class="btn outline sm dis">回到本期</span></div></div><div class="chips"><span class="fchip all ">全部 · 110</span><span class="fchip on"><span class="avatar av1">林</span>✓ 林小美 <span class="n">42</span></span><span class="fchip on"><span class="avatar av2">陳</span>✓ 陳阿傑 <span class="n">35</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">33</span></span><span class="clear">清除篩選</span></div><div class="panel" style="display:flex;gap:24px 40px;align-items:flex-end;flex-wrap:wrap">
+      <div><div style="font-size:13px;color:var(--grey-700);font-weight:500">營收（已完成 65 筆）</div><div style="font-size:36px;font-weight:700;line-height:1.25;color:var(--primary-700);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$70,500</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:16px 40px;flex:1 1 360px;min-width:0"><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預約量</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">77 筆</div><div style="font-size:12px;color:var(--grey-700)">完成 65 ・ 待完成 12</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預估營收</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$8,800</div><div style="font-size:12px;color:var(--grey-700)">待完成，未計入營收</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">已取消</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">9 筆</div><div style="font-size:12px;color:var(--grey-700)">不計入預約量</div></div></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>預約量（每日）</h3><div class="legend"><span><i class="sw a"></i>已完成</span><span><i class="sw b"></i>待完成</span></div></div><div class="chart"><div class="yaxis"><span>6</span><span>3</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:30px"></div></div></div>
+      <div class="xl  ">1</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:60px"></div></div></div>
+      <div class="xl  off">2</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:60px"></div></div></div>
+      <div class="xl  off">3</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:180px"></div></div></div>
+      <div class="xl  off">4</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">5</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">6</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">7</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:60px"></div></div></div>
+      <div class="xl  off">8</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:60px"></div></div></div>
+      <div class="xl  off">9</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:150px"></div></div></div>
+      <div class="xl  ">10</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:150px"></div></div></div>
+      <div class="xl  off">11</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">12</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">13</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:30px"></div></div></div>
+      <div class="xl  off">14</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:60px"></div></div></div>
+      <div class="xl  ">15</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">16</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">17</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">18</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  ">20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:30px"></div></div></div>
+      <div class="xl  off">22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div><div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl today off">24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:30px"></div></div></div>
+      <div class="xl  ">25</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">26</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:60px"></div></div></div>
+      <div class="xl  off">27</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  off">28</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:60px"></div></div></div>
+      <div class="xl  off">29</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">30</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:30px"></div></div></div>
+      <div class="xl  off">31</div></div></div></div></div></div>
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>營收（每日）</h3><div class="legend"><span><i class="sw a"></i>營收（已完成）</span><span><i class="sw b"></i>預估（待完成）</span></div></div><div class="chart"><div class="yaxis"><span>10k</span><span>5k</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:16px"></div></div></div>
+      <div class="xl  ">1</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:32px"></div></div></div>
+      <div class="xl  off">2</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:61px"></div></div></div>
+      <div class="xl  off">3</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:176px"></div></div></div>
+      <div class="xl  off">4</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">5</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:40px"></div></div></div>
+      <div class="xl  off">6</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:86px"></div></div></div>
+      <div class="xl  off">7</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:25px"></div></div></div>
+      <div class="xl  off">8</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:32px"></div></div></div>
+      <div class="xl  off">9</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:104px"></div></div></div>
+      <div class="xl  ">10</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:70px"></div></div></div>
+      <div class="xl  off">11</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">12</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:36px"></div></div></div>
+      <div class="xl  off">13</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:11px"></div></div></div>
+      <div class="xl  off">14</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  ">15</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:52px"></div></div></div>
+      <div class="xl  off">16</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">17</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:77px"></div></div></div>
+      <div class="xl  off">18</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:88px"></div></div></div>
+      <div class="xl  ">20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:58px"></div></div></div>
+      <div class="xl  off">21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:50px"></div></div></div>
+      <div class="xl  off">22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:54px"></div></div></div>
+      <div class="xl  off">23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:43px"></div><div class="seg-a" style="height:40px"></div></div></div>
+      <div class="xl today off">24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:11px"></div></div></div>
+      <div class="xl  ">25</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">26</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:27px"></div></div></div>
+      <div class="xl  off">27</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:40px"></div></div></div>
+      <div class="xl  off">28</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:27px"></div></div></div>
+      <div class="xl  off">29</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">30</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:11px"></div></div></div>
+      <div class="xl  off">31</div></div></div></div></div></div></div>
+    <div class="panel"><div class="panel-head"><h3>熱門服務排行</h3><span class="hint">橫條長度＝預約量</span></div>
+      <div style="display:flex;flex-direction:column;gap:16px"><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">1</span>
+        <span style="font-weight:600;min-width:0">剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:100%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">30</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$15,000</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">2</span>
+        <span style="font-weight:600;min-width:0">洗剪吹</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:63%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">19</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$11,200</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">3</span>
+        <span style="font-weight:600;min-width:0">韓系剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:50%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">15</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$11,700</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">4</span>
+        <span style="font-weight:600;min-width:0">漸層染髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:17%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$15,000</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">5</span>
+        <span style="font-weight:600;min-width:0">燙髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:17%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$14,000</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">6</span>
+        <span style="font-weight:600;min-width:0">護髮<span class="tag">已下架</span></span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:10%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">3</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$3,600</span></div></div></div></div></div></div>
+<div class="frame"><div class="label">5 · 載入中（切換期間時：工具列與篩選維持，只有數字區塊換成骨架）</div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="on">週</span><span class="">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">10/12（一）– 10/18（日）</span><span class="arrow">›</span>
+      <span class="btn outline sm ">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 27</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">11</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">6</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">10</span></span></div><div class="panel"><div class="sk" style="height:64px;margin-bottom:0px"></div></div><div style="display:flex;gap:16px;flex-wrap:wrap"><div class="panel" style="flex:1;min-width:320px"><div class="sk" style="height:24px;margin-bottom:16px"></div><div class="sk" style="height:204px;margin-bottom:0px"></div></div><div class="panel" style="flex:1;min-width:320px"><div class="sk" style="height:24px;margin-bottom:16px"></div><div class="sk" style="height:204px;margin-bottom:0px"></div></div></div><div class="panel"><div class="sk" style="height:24px;margin-bottom:16px"></div><div class="sk" style="height:32px;margin-bottom:12px"></div><div class="sk" style="height:32px;margin-bottom:12px"></div><div class="sk" style="height:32px;margin-bottom:0px"></div></div></div></div></div>
+<div class="frame"><div class="label">6 · 空狀態：A 此期間沒有預約 ／ B 所選設計師此期間沒有預約</div><div style="display:flex;flex-direction:column;gap:16px"><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="on">週</span><span class="">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">11/9（一）– 11/15（日）</span><span class="arrow">›</span>
+      <span class="btn outline sm ">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 0</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">0</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">0</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">0</span></span></div><div class="empty"><b>此期間沒有預約</b>換一個期間看看。</div></div></div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="on">日</span><span class="">週</span><span class="">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">10/25（日）</span><span class="arrow">›</span>
+      <span class="btn outline sm ">回到本期</span></div></div><div class="chips"><span class="fchip all ">全部 · 1</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">1</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">0</span></span><span class="fchip on"><span class="avatar av3">王</span>✓ 王大明 <span class="n">0</span></span><span class="clear">清除篩選</span></div><div class="empty"><b>所選設計師在此期間沒有預約</b>換一個期間，或清除設計師篩選看看。</div></div></div></div></div>
+<div class="frame"><div class="label">7 · 錯誤（不顯示部分數字；工具列與篩選仍可操作）</div><div class="screen "><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="">週</span><span class="on">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">2026 年 10 月</span><span class="arrow">›</span>
+      <span class="btn outline sm dis">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 110</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">42</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">35</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">33</span></span></div><div class="alert-err"><span>無法載入報表，請稍後再試。</span><span class="btn outline sm" style="background:#fff">重試</span></div></div></div></div>
+<div class="frame"><div class="label">8 · 768px 窄視窗（月）</div><div class="screen narrow"><div class="sidebar"><div class="logo serif">木與剪</div><div class="nav-item"><i></i>預約</div><div class="nav-item active"><i></i>報表<span class="new">新</span></div><div class="nav-item"><i></i>設計師</div><div class="nav-item"><i></i>服務設定</div><div class="nav-item"><i></i>營業時間</div><div class="nav-item"><i></i>預約規則</div><div class="nav-item"><i></i>商店設定</div><div class="nav-item"><i></i>帳號設定</div><div class="nav-item"><i></i>稽核紀錄</div></div><div class="main">
+  <div class="head"><h2 class="serif">報表</h2></div><div class="toolbar">
+    <div class="seg"><span class="">日</span><span class="">週</span><span class="on">月</span></div>
+    <div class="pnav"><span class="arrow">‹</span><span class="cur">2026 年 10 月</span><span class="arrow">›</span>
+      <span class="btn outline sm dis">回到本期</span></div></div><div class="chips"><span class="fchip all on">全部 · 110</span><span class="fchip "><span class="avatar av1">林</span>林小美 <span class="n">42</span></span><span class="fchip "><span class="avatar av2">陳</span>陳阿傑 <span class="n">35</span></span><span class="fchip "><span class="avatar av3">王</span>王大明 <span class="n">33</span></span></div><div class="panel" style="display:flex;gap:24px 40px;align-items:flex-end;flex-wrap:wrap">
+      <div><div style="font-size:13px;color:var(--grey-700);font-weight:500">營收（已完成 95 筆）</div><div style="font-size:36px;font-weight:700;line-height:1.25;color:var(--primary-700);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$105,300</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:16px 40px;flex:1 1 360px;min-width:0"><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預約量</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">110 筆</div><div style="font-size:12px;color:var(--grey-700)">完成 95 ・ 待完成 15</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">預估營收</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">NT$11,200</div><div style="font-size:12px;color:var(--grey-700)">待完成，未計入營收</div></div><div style="min-width:0"><div style="font-size:13px;color:var(--grey-700);font-weight:500">已取消</div><div style="font-size:24px;font-weight:600;line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap">13 筆</div><div style="font-size:12px;color:var(--grey-700)">不計入預約量</div></div></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>預約量（每日）</h3><div class="legend"><span><i class="sw a"></i>已完成</span><span><i class="sw b"></i>待完成</span></div></div><div class="chart"><div class="yaxis"><span>8</span><span>4</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  ">1</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">2</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:135px"></div></div></div>
+      <div class="xl  off">3</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:158px"></div></div></div>
+      <div class="xl  off">4</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">5</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">6</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">7</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">8</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">9</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:158px"></div></div></div>
+      <div class="xl  ">10</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:158px"></div></div></div>
+      <div class="xl  off">11</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">12</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">13</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:68px"></div></div></div>
+      <div class="xl  off">14</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">15</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:135px"></div></div></div>
+      <div class="xl  off">16</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">17</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">18</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  ">20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:113px"></div></div></div>
+      <div class="xl  off">22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div><div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl today off">24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  ">25</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">26</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:45px"></div></div></div>
+      <div class="xl  off">27</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:90px"></div></div></div>
+      <div class="xl  off">28</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:45px"></div></div></div>
+      <div class="xl  off">29</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  ">30</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  off">31</div></div></div></div></div></div>
+      <div class="panel" style="flex:1;min-width:320px"><div class="panel-head"><h3>營收（每日）</h3><div class="legend"><span><i class="sw a"></i>營收（已完成）</span><span><i class="sw b"></i>預估（待完成）</span></div></div><div class="chart"><div class="yaxis"><span>12k</span><span>6k</span><span>0</span></div>
+    <div class="plot"><div class="grid" style="top:0"></div><div class="grid" style="top:90px"></div><div class="grid" style="top:180px;background:var(--grey-300)"></div>
+    <div class="cols"><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:39px"></div></div></div>
+      <div class="xl  ">1</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:39px"></div></div></div>
+      <div class="xl  off">2</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:137px"></div></div></div>
+      <div class="xl  off">3</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:156px"></div></div></div>
+      <div class="xl  off">4</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  ">5</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:33px"></div></div></div>
+      <div class="xl  off">6</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:72px"></div></div></div>
+      <div class="xl  off">7</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:39px"></div></div></div>
+      <div class="xl  off">8</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:45px"></div></div></div>
+      <div class="xl  off">9</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:109px"></div></div></div>
+      <div class="xl  ">10</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:77px"></div></div></div>
+      <div class="xl  off">11</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">12</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:75px"></div></div></div>
+      <div class="xl  off">13</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:66px"></div></div></div>
+      <div class="xl  off">14</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:75px"></div></div></div>
+      <div class="xl  ">15</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:65px"></div></div></div>
+      <div class="xl  off">16</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:87px"></div></div></div>
+      <div class="xl  off">17</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:90px"></div></div></div>
+      <div class="xl  off">18</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">19</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:74px"></div></div></div>
+      <div class="xl  ">20</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:57px"></div></div></div>
+      <div class="xl  off">21</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:120px"></div></div></div>
+      <div class="xl  off">22</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-a" style="height:45px"></div></div></div>
+      <div class="xl  off">23</div></div><div class="col today"><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:50px"></div><div class="seg-a" style="height:81px"></div></div></div>
+      <div class="xl today off">24</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:9px"></div></div></div>
+      <div class="xl  ">25</div></div><div class="col "><div class="bars"><div class="stack1">
+      </div></div>
+      <div class="xl  off">26</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  off">27</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:47px"></div></div></div>
+      <div class="xl  off">28</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:23px"></div></div></div>
+      <div class="xl  off">29</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:9px"></div></div></div>
+      <div class="xl  ">30</div></div><div class="col "><div class="bars"><div class="stack1">
+      <div class="seg-b" style="height:9px"></div></div></div>
+      <div class="xl  off">31</div></div></div></div></div></div></div>
+    <div class="panel"><div class="panel-head"><h3>熱門服務排行</h3><span class="hint">橫條長度＝預約量</span></div>
+      <div style="display:flex;flex-direction:column;gap:16px"><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">1</span>
+        <span style="font-weight:600;min-width:0">剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:100%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">40</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$20,400</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">2</span>
+        <span style="font-weight:600;min-width:0">洗剪吹</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:68%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">27</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$17,600</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">3</span>
+        <span style="font-weight:600;min-width:0">韓系剪髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:57%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">23</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$17,100</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">4</span>
+        <span style="font-weight:600;min-width:0">漸層染髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:25%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">10</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$30,200</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">5</span>
+        <span style="font-weight:600;min-width:0">燙髮</span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:13%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$14,000</span></div><div style="display:grid;grid-template-columns:24px 144px 1fr 48px 96px;gap:12px;align-items:center;font-size:14px">
+        <span style="color:var(--grey-700);font-variant-numeric:tabular-nums">6</span>
+        <span style="font-weight:600;min-width:0">護髮<span class="tag">已下架</span></span>
+        <span style="height:12px;background:var(--grey-200);border-radius:var(--radius-sm);display:block"><span style="display:block;height:12px;border-radius:var(--radius-sm);background:var(--primary-500);width:13%"></span></span>
+        <span style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">5</span>
+        <span style="text-align:right;color:var(--grey-700);font-variant-numeric:tabular-nums">NT$6,000</span></div></div></div></div></div></div></div></body></html>
