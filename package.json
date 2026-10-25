@@ -22,6 +22,7 @@
     "test:mfa-rls": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.mfa-rls.config.ts",
     "test:notifications": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.notifications.config.ts",
     "test:audit-log": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.audit-log.config.ts",
+    "test:reports": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.reports.config.ts",
     "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
     "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs",
     "sweep:audit-test-rows": "node --env-file=.env.local scripts/sweep-audit-test-rows.mjs"

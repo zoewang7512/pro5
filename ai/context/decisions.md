@@ -475,3 +475,41 @@
       （見完整版備案）、為 services.name 補長度限制、updateBookingPolicy 的真實資料庫整合驗證
       （正式環境手動走查已確認接線）。
 ```
+
+## TASK-087（儀表板與報表 預約價格快照，0020）：用 BEFORE INSERT trigger 帶入下單價格，不改 create_appointment
+
+```text
+日期：2026-10-24
+決策：appointments 新增 price_at_booking numeric(10,2) not null check (>= 0)，由 BEFORE INSERT trigger
+      public.set_appointment_price_snapshot() 無條件以 services.price 覆寫；既有預約一次性回補為
+      「各自服務的目前價格」；authenticated 只有 select (price_at_booking)，沒有 update。
+情境：報表的營收要用「下單當下的價格」，但 appointments 原本只關聯 services，服務一改價歷史營收就跟著變。
+考慮過的替代方案：
+  - 改 create_appointment 在 insert 時帶入價格：RPC 已被 0013／0014／0018 改過多次、是顧客預約核心路徑，
+    再動它風險高；而且只涵蓋 RPC 一條路徑，service_role 腳本或未來後台新增預約會漏掉快照。
+  - 不存快照、報表直接用服務目前價格：改價後歷史營收漂移，數字不可信（使用者否決）。
+  - 另建價格歷史表：過度設計，單一店長、價格異動極少。
+為何選這個：trigger 讓任何新增路徑都自動有快照；RPC 簽名與內容完全不動，回滾只需丟 trigger；無條件覆寫，
+      不信任呼叫端帶入的值；只有 INSERT 寫快照，改期／改狀態不重算。
+關鍵細節：
+  - 找不到服務時以 23503（foreign_key_violation）中止，保留原本「service_id 不存在 → 外鍵錯誤」的語意。
+  - trigger function 為 security definer、set search_path = ''、revoke execute from public（比照 0011／0012）。
+  - 權限：appointments 對 authenticated 是欄位層級授權（0015），新欄位必須補 grant select，否則報表頁讀取
+    會 permission denied；不給 update，所以店長 session 被盜用也改不了快照。service_role 有整表權限，
+    整合測試靠它改快照造資料。anon 沒有任何權限。
+  - 回補的副作用防護：回補前把「目前為啟用狀態」的 appointments_set_updated_at（否則全部既有預約的
+    updated_at 被改成現在）與 appointments_notify_update（寄取消／改期信；其 WHEN 本來就不含本欄位，這裡是
+    雙保險）停用，回補後只還原剛才停用的；整段在同一交易內，失敗整份回滾。ADD COLUMN 的 ACCESS EXCLUSIVE
+    鎖持有到 commit，回補前不會有新預約插隊產生 null 列。
+  - 歷史預約的快照是回補當下的服務價格（近似值）：既有預約沒有歷史價格可還原；規格書已列為非目標，畫面不標示。
+security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納三項——(1) 先 set local lock_timeout = '5s' 並明確
+      lock table ... access exclusive（比照 0018），拿不到鎖 5 秒內整份回滾，不讓預約請求排隊卡住（down 檔同樣處理）；
+      (2) trigger function 對 public、anon、authenticated 三者都 revoke execute（比照 0017）；(3) 套用前先清點 appointments 上的
+      trigger（預期只有 notify_insert、notify_update、set_updated_at 三個且為啟用），避免有人在 Dashboard 手動建過沒有 WHEN 的 webhook。
+測試資料規則（沿用既有教訓）：整合測試新增預約一律 customer_email = null（0011／0012 webhook 只在有 email
+      時寄信）、`__TEST__` 名稱、結尾只做 scope: "local" 的登出。
+部署順序：先在 Supabase SQL Editor 整份執行 0020，再部署前端（前端早於 0020 部署時，報表頁只顯示錯誤狀態，
+      不影響其他頁）。回滾：Vercel 回滾前端 → 0020_down（會刪除全部快照）。
+影響：後續報表（TASK-088～）一律以 price_at_booking 計營收；日後若新增「後台新增預約」，不需處理快照；
+      若日後要「改派／改價預約」，需另行決定是否重算快照（目前 UPDATE 不重算）。
+```
