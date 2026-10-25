@@ -8,7 +8,7 @@
 - 上層 User Story：查看預約數量與營收統計
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-088
-- 狀態：草稿
+- 狀態：驗證中（實作與驗證完成，待使用者人工驗收）
 - 風險等級：低
 - Agent owner：Claude Code
 - 人工核准者：待使用者核准計畫（mockup 已由使用者選定：`mockups/reports-final-tabs.html` 儀表板頁籤）
@@ -61,9 +61,9 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
+- 變更的檔案：`components/ui/TrendBarChart.tsx`（新增）、`tests/components/trend-bar-chart.test.tsx`（新增）、`app/design-system/page.tsx`（展示區塊）、`ai/context/design-system.md`（inventory 新增一列）。
+- 執行過的指令：`npx vitest run tests/components/trend-bar-chart.test.tsx`、`npx tsc --noEmit`、`npm run lint`、`npm run build`、`npx vitest run --maxWorkers=3`；瀏覽器實測 `/design-system`。
+- 測試輸出：元件單元 31 項通過；tsc／lint／build 通過；全套 1423／1430（3 個既有不穩定的 UI 元件測試檔逾時，單獨重跑 91 項全過）。細節見 [`verification/TASK-089.md`](../verification/TASK-089.md)。
+- 螢幕截圖：`/design-system` 的 TrendBarChart 區塊（淺色／深色、桌面／768px、月 31 格、週 7 格、日 10 格、全零、空、hover 提示、鍵盤焦點）皆在對話的瀏覽器窗格截取，未另存檔案；對比度計算見驗證報告。
+- 已知限制：不替「今天」強制顯示 x 軸標籤（由呼叫端決定 `showLabel`）；提示框位置為簡單規則；斜紋底色用 `color-mix`（theme 沒有 `primary.50`），與 mockup 的差異見驗證報告。
 - 後續任務：TASK-090
