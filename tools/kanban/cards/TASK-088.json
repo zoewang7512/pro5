@@ -2,7 +2,7 @@
   "id": "TASK-088",
   "title": "儀表板與報表 報表資料層（lib/admin/reports.ts：期間、分頁查詢、彙總、趨勢、設計師篩選）",
   "content": "口徑集中一處：預約量＝非取消、營收＝已完成快照價、預估＝待完成；日期以台北時間歸屬；單期間最多 5000 列，超過回錯誤。含單元與整合測試。",
-  "stage": "backlog",
+  "stage": "verify",
   "risk": "low",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -37,7 +37,7 @@
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-088.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-088.md",
     "pr": ""
   },
   "refs": [
@@ -47,9 +47,18 @@
     "lib/admin/designer-filter.ts"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/admin/reports.test.ts tests/admin/designer-filter.test.ts：71 項通過（TZ=UTC、PST8PDT＝America/Los_Angeles、Asia/Taipei 結果一致）",
+      "npm run test:reports：19 項通過（原 11＋新增彙總 8，真實 Supabase）",
+      "npx tsc --noEmit、npm run lint、npm run build：通過",
+      "npx vitest run --maxWorkers=3：1398／1399（唯一失敗 account-settings-view 為既有並行逾時，乾淨基線同樣失敗，單獨重跑通過）",
+      "測試資料殘留檢查通過"
+    ],
+    "findings": [
+      "全套測試預設並行度下大量逾時為既有問題（乾淨基線 54 項失敗），與 TASK-087 發現同一議題，建議另立任務",
+      "Windows Node 不認 IANA 時區名稱，洛杉磯案例改用 TZ=PST8PDT 並確認 Intl 回報 America/Los_Angeles"
+    ],
+    "residual": "單期間上限 5000 列（超過回錯誤）；isCurrent 於建立期間時計算，頁面跨午夜不自動更新；資料層尚無畫面使用。待使用者人工驗收後才轉 Done。"
   },
   "comments": [
     {
@@ -61,6 +70,11 @@
       "name": "使用者",
       "time": "2026-10-24",
       "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "報表資料層完成：reports.ts（期間、分頁查詢、彙總、趨勢、篩選）、designer-filter 型別放寬、單元 71 項（三時區一致）與整合 19 項通過，tsc／lint／build 通過。已轉 Verify，等待使用者人工驗收。"
     }
   ]
 }

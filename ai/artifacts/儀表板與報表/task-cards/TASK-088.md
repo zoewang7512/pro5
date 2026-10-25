@@ -8,7 +8,7 @@
 - 上層 User Story：查看預約數量與營收統計
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-087
-- 狀態：草稿
+- 狀態：驗證中（實作與驗證完成，待使用者人工驗收）
 - 風險等級：低（唯讀、純函式為主；不改資料庫）
 - Agent owner：Claude Code
 - 人工核准者：待使用者核准計畫
@@ -62,9 +62,9 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
+- 變更的檔案：`lib/admin/reports.ts`（新增）、`lib/admin/designer-filter.ts`（僅型別放寬）、`tests/admin/reports.test.ts`（新增）、`tests/admin/designer-filter.test.ts`（追加 2 項）、`tests/reports.integration.test.ts`（追加 8 項）。
+- 執行過的指令：`npx vitest run tests/admin/reports.test.ts tests/admin/designer-filter.test.ts`（TZ 為 UTC／PST8PDT／Asia/Taipei 各一次）、`npm run test:reports`、`npx tsc --noEmit`、`npm run lint`、`npm run build`、`npx vitest run --maxWorkers=3`。
+- 測試輸出：單元 71 項通過（三個時區皆同）；整合 19 項通過；tsc／lint／build 通過；全套 1398／1399（唯一失敗為既有的 `account-settings-view` 並行逾時，乾淨基線同樣會失敗）。細節見 [`verification/TASK-088.md`](../verification/TASK-088.md)。
 - 螢幕截圖：不適用
-- 已知限制：單期間上限 5000 列。
+- 已知限制：單期間上限 5000 列。Windows 的 Node 不認 IANA 時區名稱（`America/Los_Angeles` 會靜默退回系統時區），洛杉磯案例以 `TZ=PST8PDT` 執行。
 - 後續任務：TASK-089、TASK-090、TASK-091

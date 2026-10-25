@@ -1,6 +1,6 @@
 // 對真實 Supabase 專案執行的整合測試，驗證「儀表板與報表」Epic 的資料層。
 // TASK-087：0020_appointment_price_snapshot（appointments.price_at_booking）——快照寫入、權限矩陣、
-// 顧客端 RPC 不外露此欄位。TASK-088 之後會在本檔案追加彙總案例。
+// 顧客端 RPC 不外露此欄位。TASK-088：追加彙總案例（fetchReportAppointments + summarize + buildTrend 對手算結果）。
 // 不放進預設 `npm test`，只透過 `npm run test:reports` 執行；缺設定時直接噴錯而非略過，
 // 避免「忘了填 .env.local 卻顯示測試通過」的誤導。
 //
@@ -11,6 +11,13 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  buildTrend,
+  fetchReportAppointments,
+  filterByDesigners,
+  getReportPeriod,
+  summarize,
+} from "@/lib/admin/reports";
 import { cleanupTestDesigners, createTestDesigner } from "./helpers/designer-fixture";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -323,6 +330,236 @@ describe("預約價格快照 price_at_booking（真實 Supabase 專案）", () =
       if (createdError) throw createdError;
       // 此時服務價格為 150（上面改過價），RPC 建立的預約快照要等於當下價格。
       expect(Number(created.price_at_booking)).toBe(150);
+    });
+  });
+});
+
+// ---- TASK-088：彙總（fetchReportAppointments + summarize + buildTrend） ----
+
+describe("報表彙總（真實 Supabase 專案）", () => {
+  let serviceRoleClient: SupabaseClient;
+  let anonClient: SupabaseClient;
+  let adminClient: SupabaseClient;
+  let nonAdminClient: SupabaseClient;
+  let nonAdminUserId: string | undefined;
+  const serviceIds: string[] = [];
+  const designerIds: string[] = [];
+  let designerA: string;
+  let designerB: string;
+
+  // 離今天很遠的某個星期三：該週（週一～週日）不會有真實預約。
+  const WEDNESDAY = (() => {
+    const base = addDays(taipeiToday(), 300);
+    return addDays(base, (3 - weekdayOf(base) + 7) % 7);
+  })();
+  const MONDAY = addDays(WEDNESDAY, -2);
+  const SUNDAY = addDays(WEDNESDAY, 4);
+  const NEXT_MONDAY = addDays(WEDNESDAY, 5);
+
+  beforeAll(async () => {
+    serviceRoleClient = newClient(serviceRoleKey!);
+    anonClient = newClient(anonKey!);
+
+    adminClient = newClient(anonKey!);
+    const { error: adminSignInError } = await adminClient.auth.signInWithPassword({
+      email: designerEmail!,
+      password: designerPassword!,
+    });
+    if (adminSignInError) throw adminSignInError;
+
+    const nonAdminEmail = `${MARKER}-agg-nonadmin@example.invalid`;
+    const nonAdminPassword = `${randomUUID()}Aa1!`;
+    const { data: created, error: createError } = await serviceRoleClient.auth.admin.createUser({
+      email: nonAdminEmail,
+      password: nonAdminPassword,
+      email_confirm: true,
+    });
+    if (createError) throw createError;
+    nonAdminUserId = created.user.id;
+    nonAdminClient = newClient(anonKey!);
+    const { error: nonAdminSignInError } = await nonAdminClient.auth.signInWithPassword({
+      email: nonAdminEmail,
+      password: nonAdminPassword,
+    });
+    if (nonAdminSignInError) throw nonAdminSignInError;
+
+    for (const [label, price] of [
+      ["one", 100],
+      ["two", 200],
+    ] as const) {
+      const { data, error } = await serviceRoleClient
+        .from("services")
+        .insert({ name: `${MARKER}-agg ${label}`, price, duration_minutes: 30, is_active: true })
+        .select("id")
+        .single();
+      if (error) throw error;
+      serviceIds.push(data.id);
+    }
+    const [serviceOne, serviceTwo] = serviceIds;
+
+    designerA = (await createTestDesigner(serviceRoleClient, { tag: "agga", serviceIds })).id;
+    designerIds.push(designerA);
+    designerB = (await createTestDesigner(serviceRoleClient, { tag: "aggb", serviceIds })).id;
+    designerIds.push(designerB);
+
+    // 手算用的固定資料。快照用 service_role 直接 update 成指定值（trigger 只在 INSERT 覆寫），模擬「事後改價」。
+    // 週一 00:00 是期間第一個瞬間（含）；下週一 00:00 是結束界線（不含）；前一週日 23:59 在期間外。
+    const day = (date: string, hh: number, mm = 0) => {
+      const start = isoAt(date, hh, mm);
+      return { start, end: new Date(Date.parse(start) + 30 * 60_000).toISOString() };
+    };
+    const fixtures = [
+      { key: "beforeWeek", designer: designerA, service: serviceOne, ...{ start: isoAt(addDays(MONDAY, -1), 23, 59), end: isoAt(MONDAY, 0, 0) }, status: "completed", snapshot: 999 },
+      { key: "monFirstInstant", designer: designerA, service: serviceOne, ...day(MONDAY, 0), status: "pending", snapshot: 100 },
+      { key: "wedCompletedA", designer: designerA, service: serviceOne, ...day(WEDNESDAY, 10), status: "completed", snapshot: 150.5 },
+      { key: "wedCompletedB", designer: designerB, service: serviceTwo, ...day(WEDNESDAY, 10, 30), status: "completed", snapshot: 200 },
+      { key: "wedConfirmedB", designer: designerB, service: serviceTwo, ...day(WEDNESDAY, 14), status: "confirmed", snapshot: 250 },
+      { key: "wedCancelledA", designer: designerA, service: serviceOne, ...day(WEDNESDAY, 21), status: "cancelled", snapshot: 100 },
+      { key: "sunLate", designer: designerA, service: serviceOne, ...{ start: isoAt(SUNDAY, 23, 30), end: isoAt(NEXT_MONDAY, 0, 0) }, status: "completed", snapshot: 100 },
+      { key: "nextWeekFirstInstant", designer: designerA, service: serviceOne, ...day(NEXT_MONDAY, 0), status: "completed", snapshot: 888 },
+    ];
+    for (const f of fixtures) {
+      const { data, error } = await serviceRoleClient
+        .from("appointments")
+        .insert({
+          service_id: f.service,
+          designer_id: f.designer,
+          customer_name: `${MARKER}-agg ${f.key}`,
+          customer_phone: testPhone(),
+          // customer_email 一律不填（null）：Database Webhook 在 email 非 null 時才會寄信。
+          start_at: f.start,
+          end_at: f.end,
+          status: f.status,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const { error: snapshotError } = await serviceRoleClient
+        .from("appointments")
+        .update({ price_at_booking: f.snapshot })
+        .eq("id", data.id);
+      if (snapshotError) throw snapshotError;
+    }
+  }, 120000);
+
+  afterAll(async () => {
+    const errors: unknown[] = [];
+    await adminClient?.auth.signOut({ scope: "local" });
+    await nonAdminClient?.auth.signOut({ scope: "local" });
+
+    if (serviceIds.length > 0) {
+      const { error } = await serviceRoleClient.from("appointments").delete().in("service_id", serviceIds);
+      if (error) errors.push(error);
+    }
+    if (designerIds.length > 0) {
+      try {
+        await cleanupTestDesigners(serviceRoleClient, designerIds);
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (serviceRoleClient) {
+      const { error } = await serviceRoleClient
+        .from("customers")
+        .delete()
+        .like("name", `${escapeLikePattern(MARKER)}%`);
+      if (error) errors.push(error);
+    }
+    if (serviceIds.length > 0) {
+      const { error } = await serviceRoleClient.from("services").delete().in("id", serviceIds);
+      if (error) errors.push(error);
+    }
+    if (nonAdminUserId) {
+      const { error } = await serviceRoleClient.auth.admin.deleteUser(nonAdminUserId);
+      if (error) errors.push(error);
+    }
+    if (errors.length > 0) {
+      throw new Error(`[reports.integration.test] afterAll 清除失敗，殘留測試資料未被清乾淨：${JSON.stringify(errors)}`);
+    }
+  });
+
+  const week = () => getReportPeriod("week", WEDNESDAY, WEDNESDAY);
+
+  // 期間內若有別人（真實資料）的預約也不影響：只看本套件的服務。
+  async function fetchMine(client: SupabaseClient, period = week()) {
+    const result = await fetchReportAppointments(client, period);
+    if (!result.ok) throw new Error(`fetchReportAppointments failed: ${JSON.stringify(result.error)}`);
+    return result.data.filter((a) => serviceIds.includes(a.serviceId));
+  }
+
+  it("店長取回週期間：含第一個瞬間、不含結束界線與前一週日 23:59", async () => {
+    const mine = await fetchMine(adminClient);
+    expect(mine).toHaveLength(6);
+    expect(mine.map((a) => a.price).sort((x, y) => x - y)).toEqual([100, 100, 100, 150.5, 200, 250]);
+  });
+
+  it("summarize：預約量、各狀態筆數、營收（快照價）、預估營收與手算一致", async () => {
+    expect(summarize(await fetchMine(adminClient))).toEqual({
+      booked: 5,
+      completed: 3,
+      pending: 2,
+      cancelled: 1,
+      revenue: 450.5, // 150.5 + 200 + 100（改價後的快照，不是服務目前價格）
+      estimated: 350, // 100 + 250
+    });
+  });
+
+  it("buildTrend（週）：七格、補零、日期歸屬依台北時間（週日 23:30 屬週日）", async () => {
+    const trend = buildTrend(week(), await fetchMine(adminClient));
+    expect(trend.map((b) => b.key)).toEqual(Array.from({ length: 7 }, (_, i) => addDays(MONDAY, i)));
+    expect(trend.map((b) => b.booked)).toEqual([1, 0, 3, 0, 0, 0, 1]);
+    expect(trend[0]).toMatchObject({ pending: 1, estimated: 100 });
+    expect(trend[2]).toMatchObject({ completed: 2, pending: 1, cancelled: 1, revenue: 350.5, estimated: 250 });
+    expect(trend[6]).toMatchObject({ completed: 1, revenue: 100 });
+  });
+
+  it("buildTrend（日）：預約晚於 19 點時範圍擴張到 21:00，已取消不丟", async () => {
+    const day = getReportPeriod("day", WEDNESDAY, WEDNESDAY);
+    const trend = buildTrend(day, await fetchMine(adminClient, day));
+    expect(trend.map((b) => b.key)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`),
+    );
+    expect(trend[0]).toMatchObject({ booked: 2, completed: 2, revenue: 350.5 });
+    expect(trend[4]).toMatchObject({ key: "14:00", booked: 1, pending: 1, estimated: 250 });
+    expect(trend[11]).toMatchObject({ key: "21:00", booked: 0, cancelled: 1 });
+  });
+
+  it("設計師篩選後的彙總與手算一致", async () => {
+    const mine = await fetchMine(adminClient);
+    expect(summarize(filterByDesigners(mine, [designerA]))).toEqual({
+      booked: 3,
+      completed: 2,
+      pending: 1,
+      cancelled: 1,
+      revenue: 250.5,
+      estimated: 100,
+    });
+    expect(summarize(filterByDesigners(mine, [designerB]))).toEqual({
+      booked: 2,
+      completed: 1,
+      pending: 1,
+      cancelled: 0,
+      revenue: 200,
+      estimated: 250,
+    });
+  });
+
+  it("前一日 23:59 與次日 00:00 的預約只出現在各自的日期", async () => {
+    const sundayBefore = getReportPeriod("day", addDays(MONDAY, -1), WEDNESDAY);
+    expect((await fetchMine(adminClient, sundayBefore)).map((a) => a.price)).toEqual([999]);
+
+    const nextMonday = getReportPeriod("day", NEXT_MONDAY, WEDNESDAY);
+    expect((await fetchMine(adminClient, nextMonday)).map((a) => a.price)).toEqual([888]);
+  });
+
+  it("非店長登入者取不到資料（空結果，不是錯誤）", async () => {
+    expect(await fetchReportAppointments(nonAdminClient, week())).toEqual({ ok: true, data: [] });
+  });
+
+  it("anon 取不到資料（回泛用錯誤，不洩漏內容）", async () => {
+    expect(await fetchReportAppointments(anonClient, week())).toEqual({
+      ok: false,
+      error: { message: "發生未預期的錯誤，請稍後再試。" },
     });
   });
 });
