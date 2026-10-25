@@ -52,7 +52,7 @@
 
 ## 技術棧
 
-- 前端：Next.js 16（App Router + TypeScript）
+- 前端：Next.js 16（App Router + TypeScript；TASK-095 起為 16.4.3，next 與 eslint-config-next 精確同版，不用 overrides，見 decisions）
 - 後端：Next.js Server Components／Server Actions + Supabase（BaaS）
 - 資料庫：Supabase Postgres，啟用 RLS；schema 定義於 `supabase/migrations/`。核心表：
   `services`（含 `buffer_minutes` 欄位，TASK-022，0～120 分鐘，預設 0）／`customers`／

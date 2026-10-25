@@ -620,3 +620,33 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 影響：資料量逼近 5000 列／月時，升級為資料庫端彙總，口徑整個搬進 SQL 成為唯一來源（見 project-map「已知限制」）；
       designer-filter 的 countActiveAppointments 與 summarize().booked 必須等價（新增預約狀態時兩處要一起改）。
 ```
+
+## TASK-095（維運）：升級 next 16.3.0 → 16.4.3，處理 npm audit 的 critical 與三項 high
+
+```text
+日期：2026-10-25
+決策：
+  1. next、eslint-config-next 以精確版本同升 16.4.3（npm install --save-exact），不使用 npm audit fix --force，
+     不新增 overrides。npm ls next 只有一份（@mui/material-nextjs 共用）。
+  2. nanoid（3.3.17→3.3.20）、source-map-js（1.2.1→1.2.2）是 next/postcss／jsdom 的傳遞相依，升 next 後仍殘留，
+     改用 `npm update nanoid source-map-js` 只動 lockfile、在原宣告範圍內升級；sharp 隨 next 升到 0.35.5（@img/sharp-* 同步）。
+     結果：`npm audit --omit=dev` 由 1 critical＋3 high 降為 0。
+  3. 升級範圍僅 next／eslint-config-next 及其傳遞相依（含 @swc/helpers、@next/*、fastq 的 dev 傳遞變動）；
+     不順便升 @mui／react／@supabase。lockfile 無新增或移除套件、無新增 install script、integrity 與 registry 一致
+     （security-reviewer 快速複審通過）。
+  4. proxy.ts、next.config.ts 不需修改。16.4.3 release note 唯一相關的是「proxy.ts 不再載入 app-page runtime」；
+     本專案 proxy 路徑只用 next/server 與 @supabase/ssr，不依賴它，且未登入存取 /admin/* 仍 307 導向 /login
+     （dev 與 production 皆已實測）。
+情境：Epic「儀表板與報表」完成後 security-reviewer 總覽審查建議；公告涉及的功能（next/image、next/og、use cache、
+      Server Actions）本專案目前都沒用，但日後新增就可能碰到。
+已知限制：
+  - 完整 `npm audit`（含 dev）仍有 7 項（vitest 鏈的 tinypool critical、vite／@vitest/mocker、zod、js-yaml、
+    brace-expansion），皆為測試／lint 工具，不進正式環境。其中 tinypool 需 vitest 主版本升級，另案評估。
+  - package.json 的 dependencies 全為精確版本，但 devDependencies 本來就有 `^`（eslint、typescript、vitest 等），
+    與任務卡「無 ^」的描述不符，以此為準；部署與 CI 應用 npm ci 以鎖定 lockfile。
+  - 升級後第一次 `next build` 曾失敗於 next/font/google 的 Noto_Serif_TC（找不到 turbopack font 模組），之後同一份
+    程式碼連跑 4 次 build 都成功。dev server 日誌顯示當時 fonts.gstatic.com 的 woff2 下載「Connection timed out」，
+    且我清空 .next 使字型快取歸零而需要重新下載近百個子集；網路恢復、重啟 dev server 後恢復正常。判斷為字型下載逾時，
+    而非 16.4.3 的缺陷，但沒有在 16.3.0 上重現對照；若日後在 CI 或部署偶發，先檢查對 Google Fonts 的網路。
+影響：正式環境（Vercel）要重新部署才會套用；部署由使用者決定。
+```

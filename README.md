@@ -148,9 +148,8 @@
   `tests/admin/reports.test.ts` 驗證，之後可改為測試內自動切換。
 - 🧪 **整合測試改用獨立的 Supabase 測試專案** — 目前 `npm run test:*` 直接對正式庫跑，會留下少量測試資料與稽核
   雜訊（見 `ai/context/project-map.md`）；有測試專案後即可避免。
-- ⬆️ **升級 `next`、回報 `write-excel-file` 缺陷** — `npm audit` 有 `next` 的 critical 公告（本專案目前沒有用到
-  公告涉及的功能）；`write-excel-file` 在服務或設計師名稱剛好是 `constructor`、`__proto__` 等字時會寫壞該儲存格，
-  只影響匯出檔完整性。兩者皆已立卡（TASK-095、TASK-096）。
+- ⬆️ **回報 `write-excel-file` 缺陷** — 服務或設計師名稱剛好是 `constructor`、`__proto__` 等字時會寫壞該儲存格，
+  只影響匯出檔完整性，已立卡（TASK-096）。`next` 已於 TASK-095 升到 16.4.3（`npm audit --omit=dev` 為 0；正式環境需重新部署才套用）。
 
 ## 技術棧
 
