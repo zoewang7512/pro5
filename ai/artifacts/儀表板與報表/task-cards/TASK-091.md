@@ -8,7 +8,7 @@
 - 上層 User Story：查看熱門服務項目排行
 - 分軌：前端（含純函式計算）
 - 前置任務（dependsOn）：TASK-088
-- 狀態：草稿
+- 狀態：已實作，待人工驗收（Verify）
 - 風險等級：低
 - Agent owner：Claude Code
 - 人工核准者：待使用者核准計畫（mockup 已選定）
@@ -57,9 +57,7 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
+- 變更的檔案：`lib/admin/reports-ranking.ts`、`app/admin/_components/ServiceRankingBars.tsx`／`ServiceRankingTable.tsx`／`ServiceRankingName.tsx`（共用名稱＋標籤，卡未列）、三個測試檔、`ai/context/design-system.md`。
+- 執行過的指令、測試輸出、螢幕截圖：見 [`verification/TASK-091.md`](../verification/TASK-091.md)（37 項新測試通過；tsc／lint／build 通過；暫時頁面淺／深色與 360px 實測）。
+- 已知限制：元件尚未被頁面使用；占比條長度為相對最大值（同 mockup）；全套測試並行逾時為既有問題。
 - 後續任務：TASK-092
