@@ -2,7 +2,7 @@
   "id": "TASK-087",
   "title": "儀表板與報表 預約價格快照（0020：price_at_booking 欄位、BEFORE INSERT trigger、回補、欄位層級授權、整合測試）",
   "content": "appointments 新增下單價格快照，trigger 無條件以 services.price 覆寫、回補既有資料（避開 updated_at 與通知信副作用）、authenticated 只讀不可改。需人工套用 migration；套用前 security-reviewer 複審。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "high",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -95,6 +95,11 @@
       "name": "Claude Code",
       "time": "2026-10-25",
       "text": "0020 已由使用者套用並驗證（null_rows=0、4 個 trigger 皆啟用）；test:reports 11 項與 5 個回歸套件、全套單元測試（maxWorkers=3）皆通過。已轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過，TASK-087 轉 Done。"
     }
   ]
 }
