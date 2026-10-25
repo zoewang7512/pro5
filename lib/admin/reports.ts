@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AdminError, AppointmentStatus, Result, WeekAppointment } from "./appointments";
+import type { AdminError, AppointmentStatus, WeekAppointment } from "./appointments";
 import { isRealDate } from "./designers";
 import { toTaipeiDate } from "./format";
 import { buildMonthDays, formatMonthLabel } from "./month-range";
@@ -111,9 +111,15 @@ export function shiftReportPeriod(period: ReportPeriod, delta: 1 | -1, today: st
 // 明確列欄位，不用 `*`；不含任何 customer_*／access_token（appointments 本來就是欄位層級授權）。
 const REPORT_COLUMNS = "id, start_at, status, price_at_booking, service_id, designer_id, services(name, is_active)";
 
-// PostgREST 單次回傳上限 1000 列；最多取 5 頁（5000 列），超過就回錯誤，寧可失敗也不顯示被截斷的數字。
+// 每頁取 1000 列、單一期間最多 5000 列；超過或對不上筆數就回錯誤，寧可失敗也不顯示被截斷的數字。
 const PAGE_SIZE = 1000;
-const MAX_PAGES = 5;
+export const REPORT_ROW_LIMIT = 5000;
+
+// too_many_rows：期間內預約筆數超過上限（重試沒有意義，改用較短的期間）。其餘失敗一律是泛用錯誤、不帶 code。
+export type ReportFetchError = AdminError & { code?: "too_many_rows" };
+export type ReportFetchResult = { ok: true; data: ReportAppointment[] } | { ok: false; error: ReportFetchError };
+
+const TOO_MANY_ROWS: ReportFetchError = { message: "此期間的預約筆數超過上限。", code: "too_many_rows" };
 
 const STATUSES: ReadonlySet<string> = new Set<AppointmentStatus>(["pending", "confirmed", "completed", "cancelled"]);
 
@@ -157,10 +163,12 @@ function toReportAppointment(row: RawReportRow): ReportAppointment | null {
 }
 
 // 範圍 [from 00:00+08:00, to+1 00:00+08:00)，所有設計師；設計師篩選由呼叫端對結果套用 filterByDesigners。
+// 第一頁帶 count: "exact"，由總筆數決定要取幾頁、並在最後核對取回的列數：不靠「這頁不足 1000 列」判斷結束，
+// 因為 PostgREST 的 Max rows 設定若被調小，短頁並不代表最後一頁（會靜默少算）。
 export async function fetchReportAppointments(
   supabase: SupabaseClient,
   period: Pick<ReportPeriod, "from" | "to">,
-): Promise<Result<ReportAppointment[]>> {
+): Promise<ReportFetchResult> {
   if (!isRealDate(period.from) || !isRealDate(period.to) || period.from > period.to) {
     return { ok: false, error: INTERNAL_ERROR };
   }
@@ -170,11 +178,11 @@ export async function fetchReportAppointments(
   const rows: RawReportRow[] = [];
 
   try {
-    // 多查一頁（page === MAX_PAGES）只為了分辨「剛好 5000 列」與「超過 5000 列」。
-    for (let page = 0; page <= MAX_PAGES; page++) {
-      const { data, error } = await supabase
+    let total = 0;
+    for (let page = 0; page === 0 || page * PAGE_SIZE < total; page++) {
+      const { data, error, count } = await supabase
         .from("appointments")
-        .select(REPORT_COLUMNS)
+        .select(REPORT_COLUMNS, page === 0 ? { count: "exact" } : undefined)
         .gte("start_at", rangeStart)
         .lt("start_at", rangeEnd)
         .order("start_at", { ascending: true })
@@ -182,13 +190,15 @@ export async function fetchReportAppointments(
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
       if (error || !data) return { ok: false, error: INTERNAL_ERROR };
-      if (page === MAX_PAGES) {
-        if (data.length > 0) return { ok: false, error: INTERNAL_ERROR };
-        break;
+      if (page === 0) {
+        if (typeof count !== "number" || !Number.isInteger(count) || count < 0) return { ok: false, error: INTERNAL_ERROR };
+        if (count > REPORT_ROW_LIMIT) return { ok: false, error: TOO_MANY_ROWS };
+        total = count;
       }
       rows.push(...(data as unknown as RawReportRow[]));
-      if (data.length < PAGE_SIZE) break;
     }
+    // 取回的列數必須等於總筆數：少於＝被截斷（Max rows 太小等）、多於＝翻頁期間資料變動，都寧可失敗。
+    if (rows.length !== total) return { ok: false, error: INTERNAL_ERROR };
   } catch {
     return { ok: false, error: INTERNAL_ERROR };
   }

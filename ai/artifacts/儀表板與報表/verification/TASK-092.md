@@ -75,7 +75,7 @@
 ## 人工驗收期間的追加修正
 
 - **雙卷軸**（使用者回報，儀表板頁籤、視窗偏矮時出現，報表頁籤沒有）：`components/ui/TrendBarChart.tsx`（TASK-089）給螢幕閱讀器用的隱藏資料表是 `position:absolute`，但根元素沒有 `position:relative`，定位基準變成 `<body>`；圖表落在視窗下方時，這個 1px 元素把整頁（`html`）也撐出一條捲軸，與內容區自己的捲軸並排。重現：視窗 900×560，`html` scrollHeight 1015 > 560。**最小修正**：根元素加 `position: "relative"`（本卡允許清單外的檔案，依任務卡「最小修正」條款在此記錄）；修正後月／週／日視圖 `html` 都不再有捲軸，只剩內容區一條。新增迴歸測試（根元素 computed position＝relative、隱藏表格在根元素內）。
-- **示範資料**：使用者要求在正式庫放入示範預約檢視版面，驗收後已清除（`scripts/seed-demo-reports.mjs --remove --apply`，137 筆，確認剩 0）。腳本留在 `scripts/`（預設 dry-run，資料以「【示範】」前綴標記、不填 email）。
+- **示範資料**：使用者要求在正式庫放入示範預約檢視版面，驗收後已清除（`scripts/seed-demo-reports.mjs --remove --apply`，137 筆，確認剩 0）。腳本留在 `scripts/`（預設 dry-run，資料以「【示範】」前綴標記、不填 email）。（該腳本 `scripts/seed-demo-reports.mjs` 已於 TASK-094 移除。）
 
 ## 審查發現
 

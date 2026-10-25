@@ -9,10 +9,10 @@
 - 上層 User Story：查看預約數量與營收統計
 - 分軌：前後端串接（含文件）
 - 前置任務（dependsOn）：TASK-093
-- 狀態：草稿
+- 狀態：完成（人工驗收通過 2026-10-25）
 - 風險等級：中（改動報表資料層的查詢正確性；刪除正式庫用的維運腳本）
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准計畫
+- 人工核准者：使用者（計畫 2026-10-25；驗收 2026-10-25）
 
 ## 目標
 
@@ -37,14 +37,14 @@
 - 未知事項：`count: "exact"` 在帶 `.range()`、排序與 embed（`services(...)`）的查詢上的行為（預期正常；以單元測試與一次唯讀的正式庫查詢確認）。
 - 允許變更的檔案：
   - `lib/admin/reports.ts`（`fetchReportAppointments` 的 count 驗證與錯誤碼）
-  - `app/admin/_components/ReportsStates.tsx`、`ReportsView.tsx`（只做超量錯誤的文案與隱藏重試；匯出按鈕沿用「錯誤時停用」）
-  - `tests/admin/reports.test.ts`（補 count 案例）、`tests/components/reports-view.test.tsx`（補超量案例）
+  - `app/admin/_components/ReportsStates.tsx`、`ReportsView.tsx`、`ReportsTablePanel.tsx`、`ReportsDashboardPanel.tsx`（只做超量狀態：新增 `too_large` 狀態與提示元件、面板各加一行分支；匯出按鈕沿用「錯誤時停用」。**面板的兩行分支是實作時發現的必要最小範圍擴張**，原卡把面板列為不得觸碰，已向使用者說明）
+  - `tests/admin/reports.test.ts`（補 count 案例）、`tests/components/reports-view.test.tsx`、`reports-dashboard-panel.test.tsx`、`reports-table-panel.test.tsx`（補超量案例）
   - `scripts/seed-demo-reports.mjs`（**刪除**）
   - `supabase/migrations/0020_appointment_price_snapshot_down.sql`（只改檔頭註解，加備份步驟；**不改 SQL 邏輯**）
   - `ai/artifacts/儀表板與報表/screen-spec-報表.md`、`feature-spec.md`（加註或修正舊說法）
   - `ai/context/project-map.md`、`decisions.md`、`README.md`
   - `ai/artifacts/儀表板與報表/verification/TASK-094.md`（新增）
-- 不得觸碰：`summarize`／`buildTrend`／排行與匯出的計算與口徑、面板與圖表元件、其他 migration 與 `app/` 頁面、`tools/kanban/` 其他卡片的 `gates`（審查旗標由使用者決定是否勾選，見下）。
+- 不得觸碰：`summarize`／`buildTrend`／排行與匯出的計算與口徑、面板與圖表元件的繪製邏輯（上列兩行分支除外）、其他 migration 與 `app/` 頁面、`tools/kanban/` 其他卡片的 `gates`（審查旗標由使用者決定是否勾選，見下）。
 
 ## 需求
 

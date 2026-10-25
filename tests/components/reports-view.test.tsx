@@ -85,6 +85,7 @@ function ok(data: ReportAppointment[]) {
 }
 
 const failed = { ok: false as const, error: { message: "發生未預期的錯誤，請稍後再試。" } };
+const tooMany = { ok: false as const, error: { message: "此期間的預約筆數超過上限。", code: "too_many_rows" as const } };
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -530,7 +531,49 @@ describe("ReportsView", () => {
     });
   });
 
-describe("匯出 Excel", () => {
+  describe("超過筆數上限", () => {
+    it("顯示專用提示、沒有重試按鈕，也不顯示一般錯誤文案；兩個頁籤一致", async () => {
+      const user = userEvent.setup({ delay: null });
+      mockFetch.mockResolvedValue(tooMany);
+      render(<ReportsView />);
+
+      expect(await screen.findByText("此期間的預約筆數超過上限（5,000 筆）")).toBeInTheDocument();
+      expect(screen.getByText("請改用較短的期間（日或週）。")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "重試" })).not.toBeInTheDocument();
+      expect(screen.queryByText("無法載入報表，請稍後再試。")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("tab", { name: "報表" }));
+      expect(screen.getByText("此期間的預約筆數超過上限（5,000 筆）")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "重試" })).not.toBeInTheDocument();
+      // 匯出沒有資料可匯出。
+      expect(screen.getByRole("button", { name: "↓ 匯出 Excel（.xlsx）" })).toBeDisabled();
+    });
+
+    it("工具列仍可操作：改成週粒度後重新查詢並恢復顯示資料", async () => {
+      const user = userEvent.setup({ delay: null });
+      mockFetch.mockResolvedValueOnce(tooMany).mockResolvedValueOnce(ok(monthData()));
+      render(<ReportsView />);
+      await screen.findByText("此期間的預約筆數超過上限（5,000 筆）");
+
+      await user.click(screen.getByRole("button", { name: "週" }));
+
+      expect(await screen.findByTestId("revenue-main")).toBeInTheDocument();
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(lastPeriod()).toEqual({ from: "2026-10-19", to: "2026-10-25" });
+      expect(screen.queryByText("此期間的預約筆數超過上限（5,000 筆）")).not.toBeInTheDocument();
+    });
+
+    it("一般失敗仍是原本的錯誤文案與重試按鈕", async () => {
+      mockFetch.mockResolvedValue(failed);
+      render(<ReportsView />);
+
+      expect(await screen.findByText("無法載入報表，請稍後再試。")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "重試" })).toBeInTheDocument();
+      expect(screen.queryByText(/超過上限/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("匯出 Excel", () => {
     const EXPORT_NAME = "↓ 匯出 Excel（.xlsx）";
 
     beforeEach(() => {

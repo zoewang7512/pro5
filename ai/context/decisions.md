@@ -594,3 +594,29 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
       日後升級 write-excel-file 或 fflate 時，必須重跑 tests/admin/reports-export.test.ts（讀回測試）並複查 browser 入口
       的原始碼是否新增網路／eval／儲存空間存取。若資料量逼近 5000 列／月，匯出會跟著改為資料庫端彙總的結果。
 ```
+
+## TASK-094（儀表板與報表 Epic 收尾）：count 驗證分頁、超量專用提示、移除示範資料腳本
+
+```text
+日期：2026-10-25
+決策：
+  1. 分頁改以 count 驗證：第一頁帶 count: "exact"，由總筆數決定頁數，取回列數必須等於總筆數，否則回一般錯誤。
+     原做法以「這頁不足 1000 列」判斷最後一頁，PostgREST 的 Max rows 若被調小（例如 500），某月 600 筆只會取到
+     500 筆且不報錯，違反「寧可失敗也不顯示被截斷的數字」（architect 總覽審查 M1）。不新增資料庫函式或 migration。
+  2. 超過 5000 列回可辨識的錯誤碼：錯誤型別在 lib/admin/reports.ts 內擴充為 AdminError & { code?: "too_many_rows" }
+     （不改共用的 AdminError）。畫面新增 `status: "too_large"`：warning 提示「此期間的預約筆數超過上限（5,000 筆）／
+     請改用較短的期間（日或週）。」、沒有重試按鈕（重試沒有意義）、工具列仍可操作；匯出按鈕與設計師 chip 同「錯誤」狀態。
+     為此在兩個面板各加一行分支（TASK-094 任務卡原列「面板元件不得觸碰」，屬必要的最小範圍擴張，已向使用者說明）。
+  3. 移除 scripts/seed-demo-reports.mjs（TASK-092 為了在正式庫檢視版面而加，驗收後已清除資料）。理由（security-reviewer
+     M-1）：用 service_role 對正式庫寫入／刪除；清除只靠姓名前綴「【示範】」，顧客若在前台填入同樣前綴，真實預約會被
+     誤刪且不會通知任何人；未來 14 天的示範預約會佔用真實設計師時段。用途已達成，也不在任何任務範圍內，直接移除。
+  4. 0020_down 檔頭補上回滾前備份快照的 SQL 與「2026-10-25 之後的快照是真實下單價、回滾後無法還原」的警告
+     （只改註解，SQL 邏輯不變）。
+情境：Epic 完成後 architect＋security-reviewer 總覽審查皆為「有條件通過」，本卡處理其通過條件與低成本修正。
+考慮過的替代方案：
+  - 「抓到空頁才停」：offset 固定 1000，Max rows 小於 1000 時會跳過列，不可行。
+  - 超量時仍顯示重試：重試永遠失敗，店長無從得知該改用較短期間。
+  - 保留示範腳本並加防呆（email／phone 為 null 才刪、未來日期預設不產生、--target 防呆）：維運成本高於它的價值。
+影響：資料量逼近 5000 列／月時，升級為資料庫端彙總，口徑整個搬進 SQL 成為唯一來源（見 project-map「已知限制」）；
+      designer-filter 的 countActiveAppointments 與 summarize().booked 必須等價（新增預約狀態時兩處要一起改）。
+```

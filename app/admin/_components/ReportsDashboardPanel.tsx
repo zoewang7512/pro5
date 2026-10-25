@@ -13,6 +13,7 @@ import {
   ReportsErrorState,
   ReportsPanelHeading,
   ReportsSkeleton,
+  ReportsTooLargeState,
   accentText,
   formatCount,
   formatMoney,
@@ -130,6 +131,7 @@ export function ReportsDashboardPanel(props: ReportsPanelProps) {
   if (props.status === "loading") return <ReportsSkeleton heights={[112, 300, 220]} />;
   if (props.status === "empty") return <ReportsEmptyState filtered={props.filtered} />;
   if (props.status === "error") return <ReportsErrorState onRetry={props.onRetry} />;
+  if (props.status === "too_large") return <ReportsTooLargeState />;
 
   const { period, today, totals, trend, ranking } = props;
   const unit = period.granularity === "day" ? "每小時" : "每日";

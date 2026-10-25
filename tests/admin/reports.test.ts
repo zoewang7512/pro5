@@ -299,10 +299,11 @@ describe("toReportAppointmentLike（餵給設計師 chip）", () => {
 
 // ---- fetchReportAppointments ----
 
-type QueryResult = { data: unknown; error: unknown };
+// count 沒給時，預設為 data 的列數（單頁測試的便利預設）；分頁與筆數驗證的測試一律明確指定。
+type QueryResult = { data: unknown; error: unknown; count?: unknown };
 type Call = { method: string; args: unknown[] };
 
-// 每次 from() 開一條新的查詢鏈；range() 依起始列取回應。
+// 每次 from() 開一條新的查詢鏈；range() 依起始列取回應，並附上 count（supabase-js 在 select 帶 count 時回傳）。
 function fakeClient(respond: (rangeFrom: number) => QueryResult | Promise<QueryResult>) {
   const calls: Call[] = [];
   const from = vi.fn(() => {
@@ -312,7 +313,10 @@ function fakeClient(respond: (rangeFrom: number) => QueryResult | Promise<QueryR
     }
     chain.range = (...args: unknown[]) => {
       calls.push({ method: "range", args });
-      return Promise.resolve(respond(args[0] as number));
+      return Promise.resolve(respond(args[0] as number)).then((result) => ({
+        ...result,
+        count: "count" in result ? result.count : Array.isArray(result.data) ? result.data.length : null,
+      }));
     };
     return chain;
   });
@@ -403,10 +407,18 @@ describe("fetchReportAppointments", () => {
     expect(await fetchReportAppointments(client, OCT)).toEqual({ ok: false, error: { message: GENERIC } });
   });
 
-  it("分頁：滿 1000 列繼續取下一頁，直到不足一頁", async () => {
+  it("第一頁帶 count: exact，之後的頁不再要 count", async () => {
+    const { client, calls } = fakeClient((rangeFrom) => ({ data: rangeFrom === 0 ? rows(1000) : rows(1, 1000), error: null, count: 1001 }));
+    await fetchReportAppointments(client, OCT);
+    const selects = calls.filter((c) => c.method === "select").map((c) => c.args[1]);
+    expect(selects).toEqual([{ count: "exact" }, undefined]);
+  });
+
+  it("分頁：依總筆數決定頁數（2003 筆＝3 頁），列數與總筆數一致", async () => {
     const { client, calls } = fakeClient((rangeFrom) => ({
       data: rangeFrom === 0 ? rows(1000) : rangeFrom === 1000 ? rows(1000, 1000) : rows(3, 2000),
       error: null,
+      count: 2003,
     }));
     const result = await fetchReportAppointments(client, OCT);
     expect(result.ok && result.data).toHaveLength(2003);
@@ -417,33 +429,50 @@ describe("fetchReportAppointments", () => {
     ]);
   });
 
-  it("剛好 1000 列：再確認下一頁為空後結束", async () => {
-    const { client, from } = fakeClient((rangeFrom) => ({ data: rangeFrom === 0 ? rows(1000) : [], error: null }));
+  it("剛好 1000 列：一頁就結束，不多送請求", async () => {
+    const { client, from } = fakeClient(() => ({ data: rows(1000), error: null, count: 1000 }));
     const result = await fetchReportAppointments(client, OCT);
     expect(result.ok && result.data).toHaveLength(1000);
-    expect(from).toHaveBeenCalledTimes(2);
+    expect(from).toHaveBeenCalledTimes(1);
   });
 
-  it("剛好 5000 列：成功（上限內）", async () => {
-    const { client, from } = fakeClient((rangeFrom) => ({
-      data: rangeFrom < 5000 ? rows(1000, rangeFrom) : [],
-      error: null,
-    }));
+  it("剛好 5000 列：成功（上限內），取 5 頁", async () => {
+    const { client, from } = fakeClient((rangeFrom) => ({ data: rows(1000, rangeFrom), error: null, count: 5000 }));
     const result = await fetchReportAppointments(client, OCT);
     expect(result.ok && result.data).toHaveLength(5000);
-    expect(from).toHaveBeenCalledTimes(6);
+    expect(from).toHaveBeenCalledTimes(5);
   });
 
-  it("超過 5000 列：回錯誤，不回傳任何部分資料", async () => {
-    const { client } = fakeClient((rangeFrom) => ({ data: rows(rangeFrom < 5000 ? 1000 : 1, rangeFrom), error: null }));
+  it("超過 5000 列：回可辨識的 too_many_rows，不回傳任何部分資料，也不再取後面的頁", async () => {
+    const { client, from } = fakeClient(() => ({ data: rows(1000), error: null, count: 5001 }));
+    const result = await fetchReportAppointments(client, OCT);
+    expect(result).toEqual({ ok: false, error: { message: expect.any(String), code: "too_many_rows" } });
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+
+  it("單頁回的列數少於總筆數（PostgREST Max rows 被調小）：回一般錯誤，不靜默少算", async () => {
+    // 總共 600 筆，但伺服器每次最多只回 500 列：只會取到 500 列，必須失敗。
+    const { client } = fakeClient(() => ({ data: rows(500), error: null, count: 600 }));
     const result = await fetchReportAppointments(client, OCT);
     expect(result).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+
+  it("取回的列數多於總筆數（翻頁期間資料變動）：回一般錯誤", async () => {
+    const { client } = fakeClient(() => ({ data: rows(1000), error: null, count: 900 }));
+    expect(await fetchReportAppointments(client, OCT)).toEqual({ ok: false, error: { message: GENERIC } });
+  });
+
+  it("沒有 count 或 count 不合法：回一般錯誤", async () => {
+    for (const bad of [null, undefined, -1, 1.5, "3", Number.NaN]) {
+      const { client } = fakeClient(() => ({ data: rows(3), error: null, count: bad }));
+      expect(await fetchReportAppointments(client, OCT)).toEqual({ ok: false, error: { message: GENERIC } });
+    }
   });
 
   it("任一頁失敗：回泛用錯誤，不洩漏資料庫內容、不回傳前面已取得的部分資料", async () => {
     const { client } = fakeClient((rangeFrom) =>
       rangeFrom === 0
-        ? { data: rows(1000), error: null }
+        ? { data: rows(1000), error: null, count: 2000 }
         : { data: null, error: { message: 'permission denied for column "customer_email"', code: "42501" } },
     );
     const result = await fetchReportAppointments(client, OCT);

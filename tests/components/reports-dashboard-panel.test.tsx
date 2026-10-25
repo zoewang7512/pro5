@@ -219,6 +219,14 @@ describe("ReportsDashboardPanel 狀態", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it("超過筆數上限：說明與出路、沒有重試按鈕，不顯示部分數字", () => {
+    render(<ReportsDashboardPanel status="too_large" />);
+    expect(screen.getByText("此期間的預約筆數超過上限（5,000 筆）")).toBeInTheDocument();
+    expect(screen.getByText("請改用較短的期間（日或週）。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "重試" })).toBeNull();
+    expect(screen.queryByText(/NT$/)).toBeNull();
+  });
+
   it("全部已取消：視為有資料（摘要與圖表都在），預約量 0、已取消 N，排行區顯示「此期間沒有被預約的服務」", () => {
     const cancelled = [
       reportAppointment("2026-10-03T10:00:00+08:00", "cancelled", 1000),

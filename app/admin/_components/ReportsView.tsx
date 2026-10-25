@@ -44,7 +44,7 @@ import { ServiceRankingTable } from "./ServiceRankingTable";
 // 競態：每次 effect 重跑都會作廢前一次的回應（等同遞增請求序號），較慢的舊請求回來時丟棄。
 // 匯出 Excel（報表頁籤）吃的也是這份計算結果（彙總／排行／趨勢），不重新查詢。
 
-type FetchResult = { key: string; status: "loaded" | "error"; appointments: ReportAppointment[] };
+type FetchResult = { key: string; status: "loaded" | "error" | "too_large"; appointments: ReportAppointment[] };
 
 export function ReportsView() {
   const { showToast } = useToast();
@@ -79,7 +79,8 @@ export function ReportsView() {
         setResult({ key, status: "loaded", appointments: res.data });
         setLastLoaded(res.data);
       } else {
-        setResult({ key, status: "error", appointments: [] });
+        // 超量（too_many_rows）與一般失敗分開：前者重試沒有意義，改用較短的期間。
+        setResult({ key, status: res.error.code === "too_many_rows" ? "too_large" : "error", appointments: [] });
       }
     });
 
@@ -103,7 +104,7 @@ export function ReportsView() {
   }, [supabase]);
 
   const matchesRequest = result?.key === key;
-  const status: "loading" | "loaded" | "error" = matchesRequest ? result!.status : "loading";
+  const status: "loading" | "loaded" | "error" | "too_large" = matchesRequest ? result!.status : "loading";
   const appointments = React.useMemo(() => (matchesRequest ? result!.appointments : []), [matchesRequest, result]);
 
   // chip 的數字＝期間內預約量（不含已取消）。載入中暫時沿用上一份已載入的資料（讓 chip 維持可操作，第一次載入
@@ -170,6 +171,8 @@ export function ReportsView() {
     panelProps = { status: "loading" };
   } else if (status === "error") {
     panelProps = { status: "error", onRetry: handleRetry };
+  } else if (status === "too_large") {
+    panelProps = { status: "too_large" };
   } else if (appointments.length === 0) {
     panelProps = { status: "empty", filtered: false };
   } else if (visible.length === 0) {

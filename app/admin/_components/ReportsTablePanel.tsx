@@ -18,6 +18,7 @@ import {
   ReportsErrorState,
   ReportsPanelHeading,
   ReportsSkeleton,
+  ReportsTooLargeState,
   accentText,
   formatCount,
   formatMoney,
@@ -144,6 +145,7 @@ export function ReportsTablePanel(props: ReportsPanelProps) {
   if (props.status === "loading") return <ReportsSkeleton heights={[80, 220, 440]} />;
   if (props.status === "empty") return <ReportsEmptyState filtered={props.filtered} />;
   if (props.status === "error") return <ReportsErrorState onRetry={props.onRetry} />;
+  if (props.status === "too_large") return <ReportsTooLargeState />;
 
   const { period, today, totals, trend, ranking } = props;
   // 日粒度的列是小時，沒有「今天」可標；其餘粒度以日期比對。

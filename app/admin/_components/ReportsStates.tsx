@@ -9,7 +9,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import type { Theme } from "@mui/material/styles";
 import { formatPrice } from "@/lib/admin/format";
-import type { ReportPeriod, ReportTotals, TrendBucket } from "@/lib/admin/reports";
+import { REPORT_ROW_LIMIT, type ReportPeriod, type ReportTotals, type TrendBucket } from "@/lib/admin/reports";
 
 // 儀表板頁籤（ReportsDashboardPanel）與報表頁籤（ReportsTablePanel）共用的 props 約定與狀態畫面。
 // 兩個面板只吃 props、不接觸 Supabase：資料由 TASK-092 的容器抓取、彙總（lib/admin/reports.ts）後傳入，
@@ -33,11 +33,16 @@ export type ReportsPanelProps =
   | { status: "empty"; filtered: boolean }
   // 不顯示部分數字。
   | { status: "error"; onRetry: () => void }
+  // 期間內預約筆數超過上限：重試沒有意義，不提供重試；工具列仍可操作，改用較短的期間。
+  | { status: "too_large" }
   | ReportsReadyProps;
 
 export const RANKING_EMPTY_TEXT = "此期間沒有被預約的服務";
 
 export const REPORTS_ERROR_TEXT = "無法載入報表，請稍後再試。";
+
+export const REPORTS_TOO_LARGE_TITLE = `此期間的預約筆數超過上限（${REPORT_ROW_LIMIT.toLocaleString("en-US")} 筆）`;
+export const REPORTS_TOO_LARGE_HINT = "請改用較短的期間（日或週）。";
 
 // 數字顯示：筆數加「筆」、金額 NT$ 千分位。
 export function formatCount(count: number): string {
@@ -99,6 +104,16 @@ export function ReportsErrorState({ onRetry }: { onRetry: () => void }) {
       }
     >
       {REPORTS_ERROR_TEXT}
+    </Alert>
+  );
+}
+
+// 超量：不是暫時性錯誤，所以用 warning、沒有重試按鈕，文案告訴店長出路。
+export function ReportsTooLargeState() {
+  return (
+    <Alert severity="warning">
+      <AlertTitle>{REPORTS_TOO_LARGE_TITLE}</AlertTitle>
+      {REPORTS_TOO_LARGE_HINT}
     </Alert>
   );
 }
