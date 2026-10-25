@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-25",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-095",
+  "title": "升級 next 修補 npm audit critical（含 eslint-config-next，處理 nanoid／sharp／source-map-js）",
+  "content": "next 16.3.0 → 16.4.3（精確版本）；不使用 audit fix --force；完整回歸、手動走查、middleware 存取控制確認、security-reviewer 快速複審；部署由使用者決定。",
+  "risk": "high",
+  "epic": "專案設置",
+  "userStory": "",
+  "track": "n/a",
+  "dependsOn": [],
+  "order": 95,
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-095.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "package.json",
+    "next.config.ts",
+    "proxy.ts"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "依 Epic 總覽審查（security-reviewer）建議另立：npm audit --omit=dev 有 next critical 與三項 high，皆為既有。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

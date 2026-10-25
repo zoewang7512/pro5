@@ -28,7 +28,7 @@
     "product": true,
     "ui": true,
     "architecture": false,
-    "security": false,
+    "security": true,
     "test": false,
     "code_review": false
   },
@@ -82,6 +82,11 @@
       "name": "使用者",
       "time": "2026-10-25",
       "text": "驗收通過，TASK-093 轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "看過 security-reviewer 審查報告後，勾選 security 關卡。"
     }
   ]
 }

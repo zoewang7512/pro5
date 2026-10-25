@@ -42,7 +42,7 @@
   "gates": {
     "product": true,
     "ui": false,
-    "architecture": false,
+    "architecture": true,
     "security": true,
     "test": false,
     "code_review": false
@@ -100,6 +100,11 @@
       "name": "使用者",
       "time": "2026-10-25",
       "text": "人工驗收通過，TASK-087 轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "看過 architect 審查報告後，勾選 architecture 關卡。"
     }
   ]
 }
