@@ -8,7 +8,7 @@
 - 上層 User Story：查看熱門服務項目排行
 - 分軌：前端（含純函式計算）
 - 前置任務（dependsOn）：TASK-088
-- 狀態：已實作，待人工驗收（Verify）
+- 狀態：已完成（人工驗收通過 2026-10-25）
 - 風險等級：低
 - Agent owner：Claude Code
 - 人工核准者：待使用者核准計畫（mockup 已選定）
