@@ -2,7 +2,7 @@
   "id": "TASK-089",
   "title": "儀表板與報表 TrendBarChart 圖表元件（純 CSS 堆疊長條、hover／focus 提示、方向鍵、無障礙資料表）",
   "content": "跨頁共用元件，完成後登記回 design-system inventory；儀表板頁籤使用兩次。不引入圖表套件。",
-  "stage": "verify",
+  "stage": "done",
   "risk": "low",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -74,6 +74,11 @@
       "name": "Claude Code",
       "time": "2026-10-25",
       "text": "TrendBarChart 完成：元件、31 項單元測試、/design-system 展示區塊、inventory 登記；淺色／深色、桌面／768px 實測通過。已轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過，TASK-089 轉 Done。"
     }
   ]
 }
