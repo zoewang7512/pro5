@@ -8,7 +8,7 @@
 - 上層 User Story：查看預約數量與營收統計
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-088、TASK-089
-- 狀態：草稿
+- 狀態：驗證中（實作與驗證完成，待使用者人工驗收）
 - 風險等級：低
 - Agent owner：Claude Code
 - 人工核准者：待使用者核准計畫（mockup 已由使用者選定並確認）

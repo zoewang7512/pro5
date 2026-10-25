@@ -375,22 +375,25 @@ export function TrendBarChart({ buckets, max, ariaLabel, formatTick, legend, emp
         </Box>
       </Box>
 
-      <Box component="table" sx={visuallyHidden}>
-        <caption>{ariaLabel}</caption>
-        <thead>
-          <tr>
-            <th scope="col">單位</th>
-            <th scope="col">明細</th>
-          </tr>
-        </thead>
-        <tbody>
-          {buckets.map((bucket) => (
-            <tr key={bucket.key}>
-              <th scope="row">{bucket.label}</th>
-              <td>{bucket.ariaLabel}</td>
+      {/* 視覺隱藏要套在外層 div：<table> 不吃 overflow:hidden，nowrap 的內容會把頁面撐寬、出現橫向捲軸。 */}
+      <Box sx={visuallyHidden}>
+        <table>
+          <caption>{ariaLabel}</caption>
+          <thead>
+            <tr>
+              <th scope="col">單位</th>
+              <th scope="col">明細</th>
             </tr>
-          ))}
-        </tbody>
+          </thead>
+          <tbody>
+            {buckets.map((bucket) => (
+              <tr key={bucket.key}>
+                <th scope="row">{bucket.label}</th>
+                <td>{bucket.ariaLabel}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Box>
     </Box>
   );

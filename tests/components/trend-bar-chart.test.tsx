@@ -360,10 +360,11 @@ describe("TrendBarChart", () => {
       });
     });
 
-    it("資料表是視覺上隱藏（不佔版面），但仍在無障礙樹中", () => {
+    it("資料表是視覺上隱藏（不佔版面），但仍在無障礙樹中；隱藏樣式在外層 div（<table> 不吃 overflow:hidden，會把頁面撐寬）", () => {
       renderChart();
-      const table = screen.getByRole("table");
-      expect(table).toHaveStyle({ position: "absolute", width: "1px", height: "1px", overflow: "hidden" });
+      const wrapper = screen.getByRole("table").parentElement!;
+      expect(wrapper.tagName).toBe("DIV");
+      expect(wrapper).toHaveStyle({ position: "absolute", width: "1px", height: "1px", overflow: "hidden" });
     });
 
     it("斜紋與實心靠不同圖樣區分，不只靠顏色", () => {
