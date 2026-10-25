@@ -180,7 +180,9 @@ export function TrendBarChart({ buckets, max, ariaLabel, formatTick, legend, emp
   };
 
   return (
-    <Box role="group" aria-label={ariaLabel}>
+    // position: relative：視覺隱藏的資料表是 absolute，沒有定位的祖先就會以 <body> 為基準，
+    // 圖表在視窗下方時會把整頁也撐出一條捲軸，與內容區自己的捲軸並排成兩條。
+    <Box role="group" aria-label={ariaLabel} sx={{ position: "relative" }}>
       {legend && (
         <Box sx={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 4, mb: 2 }}>
           {(["solid", "striped"] as const).map((kind) => (

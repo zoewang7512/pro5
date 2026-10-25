@@ -38,6 +38,14 @@ function segmentsOf(column: HTMLElement) {
 }
 
 describe("TrendBarChart", () => {
+  it("根元素有定位：視覺隱藏的資料表（absolute）不能以 <body> 為基準，否則圖表在視窗下方時會多出整頁捲軸", () => {
+    renderChart();
+    const root = screen.getByRole("group", { name: "預約量（每日）" });
+    expect(getComputedStyle(root).position).toBe("relative");
+    // 隱藏的資料表確實在這個根元素裡面。
+    expect(within(root).getByRole("table", { hidden: true })).toBeInTheDocument();
+  });
+
   afterEach(() => cleanup());
 
   describe("長條高度與堆疊", () => {

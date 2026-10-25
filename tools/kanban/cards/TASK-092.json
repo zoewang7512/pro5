@@ -2,7 +2,7 @@
   "id": "TASK-092",
   "title": "儀表板與報表 串接與驗收（ReportsView、/admin/reports、狀態與競態、文件、人工驗收）",
   "content": "期間改變才重新查詢；切頁籤與設計師只重算；正式庫唯讀對帳；更新 project-map／decisions／design-system／README。",
-  "stage": "backlog",
+  "stage": "done",
   "risk": "medium",
   "owner": "zoewang7512",
   "agent": "Claude Code",
@@ -38,7 +38,7 @@
     "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
     "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
     "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-092.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-092.md",
     "pr": ""
   },
   "refs": [
@@ -48,9 +48,22 @@
     "ai/context/project-map.md"
   ],
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/components/reports-view.test.tsx：29 項通過",
+      "npx tsc --noEmit、npm run lint、npm run build：通過",
+      "npx vitest run --maxWorkers=3：1555／1562（7 項失敗皆為既有並行逾時的 account-settings-view／designer-portfolio-tab／login-form，單獨重跑 68 項通過）",
+      "npm run test:reports：19 項通過",
+      "正式庫唯讀對帳：8／9／10 月、週、日、設計師篩選共 16 筆預約，與預約列表＋服務價格手算全部吻合",
+      "瀏覽器實測：淺色／深色、載入中／錯誤（模擬 500）／空、約 790px 無橫向溢出；請求欄位為白名單、無顧客欄位",
+      "npx vitest run trend-bar-chart／reports-dashboard-panel／reports-view：86 項通過；tsc、lint 通過"
+    ],
+    "findings": [
+      "切粒度錨點：本期以今天、非本期以起始日（規格書與架構筆記用字不同，取交集）",
+      "錯誤時隱藏設計師 chip 列（避免顯示別期間數字）；載入中 chip 暫用上一期數字",
+      "週標籤 en dash 前後有空格（TASK-090 既有）",
+      "人工驗收期間修正：TrendBarChart 隱藏資料表的定位基準（根元素補 position: relative），解決儀表板頁籤偏矮視窗的雙卷軸；新增迴歸測試"
+    ],
+    "residual": "匯出 Excel 由 TASK-093；歷史快照為近似值；單期間 5000 列上限；正式庫資料量小，大量資料效能未實測。使用者已人工驗收；示範資料已清除。"
   },
   "comments": [
     {
@@ -62,6 +75,16 @@
       "name": "使用者",
       "time": "2026-10-24",
       "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "串接完成：ReportsView＋/admin/reports，29 項元件測試、test:reports 19 項、tsc／lint／build 通過；正式庫唯讀對帳 16 筆預約全部吻合；文件已更新。有三處與規格的刻意差異（見驗證報告），轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "驗收完成，TASK-092 轉 Done。"
     }
   ]
 }
