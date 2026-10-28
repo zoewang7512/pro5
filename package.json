@@ -22,6 +22,7 @@
     "test:mfa-rls": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.mfa-rls.config.ts",
     "test:notifications": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.notifications.config.ts",
     "test:audit-log": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.audit-log.config.ts",
+    "test:reports": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.reports.config.ts",
     "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
     "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs",
     "sweep:audit-test-rows": "node --env-file=.env.local scripts/sweep-audit-test-rows.mjs"
@@ -33,11 +34,12 @@
     "@mui/material-nextjs": "9.1.1",
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.112.0",
-    "next": "16.3.0",
+    "next": "16.4.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "resend": "6.22.0",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "write-excel-file": "4.1.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -47,7 +49,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.4.3",
+    "fflate": "0.8.3",
     "jsdom": "^27.4.0",
     "typescript": "^5",
     "vitest": "^3"

@@ -1,0 +1,110 @@
+{
+  "id": "TASK-087",
+  "title": "儀表板與報表 預約價格快照（0020：price_at_booking 欄位、BEFORE INSERT trigger、回補、欄位層級授權、整合測試）",
+  "content": "appointments 新增下單價格快照，trigger 無條件以 services.price 覆寫、回補既有資料（避開 updated_at 與通知信副作用）、authenticated 只讀不可改。需人工套用 migration；套用前 security-reviewer 複審。",
+  "stage": "done",
+  "risk": "high",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-24",
+  "epic": "儀表板與報表",
+  "userStory": "預約價格快照",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-001",
+    "TASK-002",
+    "TASK-003",
+    "TASK-004",
+    "TASK-005",
+    "TASK-006",
+    "TASK-007",
+    "TASK-008",
+    "TASK-009",
+    "TASK-063",
+    "TASK-064",
+    "TASK-065",
+    "TASK-066",
+    "TASK-081",
+    "TASK-082",
+    "TASK-083"
+  ],
+  "order": 87,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": true,
+    "security": true,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-087.md",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-087.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "supabase/migrations/0015_explicit_table_grants.sql",
+    "supabase/migrations/0018_designer_aware_booking.sql",
+    "supabase/migrations/0019_audit_log.sql",
+    "tests/audit-log.integration.test.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx tsc --noEmit：通過；npm run lint：通過；npm run build：通過",
+      "npm run test:reports：11 項通過（快照寫入、權限矩陣、顧客端 RPC）",
+      "回歸：test:booking 23、test:admin-booking 16、test:rls 18、test:designers 122、test:notifications 20，全數通過",
+      "npx vitest run --maxWorkers=3：78 檔／1357 項全數通過（預設並行度下 UI 元件測試有既有的不穩定，單獨重跑皆過）",
+      "正式庫套用 0020：null_rows=0、total=16；四個 trigger 皆為 O；測試資料殘留檢查通過"
+    ],
+    "findings": [
+      "security-reviewer 套用前複審 0020：無 Critical／High；採納 lock_timeout＋明確鎖表、revoke execute from public/anon/authenticated、套用前清點 trigger"
+    ],
+    "residual": "既有預約快照為回補當下的服務價格（近似值）；UPDATE 不重算快照；已採納 security-reviewer 三項建議。待使用者人工驗收後才轉 Done。"
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "依已核准規格書與已選定 mockup 完成架構規劃與任務卡；等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "0020、down、test:reports 已寫好並過 tsc／eslint；security-reviewer 複審通過並已採納三項建議。等使用者在 Supabase SQL Editor 套用 0020 後，再跑整合測試與回歸。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "0020 已由使用者套用並驗證（null_rows=0、4 個 trigger 皆啟用）；test:reports 11 項與 5 個回歸套件、全套單元測試（maxWorkers=3）皆通過。已轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過，TASK-087 轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "看過 architect 審查報告後，勾選 architecture 關卡。"
+    }
+  ]
+}

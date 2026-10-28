@@ -1,0 +1,84 @@
+{
+  "id": "TASK-091",
+  "title": "儀表板與報表 熱門服務排行（reports-ranking.ts、ServiceRankingBars、ServiceRankingTable）",
+  "content": "取消排除、同量排序穩定、已下架標示、不設上限、預約量 0 不列；橫條（儀表板）與含占比表格（報表）兩種呈現。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-24",
+  "epic": "儀表板與報表",
+  "userStory": "查看熱門服務項目排行",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-088"
+  ],
+  "order": 91,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
+    "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-091.md",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-091.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "app/admin/_components/ServicesTable.tsx",
+    "lib/admin/format.ts"
+  ],
+  "evidence": {
+    "commands": [
+      "npx vitest run tests/admin/reports-ranking.test.ts tests/components/service-ranking-*.test.tsx：37 項通過（純函式 20、橫條 8、表格 9）",
+      "npx tsc --noEmit、npm run lint、npm run build：通過",
+      "npx vitest run --maxWorkers=3：1530／1533（3 項失敗皆為既有並行逾時的 account-settings-view，單獨重跑 43 項通過）",
+      "暫時頁面（已刪除）瀏覽器實測：淺色／深色、桌面／360px，無橫向溢出"
+    ],
+    "findings": [
+      "占比條長度＝預約量÷最大預約量（同 mockup 變體 C），百分比才是占總預約量比例；第一名的條永遠滿格",
+      "新增任務卡未列的 ServiceRankingName.tsx（兩元件共用名稱＋已下架標籤）",
+      "全套測試並行逾時為既有問題（同 TASK-087～090）"
+    ],
+    "residual": "元件尚未被頁面使用，TASK-092 串接；真實資料排行對帳由 TASK-092 走查。使用者已人工驗收（決定維持條長為相對最高，僅在表頭加註）。"
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "依已核准規格書與已選定 mockup 完成架構規劃與任務卡；等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "熱門服務排行完成：reports-ranking.ts（取消排除、穩定排序、占比、橫條長度）、ServiceRankingBars／ServiceRankingTable，37 項新測試通過，tsc／lint／build 通過；暫時頁面實測淺／深色與 360px。已登記 design-system，轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過（占比條長維持相對最高，表頭加註「條長為相對最高」），TASK-091 轉 Done。"
+    }
+  ]
+}

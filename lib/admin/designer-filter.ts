@@ -16,13 +16,16 @@ export type DesignerChip = {
   count: number;
 };
 
-export function countActiveAppointments(appointments: WeekAppointment[]): number {
+// 只需要設計師與狀態：週曆的 WeekAppointment 與報表（TASK-088 的轉接結果）都結構相容。
+type DesignerCountable = Pick<WeekAppointment, "designer_id" | "status">;
+
+export function countActiveAppointments(appointments: DesignerCountable[]): number {
   return appointments.filter((appointment) => appointment.status !== "cancelled").length;
 }
 
 // 啟用中的設計師一律出現；停用中的設計師只在本週有預約（含已取消，週曆上仍看得到它們）時出現，否則那些預約
 // 就無法被篩選出來。順序依 sort_order（相同時保留查詢順序，Array.prototype.sort 為穩定排序），啟用與停用混排。
-export function buildDesignerChips(options: DesignerFilterOption[], appointments: WeekAppointment[]): DesignerChip[] {
+export function buildDesignerChips(options: DesignerFilterOption[], appointments: DesignerCountable[]): DesignerChip[] {
   const total = new Map<string, number>();
   const active = new Map<string, number>();
   for (const appointment of appointments) {

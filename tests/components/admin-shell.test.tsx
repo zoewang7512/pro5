@@ -29,14 +29,39 @@ describe("AdminShell 導覽項目", () => {
     pathnameMock.value = "/admin";
   });
 
-  it("「設計師」排在「預約」之後、「服務設定」之前，連到 /admin/designers", () => {
+  it("「設計師」排在「儀表板與報表」之後、「服務設定」之前，連到 /admin/designers", () => {
     render(<AdminShell>content</AdminShell>);
 
     const links = screen.getAllByRole("link");
     const labels = links.map((link) => link.textContent);
-    expect(labels.indexOf("設計師")).toBe(labels.indexOf("預約") + 1);
+    expect(labels.indexOf("設計師")).toBe(labels.indexOf("儀表板與報表") + 1);
     expect(labels.indexOf("服務設定")).toBe(labels.indexOf("設計師") + 1);
     expect(screen.getByRole("link", { name: "設計師" })).toHaveAttribute("href", "/admin/designers");
+  });
+
+  it("「儀表板與報表」排在「預約」之後（第二項），連到 /admin/reports，共 9 個導覽項目", () => {
+    render(<AdminShell>content</AdminShell>);
+
+    const labels = screen.getAllByRole("link").map((link) => link.textContent);
+    expect(labels).toHaveLength(9);
+    expect(labels[0]).toBe("預約");
+    expect(labels[1]).toBe("儀表板與報表");
+    expect(screen.getByRole("link", { name: "儀表板與報表" })).toHaveAttribute("href", "/admin/reports");
+  });
+
+  it.each(["/admin/reports", "/admin/reports/anything"])("在 %s 時只有「儀表板與報表」是使用中的導覽項目", (path) => {
+    pathnameMock.value = path;
+    render(<AdminShell>content</AdminShell>);
+
+    expect(screen.getByRole("link", { name: "儀表板與報表" })).toHaveClass("Mui-selected");
+    expect(screen.getByRole("link", { name: "預約" })).not.toHaveClass("Mui-selected");
+    expect(screen.getAllByRole("link").filter((link) => link.classList.contains("Mui-selected"))).toHaveLength(1);
+  });
+
+  it("「儀表板與報表」的圖示是 SVG（與其他項目同一種來源），不是文字", () => {
+    render(<AdminShell>content</AdminShell>);
+
+    expect(screen.getByRole("link", { name: "儀表板與報表" }).querySelector("svg")).not.toBeNull();
   });
 
   it("「稽核紀錄」是最後一項，連到 /admin/audit-log", () => {
@@ -159,5 +184,7 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive("/admin/designers/new", "/admin/designers")).toBe(true);
     expect(isNavItemActive("/admin/designers-archive", "/admin/designers")).toBe(false);
     expect(isNavItemActive("/admin/services", "/admin/designers")).toBe(false);
+    expect(isNavItemActive("/admin/reports", "/admin/reports")).toBe(true);
+    expect(isNavItemActive("/admin/reports-old", "/admin/reports")).toBe(false);
   });
 });

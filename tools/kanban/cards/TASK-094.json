@@ -1,0 +1,87 @@
+{
+  "id": "TASK-094",
+  "title": "儀表板與報表 Epic 收尾（分頁筆數驗證與超量提示、移除示範腳本、文件與 README 同步）",
+  "content": "處理總覽審查的通過條件：fetchReportAppointments 以 count 驗證避免靜默截斷、超量回可辨識錯誤並提示改用較短期間；移除 seed-demo-reports.mjs；0020_down 補備份提醒；規格／project-map／decisions／README 同步。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-25",
+  "epic": "儀表板與報表",
+  "userStory": "查看預約數量與營收統計",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-093"
+  ],
+  "order": 94,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
+    "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-094.md",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-094.md",
+    "pr": ""
+  },
+  "refs": [
+    "lib/admin/reports.ts",
+    "app/admin/_components/ReportsStates.tsx",
+    "scripts/seed-demo-reports.mjs",
+    "README.md"
+  ],
+  "evidence": {
+    "commands": [
+      "npx vitest run tests/admin/reports.test.ts：44 項通過；TZ=UTC／PST8PDT／Asia/Taipei 各 44 項通過",
+      "reports-view 41 項、reports-dashboard-panel／reports-table-panel 共 44 項通過",
+      "npx tsc --noEmit、npm run lint、npm run build：通過",
+      "npm run test:reports：19 項通過（真實 Supabase，含以真實 client 呼叫新的 fetchReportAppointments）",
+      "npx vitest run --maxWorkers=3：1604／1608（4 項失敗在 account-settings-view、designer-picker-section、login-form，--maxWorkers=1 重跑 80 項全過）",
+      "瀏覽器實測：請求帶 Prefer: count=exact；改寫 content-range 為 6000 模擬超量，顯示專用提示、無重試、只送 1 個請求，切週視圖恢復"
+    ],
+    "findings": [
+      "範圍差異：兩個面板各加一行 too_large 分支（任務卡原列面板不得觸碰），為必要最小擴張，已更新任務卡與 decisions",
+      "designer-picker-section 為首次出現的並行逾時失敗，serial 重跑通過，判斷與本卡無關",
+      "超量提示只能以模擬看到；淺色截圖未另存"
+    ],
+    "residual": "超量判斷依賴 count: exact；翻頁期間資料變動會回錯誤（可重試）；next 升級與 write-excel-file 缺陷另立 TASK-095／096；尚未部署。 使用者已人工驗收（2026-10-25）。"
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "依 Epic 總覽審查（architect＋security-reviewer，皆有條件通過）建立收尾卡。使用者已決定：示範腳本直接移除、README「未來規劃」同步更新。其餘內容（count 驗證、超量錯誤碼與提示、0020_down 備份提醒、文件同步）等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "同意計畫（超量錯誤碼只放 reports.ts、超量時不顯示重試但工具列可切換期間、示範腳本直接移除、README 同步），開始 TASK-094。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "收尾完成：count 驗證分頁（Max rows 被調小不再少算）、超量專用提示（無重試、工具列可操作）、示範腳本移除、0020_down 備份提醒、規格／project-map／decisions／README 同步。測試與瀏覽器實測見驗證報告；面板兩行分支為範圍內必要擴張，請知悉。轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "驗收通過，TASK-094 轉 Done。"
+    }
+  ]
+}

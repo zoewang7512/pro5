@@ -1,0 +1,86 @@
+{
+  "id": "TASK-090",
+  "title": "儀表板與報表 畫面元件（工具列、儀表板面板 B、報表面板 C、頁籤殼、Sidebar「儀表板與報表」）",
+  "content": "以 props 餵資料，涵蓋預設／載入中／空×2／錯誤／全部已取消；排行與匯出以插槽接入；更新 admin-shell／sidebar 測試與 design-system。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-24",
+  "epic": "儀表板與報表",
+  "userStory": "查看預約數量與營收統計",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-088",
+    "TASK-089"
+  ],
+  "order": 90,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
+    "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-090.md",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-090.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "app/admin/_components/AdminShell.tsx",
+    "app/admin/_components/AuditLogView.tsx",
+    "app/admin/_components/DesignerFilterChips.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx vitest run tests/components/reports-*.test.tsx admin-shell sidebar：工具列 12、頁籤 8、儀表板面板 25、報表面板 17、admin-shell 16、sidebar 8，全數通過",
+      "npx tsc --noEmit、npm run lint、npm run build：通過",
+      "npx vitest run --maxWorkers=3：僅既有不穩定的 UI 測試逾時（account-settings-view、designer-leaves-tab）；本卡檔案單獨跑全過",
+      "暫時頁面（已刪除）瀏覽器實測：深色／淺色、1000px／768px、各狀態、合計列與表頭 sticky、無橫向溢出"
+    ],
+    "findings": [
+      "TASK-089 的 TrendBarChart 隱藏資料表（<table>）不吃 overflow:hidden，nowrap 內容把頁面撐寬；已把隱藏樣式移到外層 div 並更新測試——超出本卡「不得觸碰」範圍，需使用者知悉",
+      "圖表標題與圖例分兩行（TrendBarChart 圖例自成一行），與 mockup 單行略有差異",
+      "全套測試的並行逾時為既有問題（同 TASK-087／088／089）"
+    ],
+    "residual": "元件尚未被頁面使用，TASK-092 串接；圖表標題／圖例分行；今天標籤規則（今天一定標、緊鄰兩側不標）可再調。待使用者人工驗收後才轉 Done。"
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "依已核准規格書與已選定 mockup 完成架構規劃與任務卡；等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "工具列、頁籤殼、儀表板面板（B）、報表面板（C）、各狀態與 Sidebar 新項目完成，62 項新元件測試與更新後的 admin-shell 測試通過；暫時頁面實測淺／深色、768px。實測中發現並修正 TASK-089 圖表隱藏資料表撐寬頁面的 bug（超出本卡範圍，請確認）。已轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過（含 TASK-089 範圍外小修、圖表標題與圖例分行、今天標籤規則三項確認），TASK-090 轉 Done。"
+    }
+  ]
+}

@@ -36,6 +36,17 @@ function CalendarIcon() {
   );
 }
 
+function BarChartIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M4 20h16" />
+      <rect x="5.5" y="11" width="3.5" height="9" rx="0.5" />
+      <rect x="10.25" y="5" width="3.5" height="15" rx="0.5" />
+      <rect x="15" y="14" width="3.5" height="6" rx="0.5" />
+    </svg>
+  );
+}
+
 function ScissorsIcon() {
   return (
     <svg {...ICON_PROPS}>
@@ -107,6 +118,7 @@ function ScrollTextIcon() {
 
 const NAV_ITEMS: Array<{ label: string; href: string; disabled?: boolean; icon: React.ReactNode }> = [
   { label: "預約", href: "/admin", icon: <CalendarIcon /> },
+  { label: "儀表板與報表", href: "/admin/reports", icon: <BarChartIcon /> },
   { label: "設計師", href: "/admin/designers", icon: <UsersIcon /> },
   { label: "服務設定", href: "/admin/services", icon: <ScissorsIcon /> },
   { label: "營業時間", href: "/admin/business-hours", icon: <ClockIcon /> },

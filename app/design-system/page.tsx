@@ -31,9 +31,41 @@ import { MonthPicker } from "@/components/ui/MonthPicker";
 import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { OtpInput } from "@/components/ui/OtpInput";
 import { ColorModeToggle } from "@/components/ui/ColorModeToggle";
+import { TrendBarChart, type TrendBarBucket } from "@/components/ui/TrendBarChart";
 
 // MonthPicker Demo 的唯讀日期（例如全店公休日）：不可點，灰底加刪除線。
 const MONTH_PICKER_READ_ONLY_DATES = new Set(["2026-08-10", "2026-08-11"]);
+
+// TrendBarChart Demo：每格 [已完成, 待完成] 筆數；tooltip／aria-label 的文案由呼叫端組（這裡只示範格式）。
+function demoTrendBuckets(
+  pairs: [number, number][],
+  options: { labelOf: (index: number) => string; titleOf?: (index: number) => string; showLabel?: (index: number) => boolean; todayIndex?: number },
+): TrendBarBucket[] {
+  return pairs.map(([done, pending], index) => {
+    const label = options.labelOf(index);
+    const title = options.titleOf?.(index) ?? label;
+    const total = done + pending;
+    return {
+      key: `demo-${index}`,
+      label,
+      showLabel: options.showLabel?.(index) ?? true,
+      today: index === options.todayIndex,
+      segments: [
+        { value: done, kind: "solid" },
+        { value: pending, kind: "striped" },
+      ],
+      tooltip: [title, `預約量 ${total} 筆`, `完成 ${done} ・ 待完成 ${pending}`],
+      ariaLabel: `${title}，預約 ${total} 筆，完成 ${done}、待完成 ${pending}`,
+    };
+  });
+}
+
+const DEMO_MONTH_PAIRS: [number, number][] = Array.from({ length: 31 }, (_, i) =>
+  i < 23 ? [2 + ((i * 5) % 6), 0] : i === 23 ? [3, 2] : [0, (i * 3) % 5],
+);
+const DEMO_WEEK_PAIRS: [number, number][] = [[4, 0], [6, 0], [2, 0], [5, 1], [3, 2], [0, 4], [0, 0]];
+const DEMO_DAY_PAIRS: [number, number][] = [[1, 0], [2, 0], [0, 0], [3, 0], [2, 1], [0, 2], [0, 3], [0, 1], [0, 0], [0, 1]];
+const DEMO_LEGEND = { solid: "已完成", striped: "待完成" };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -216,6 +248,60 @@ export default function DesignSystemShowcase() {
               }}
             />
           </Box>
+        </Section>
+
+        <Section title="TrendBarChart">
+          <Stack spacing={4}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>月（31 格，每 5 日標一次，今天 24 日）</Typography>
+              <TrendBarChart
+                ariaLabel="預約量（每日）"
+                max={8}
+                legend={DEMO_LEGEND}
+                buckets={demoTrendBuckets(DEMO_MONTH_PAIRS, {
+                  labelOf: (i) => String(i + 1),
+                  titleOf: (i) => `10/${i + 1}`,
+                  showLabel: (i) => i === 0 || (i + 1) % 5 === 0,
+                  todayIndex: 23,
+                })}
+              />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>週（7 格）</Typography>
+              <TrendBarChart
+                ariaLabel="預約量（每日）"
+                max={8}
+                legend={DEMO_LEGEND}
+                buckets={demoTrendBuckets(DEMO_WEEK_PAIRS, {
+                  labelOf: (i) => `10/${19 + i}（${["一", "二", "三", "四", "五", "六", "日"][i]}）`,
+                  todayIndex: 5,
+                })}
+              />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>日（10 格，10:00–19:00）</Typography>
+              <TrendBarChart
+                ariaLabel="預約量（每小時）"
+                max={4}
+                legend={DEMO_LEGEND}
+                buckets={demoTrendBuckets(DEMO_DAY_PAIRS, { labelOf: (i) => `${10 + i}:00` })}
+              />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>全零（每格仍佔位）</Typography>
+              <TrendBarChart
+                ariaLabel="預約量（每日）"
+                max={4}
+                buckets={demoTrendBuckets(DEMO_WEEK_PAIRS.map((): [number, number] => [0, 0]), {
+                  labelOf: (i) => `${i + 1}`,
+                })}
+              />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>空（buckets 為空）</Typography>
+              <TrendBarChart ariaLabel="預約量（每日）" max={4} buckets={[]} emptyLabel="此期間沒有資料" />
+            </Box>
+          </Stack>
         </Section>
 
         <Section title="PasswordStrengthMeter">

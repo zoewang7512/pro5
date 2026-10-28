@@ -1,0 +1,83 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-25",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "done",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": true,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [
+      "npm audit --omit=dev: 1 critical+3 high -> 0",
+      "npx tsc --noEmit",
+      "npm run lint",
+      "npm run build (升級後首次失敗於 next/font 字型下載逾時，之後 4 次通過)",
+      "npm test: 基準 5 檔失敗，升級後 8 檔失敗皆為並行逾時，8 檔單獨重跑 173/173 通過",
+      "npm run test:reports: 19/19",
+      "curl 未登入 /admin/* -> 307 /login（dev 與 production）"
+    ],
+    "findings": [
+      "security-reviewer 快速複審通過：lockfile 無新增/移除套件、無新 install script、integrity 與 registry 一致、proxy.ts 不依賴 app-page runtime"
+    ],
+    "residual": "正式環境未部署仍是 16.3.0；MFA 登入、預約成功頁、報表匯出 Excel 三項手動走查待使用者確認；build 一次失敗的原因為推論；dev 工具鏈 npm audit 仍有 7 項（不進正式環境）。"
+  },
+  "id": "TASK-095",
+  "title": "升級 next 修補 npm audit critical（含 eslint-config-next，處理 nanoid／sharp／source-map-js）",
+  "content": "next 16.3.0 → 16.4.3（精確版本）；不使用 audit fix --force；完整回歸、手動走查、middleware 存取控制確認、security-reviewer 快速複審；部署由使用者決定。",
+  "risk": "high",
+  "epic": "專案設置",
+  "userStory": "",
+  "track": "n/a",
+  "dependsOn": [],
+  "order": 95,
+  "links": {
+    "featureSpec": "",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/專案設置/task-cards/TASK-095.md",
+    "verificationReport": "ai/artifacts/專案設置/verification/TASK-095.md",
+    "pr": ""
+  },
+  "refs": [
+    "package.json",
+    "next.config.ts",
+    "proxy.ts"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "依 Epic 總覽審查（security-reviewer）建議另立：npm audit --omit=dev 有 next critical 與三項 high，皆為既有。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "使用者下達「開始做 TASK-095」，視為核准計畫；已勾選 human_approval_recorded 並推進到 implementing。release notes：16.4.3 為 backport 修補版，無 breaking change，僅 proxy.ts 不再載入 app-page runtime 與本專案相關。先跑升級前 npm test 基準再升級。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "實作與驗證完成，轉 verify（待人工驗收）。next/eslint-config-next 16.4.3，npm audit --omit=dev 為 0。需使用者確認：MFA 登入、預約成功頁、報表匯出三項手動走查；是否部署由使用者決定。詳見驗證報告。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過，轉 Done。"
+    }
+  ]
+}

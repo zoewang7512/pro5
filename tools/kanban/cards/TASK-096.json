@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-25",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-096",
+  "title": "write-excel-file 名稱為 constructor／__proto__ 等時匯出檔寫壞（重現、上游回報草稿、選定因應方式）",
+  "content": "最小重現腳本、上游 issue 草稿（由使用者自行送出）、方案 A 等上游／B patch-package／C 匯出端防呆三選一，建議 A。",
+  "risk": "low",
+  "epic": "儀表板與報表",
+  "userStory": "匯出報表為 Excel",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-093"
+  ],
+  "order": 96,
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-096.md",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "lib/admin/reports-export.ts"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "依 TASK-093 與 Epic 總覽審查的 L-1 建立。對外回報由使用者自行送出；因應方式（A／B／C）待使用者選定。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

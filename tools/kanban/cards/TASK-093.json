@@ -1,0 +1,92 @@
+{
+  "id": "TASK-093",
+  "title": "儀表板與報表 匯出 Excel（reports-export.ts、匯出按鈕與 Toast、write-excel-file、讀回測試、人工驗收）",
+  "content": "瀏覽器端動態載入 write-excel-file@4.1.1；三個工作表；數值儲存格；字串型別防公式注入；不含個資；先做 spike；security-reviewer 審查。",
+  "stage": "done",
+  "risk": "medium",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-24",
+  "epic": "儀表板與報表",
+  "userStory": "匯出報表為 Excel",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-092"
+  ],
+  "order": 93,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": true,
+    "architecture": false,
+    "security": true,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
+    "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-093.md",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-093.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "package.json",
+    "components/ui/ToastProvider.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx vitest run reports-export／reports-export-download／reports-view：65 項通過（24＋3＋38）",
+      "npx tsc --noEmit、npm run lint、npm run build（改檔後重新 build）：通過；write-excel-file 為獨立動態 chunk（約 85 KB），不在主 bundle",
+      "npx vitest run --maxWorkers=3：1588／1593（5 項失敗皆為既有並行逾時的 login-form／account-settings-view／designer-portfolio-tab，單獨重跑通過）",
+      "npm run test:reports：19 項通過",
+      "npm audit --omit=dev：4 項皆為既有（next／nanoid／sharp／source-map-js），新套件無公告",
+      "瀏覽器實測（開發伺服器、店長登入、攔截 anchor.click 不寫檔）：Blob 5,974 bytes、PK、xlsx MIME；解開讀回三個工作表、無 <f>、數值儲存格、數字與畫面一致"
+    ],
+    "findings": [
+      "security-reviewer：有條件通過，無 Critical／High／Medium；L-2（檔名 ..／bidi）與 L-3（下載路徑測試）已修，重新 build 補 chunk 證據",
+      "L-1（套件缺陷）：名稱為 constructor／__proto__ 等時該格寫壞；列為已知限制，不在匯出端改文字",
+      "公式注入：文字一律 type: String；殘留風險（F2＋Enter、CSV）已記入 decisions，日後匯出顧客可控文字須重新評估",
+      "spike：browser 入口在 Next 16 build 與瀏覽器皆可用，不需改用 universal"
+    ],
+    "residual": "尚未以 Excel／Google 試算表實際開啟（待使用者人工驗收）；L-1 套件缺陷；載入中狀態與淺／深色截圖未存檔；單期間 5000 列上限；建議另立任務升級 next、向 write-excel-file 上游回報。 使用者已人工驗收（2026-10-25）。"
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "依已核准規格書與已選定 mockup 完成架構規劃與任務卡；等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "匯出 Excel 完成：65 項測試、tsc／lint／build 通過；瀏覽器實測產生 xlsx 並讀回無公式、數字與畫面一致。security-reviewer 有條件通過，L-2／L-3 已修，L-1 為套件缺陷已列已知限制。轉 Verify，等待使用者人工驗收（需以 Excel／Google 試算表開啟下載檔）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "驗收通過，TASK-093 轉 Done。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "看過 security-reviewer 審查報告後，勾選 security 關卡。"
+    }
+  ]
+}

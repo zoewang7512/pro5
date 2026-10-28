@@ -1,0 +1,84 @@
+{
+  "id": "TASK-089",
+  "title": "儀表板與報表 TrendBarChart 圖表元件（純 CSS 堆疊長條、hover／focus 提示、方向鍵、無障礙資料表）",
+  "content": "跨頁共用元件，完成後登記回 design-system inventory；儀表板頁籤使用兩次。不引入圖表套件。",
+  "stage": "done",
+  "risk": "low",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "approvalRequired": true,
+  "createdAt": "2026-10-24",
+  "epic": "儀表板與報表",
+  "userStory": "查看預約數量與營收統計",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-088"
+  ],
+  "order": 89,
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": true,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "links": {
+    "featureSpec": "ai/artifacts/儀表板與報表/feature-spec.md",
+    "screenSpec": "ai/artifacts/儀表板與報表/screen-spec-報表.md",
+    "mockupDecision": "ai/artifacts/儀表板與報表/mockup-decision-報表.md",
+    "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-089.md",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-089.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/儀表板與報表/architecture-notes.md",
+    "components/ui/PortfolioGrid.tsx",
+    "components/ui/MonthPicker.tsx",
+    "app/design-system/page.tsx"
+  ],
+  "evidence": {
+    "commands": [
+      "npx vitest run tests/components/trend-bar-chart.test.tsx：31 項通過",
+      "npx tsc --noEmit、npm run lint、npm run build：通過",
+      "npx vitest run --maxWorkers=3：1423／1430（3 個既有不穩定 UI 測試檔逾時，單獨重跑 91 項全過）",
+      "瀏覽器實測 /design-system TrendBarChart：淺色／深色、桌面／768px、月／週／日／全零／空、hover 與鍵盤互動；對比度以 token 實際值計算皆達標"
+    ],
+    "findings": [
+      "與 mockup 的三項刻意差異：斜紋底色改用 color-mix（theme 無 primary.50）、暗色網格線提高一階、tooltip 用 grey.900＋background.paper 反白",
+      "全套測試的並行逾時為既有問題（同 TASK-087／088 發現）"
+    ],
+    "residual": "元件尚未被頁面使用，TASK-090 串接；今天標籤是否顯示由呼叫端的 showLabel 決定；提示框位置為簡單規則。待使用者人工驗收後才轉 Done。"
+  },
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-24",
+      "text": "依已核准規格書與已選定 mockup 完成架構規劃與任務卡；等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-24",
+      "text": "核准架構規劃與 TASK-087～093 任務卡計畫，開始實作 TASK-087。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-25",
+      "text": "TrendBarChart 完成：元件、31 項單元測試、/design-system 展示區塊、inventory 登記；淺色／深色、桌面／768px 實測通過。已轉 Verify，等待使用者人工驗收。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-25",
+      "text": "人工驗收通過，TASK-089 轉 Done。"
+    }
+  ]
+}

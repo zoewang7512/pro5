@@ -475,3 +475,178 @@
       （見完整版備案）、為 services.name 補長度限制、updateBookingPolicy 的真實資料庫整合驗證
       （正式環境手動走查已確認接線）。
 ```
+
+## TASK-087（儀表板與報表 預約價格快照，0020）：用 BEFORE INSERT trigger 帶入下單價格，不改 create_appointment
+
+```text
+日期：2026-10-24
+決策：appointments 新增 price_at_booking numeric(10,2) not null check (>= 0)，由 BEFORE INSERT trigger
+      public.set_appointment_price_snapshot() 無條件以 services.price 覆寫；既有預約一次性回補為
+      「各自服務的目前價格」；authenticated 只有 select (price_at_booking)，沒有 update。
+情境：報表的營收要用「下單當下的價格」，但 appointments 原本只關聯 services，服務一改價歷史營收就跟著變。
+考慮過的替代方案：
+  - 改 create_appointment 在 insert 時帶入價格：RPC 已被 0013／0014／0018 改過多次、是顧客預約核心路徑，
+    再動它風險高；而且只涵蓋 RPC 一條路徑，service_role 腳本或未來後台新增預約會漏掉快照。
+  - 不存快照、報表直接用服務目前價格：改價後歷史營收漂移，數字不可信（使用者否決）。
+  - 另建價格歷史表：過度設計，單一店長、價格異動極少。
+為何選這個：trigger 讓任何新增路徑都自動有快照；RPC 簽名與內容完全不動，回滾只需丟 trigger；無條件覆寫，
+      不信任呼叫端帶入的值；只有 INSERT 寫快照，改期／改狀態不重算。
+關鍵細節：
+  - 找不到服務時以 23503（foreign_key_violation）中止，保留原本「service_id 不存在 → 外鍵錯誤」的語意。
+  - trigger function 為 security definer、set search_path = ''、revoke execute from public（比照 0011／0012）。
+  - 權限：appointments 對 authenticated 是欄位層級授權（0015），新欄位必須補 grant select，否則報表頁讀取
+    會 permission denied；不給 update，所以店長 session 被盜用也改不了快照。service_role 有整表權限，
+    整合測試靠它改快照造資料。anon 沒有任何權限。
+  - 回補的副作用防護：回補前把「目前為啟用狀態」的 appointments_set_updated_at（否則全部既有預約的
+    updated_at 被改成現在）與 appointments_notify_update（寄取消／改期信；其 WHEN 本來就不含本欄位，這裡是
+    雙保險）停用，回補後只還原剛才停用的；整段在同一交易內，失敗整份回滾。ADD COLUMN 的 ACCESS EXCLUSIVE
+    鎖持有到 commit，回補前不會有新預約插隊產生 null 列。
+  - 歷史預約的快照是回補當下的服務價格（近似值）：既有預約沒有歷史價格可還原；規格書已列為非目標，畫面不標示。
+security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納三項——(1) 先 set local lock_timeout = '5s' 並明確
+      lock table ... access exclusive（比照 0018），拿不到鎖 5 秒內整份回滾，不讓預約請求排隊卡住（down 檔同樣處理）；
+      (2) trigger function 對 public、anon、authenticated 三者都 revoke execute（比照 0017）；(3) 套用前先清點 appointments 上的
+      trigger（預期只有 notify_insert、notify_update、set_updated_at 三個且為啟用），避免有人在 Dashboard 手動建過沒有 WHEN 的 webhook。
+測試資料規則（沿用既有教訓）：整合測試新增預約一律 customer_email = null（0011／0012 webhook 只在有 email
+      時寄信）、`__TEST__` 名稱、結尾只做 scope: "local" 的登出。
+部署順序：先在 Supabase SQL Editor 整份執行 0020，再部署前端（前端早於 0020 部署時，報表頁只顯示錯誤狀態，
+      不影響其他頁）。回滾：Vercel 回滾前端 → 0020_down（會刪除全部快照）。
+影響：後續報表（TASK-088～）一律以 price_at_booking 計營收；日後若新增「後台新增預約」，不需處理快照；
+      若日後要「改派／改價預約」，需另行決定是否重算快照（目前 UPDATE 不重算）。
+```
+
+## TASK-088～092（儀表板與報表 資料層、圖表、畫面與串接）：客戶端彙總、圖表純 CSS、儀表板＝B／報表＝C
+
+```text
+日期：2026-10-25
+決策：
+  1. 彙總在瀏覽器端做：fetchReportAppointments 抓單一期間的預約列（只選統計欄位），summarize／buildTrend／
+     buildServiceRanking 以純函式計算；不新增資料庫函式或 RPC。
+  2. 圖表純 CSS：TrendBarChart 以 MUI Box＋theme palette 堆疊長條，不引入圖表套件。
+  3. 版型：儀表板頁籤＝變體 B（營收主角摘要列、預約量圖＋營收圖並排、橫條排行），報表頁籤＝變體 C（六格彙總列、
+     含占比條的排行表、逐日／逐小時明細表）；使用者 2026-10-24 選定（mockup-decision-報表.md）。
+情境：店長要在月底、排班、調價前看「做了幾筆、賺了多少、哪個服務最受歡迎、哪位設計師最忙」；單一店長、
+      每月預約量約數百筆。
+考慮過的替代方案：
+  - 資料庫端彙總（security invoker 的 group by 函式）：數字只有一份、資料量不隨期間成長，但要新增函式與權限、
+    遷移與回滾成本高；而口徑（取消不計、快照價）、設計師篩選、兩個頁籤與匯出共用同一份結果，在客戶端以純函式
+    做最容易單元測試，也讓「切設計師／切頁籤不重新查詢」成立。
+  - 圖表套件（Recharts、Chart.js 等）：多一個 dependency 與打包體積，主題色與深色模式要另外對接，鍵盤與螢幕
+    閱讀器行為也要自己補；本頁只需要堆疊長條，純 CSS 能直接吃 theme token、斜紋區分已完成／待完成（不只靠顏色）。
+  - 變體 A（單頁、無頁籤）：資訊密度最高但圖與明細互相擠壓；使用者要求「看趨勢」與「對數字／匯出」分開，所以拆兩頁籤。
+為何選這個：單期間資料量遠低於上限，客戶端彙總的成本可忽略，換來單一口徑（summarize 一處）、兩頁籤與匯出天然一致、
+      純函式可完整測試；圖表需求單純，不值得為它引入套件。
+關鍵細節：
+  - 口徑只在 summarize 定義；排行、趨勢、面板、匯出一律消費它的結果，不得各自重算（預約量不含已取消；營收＝
+    completed 快照價；預估營收＝pending＋confirmed 快照價）。
+  - 單期間上限 5000 列（每頁 1000、最多 5 頁，多取一頁判斷是否超過）；超過回錯誤，不顯示被截斷的數字。
+    升級路徑：改為資料庫端彙總，另立任務。
+  - 只有「期間」改變才重新查詢（TASK-092）；切頁籤與切設計師只重算。查詢結果以 {key, status, appointments} 存放、
+    render 時推導載入中；effect 重跑即作廢前一次回應（等同遞增請求序號），避免先慢後快的請求蓋掉新資料。
+  - 切粒度的錨點：本期（含今天）以今天為錨，其他期間以起始日為錨——規格書「以目前日期所在的日／週／月」與
+    架構筆記「以目前期間的起始日為錨」兩處用字不同，採兩者的交集：在本月按「週」得到本週（而不是本月 1 日所在的週）。
+  - 設計師 chip：數字＝期間內預約量（不含已取消）；載入中沿用上一份已載入資料的數字以維持可操作（第一次載入才顯示骨架），
+    錯誤時隱藏 chip 列（不拿別的期間的數字冒充，勾選保留）。規格書「錯誤時篩選仍可操作」因此縮減為「工具列仍可操作」。
+  - 設計師清單載入失敗時降級為不顯示 chip 列（與預約週曆一致），報表照常顯示全部設計師。
+影響：匯出（TASK-093）吃 ReportsView 同一份計算結果；日後若資料量逼近 5000 列／月，需做資料庫端彙總。
+```
+
+## TASK-093（儀表板與報表 匯出 Excel）：瀏覽器端產生、write-excel-file@4.1.1、字串型別防公式注入
+
+```text
+日期：2026-10-25
+決策：
+  1. 匯出在瀏覽器端產生：lib/admin/reports-export.ts 直接吃畫面已算好的結果（期間、設計師名稱、totals、ranking、
+     trend），不重新查詢、不新增伺服器端點，因此沒有新的授權面，也和畫面天然一致。輸入型別只有彙總結果，
+     型別上拿不到任何 customer_*。
+  2. 套件：write-excel-file@4.1.1（精確版本，package.json 無 ^）。npm view 事實：MIT；唯一相依 fflate；專司寫入、
+     有 browser／node／universal 三個入口；最後發布 2026-06-08。瀏覽器端以動態 import("write-excel-file/browser")
+     載入，只有按下匯出才下載該 chunk（build 產物中獨立成 chunk，不在報表頁的主 bundle）。spike 結果：browser
+     入口在 Next 16（Turbopack）build 與開發伺服器都可用，不需要改用 universal。
+     fflate@0.8.3 另列 devDependency（精確版本），只供測試解開 xlsx 讀回驗證。
+  3. 公式注入：所有文字儲存格一律以 type: String 寫入（xlsx 的共用字串，不是 <f> 公式），Excel／Google 試算表
+     不會執行；因此不改動文字內容（不加 ' 前綴，避免服務／設計師名稱被改字）。只有明確指定 type: "Formula" 才會
+     產生公式，匯出模組不使用。讀回測試固定驗證：名稱為 =SUM(1)、+1、-1、@x、Tab 開頭時，工作表 XML 不含 <f>，
+     該儲存格為共用字串且內容原樣。（規格書原寫「加前綴」，改為此做法，已同步於架構筆記 §5。）
+  4. 檔名：報表_<期間>_<設計師>.xlsx；清理 \ / : * ? " < > |、控制字元（含 DEL）、連續的點（避免 ..）與前後空白；
+     整個檔名 ≤ 80 字元（以 code point 截斷，不切壞代理對）；清理後為空回退為「全部設計師」。
+  5. 下載：Blob＋暫時的 <a download>＋URL.revokeObjectURL（延後 1 秒，避免部分瀏覽器 click 後立刻 revoke 讓下載失敗）；
+     失敗一律丟泛用錯誤「匯出失敗，請稍後再試。」，不帶套件或瀏覽器的細節。按鈕用 ref 守衛，連點只觸發一次。
+情境：店長要把報表頁籤目前看到的數字交給會計或留存；單一店長、每月預約量約數百筆。
+考慮過的替代方案：
+  - xlsx（SheetJS）：npm 上的 0.18.5 有已知漏洞（原型污染、ReDoS），修正版只在官方 CDN 發佈、不在 npm，無法用 lockfile
+    與 npm audit 管理。否決。
+  - exceljs：相依樹大且老（archiver／unzipper／uuid 8 等），最後發布 2024-12，體積遠大於只需寫三張簡單工作表的需求。否決。
+  - 伺服器端產生（Route Handler）：要新增端點、授權與重複查詢，且資料本來就在頁面上；否決（見決策 1）。
+  - CSV：沒有多工作表、沒有數值格式與欄寬，中文在 Excel 還要處理 BOM；規格書非目標。
+已知限制（security-reviewer 2026-10-25，Low）：
+  - 套件內部的共用字串表是一般物件（initializeSharedStrings.js 的 `{}`）：服務／設計師名稱剛好是 `constructor`、
+    `__proto__`、`toString` 等 Object.prototype 成員時，該儲存格會寫成 `function Object() { [native code] }` 之類的
+    內容、Excel 開檔會跳修復對話框。只影響完整性（不是注入、不是 prototype pollution），名稱只有店長能寫；
+    不在匯出端偷改文字，列為已知限制，向上游回報，必要時以 patch-package 改成 Object.create(null)。
+  - 公式注入的殘留風險：字串儲存格開檔不會被計算；但使用者在該格按 F2＋Enter、另存 CSV 再開、或經純文字剪貼簿貼回，
+    Excel 會重新解析成公式。目前匯出內容只有店長自己寫的名稱，屬自己攻擊自己；**日後若匯出顧客可控的文字
+    （姓名、備註），必須重新評估（屆時需加 ' 前綴或改寫規則）**。
+  - fflate 的非同步 zip 只在單一檔案 ≥160KB 時才用 Worker（blob: URL）；日後若加上 CSP 且匯出可能超過此大小，
+    需要 `worker-src blob:`。
+  - 檔名清理另移除 Cc／Cf／Zl／Zp 字元（RLO 雙向控制、零寬字元等），並避免清理後重新接成 ".."（先刪字元再處理點、
+    截斷後去掉結尾的點）；ZWJ 組合 emoji 因此會被拆開，屬可接受的外觀代價。
+影響：套件跑在店長的瀏覽器（同源、能碰 session）→ 供應鏈風險靠鎖版本＋動態載入＋lockfile＋讀碼審查緩解；
+      日後升級 write-excel-file 或 fflate 時，必須重跑 tests/admin/reports-export.test.ts（讀回測試）並複查 browser 入口
+      的原始碼是否新增網路／eval／儲存空間存取。若資料量逼近 5000 列／月，匯出會跟著改為資料庫端彙總的結果。
+```
+
+## TASK-094（儀表板與報表 Epic 收尾）：count 驗證分頁、超量專用提示、移除示範資料腳本
+
+```text
+日期：2026-10-25
+決策：
+  1. 分頁改以 count 驗證：第一頁帶 count: "exact"，由總筆數決定頁數，取回列數必須等於總筆數，否則回一般錯誤。
+     原做法以「這頁不足 1000 列」判斷最後一頁，PostgREST 的 Max rows 若被調小（例如 500），某月 600 筆只會取到
+     500 筆且不報錯，違反「寧可失敗也不顯示被截斷的數字」（architect 總覽審查 M1）。不新增資料庫函式或 migration。
+  2. 超過 5000 列回可辨識的錯誤碼：錯誤型別在 lib/admin/reports.ts 內擴充為 AdminError & { code?: "too_many_rows" }
+     （不改共用的 AdminError）。畫面新增 `status: "too_large"`：warning 提示「此期間的預約筆數超過上限（5,000 筆）／
+     請改用較短的期間（日或週）。」、沒有重試按鈕（重試沒有意義）、工具列仍可操作；匯出按鈕與設計師 chip 同「錯誤」狀態。
+     為此在兩個面板各加一行分支（TASK-094 任務卡原列「面板元件不得觸碰」，屬必要的最小範圍擴張，已向使用者說明）。
+  3. 移除 scripts/seed-demo-reports.mjs（TASK-092 為了在正式庫檢視版面而加，驗收後已清除資料）。理由（security-reviewer
+     M-1）：用 service_role 對正式庫寫入／刪除；清除只靠姓名前綴「【示範】」，顧客若在前台填入同樣前綴，真實預約會被
+     誤刪且不會通知任何人；未來 14 天的示範預約會佔用真實設計師時段。用途已達成，也不在任何任務範圍內，直接移除。
+  4. 0020_down 檔頭補上回滾前備份快照的 SQL 與「2026-10-25 之後的快照是真實下單價、回滾後無法還原」的警告
+     （只改註解，SQL 邏輯不變）。
+情境：Epic 完成後 architect＋security-reviewer 總覽審查皆為「有條件通過」，本卡處理其通過條件與低成本修正。
+考慮過的替代方案：
+  - 「抓到空頁才停」：offset 固定 1000，Max rows 小於 1000 時會跳過列，不可行。
+  - 超量時仍顯示重試：重試永遠失敗，店長無從得知該改用較短期間。
+  - 保留示範腳本並加防呆（email／phone 為 null 才刪、未來日期預設不產生、--target 防呆）：維運成本高於它的價值。
+影響：資料量逼近 5000 列／月時，升級為資料庫端彙總，口徑整個搬進 SQL 成為唯一來源（見 project-map「已知限制」）；
+      designer-filter 的 countActiveAppointments 與 summarize().booked 必須等價（新增預約狀態時兩處要一起改）。
+```
+
+## TASK-095（維運）：升級 next 16.3.0 → 16.4.3，處理 npm audit 的 critical 與三項 high
+
+```text
+日期：2026-10-25
+決策：
+  1. next、eslint-config-next 以精確版本同升 16.4.3（npm install --save-exact），不使用 npm audit fix --force，
+     不新增 overrides。npm ls next 只有一份（@mui/material-nextjs 共用）。
+  2. nanoid（3.3.17→3.3.20）、source-map-js（1.2.1→1.2.2）是 next/postcss／jsdom 的傳遞相依，升 next 後仍殘留，
+     改用 `npm update nanoid source-map-js` 只動 lockfile、在原宣告範圍內升級；sharp 隨 next 升到 0.35.5（@img/sharp-* 同步）。
+     結果：`npm audit --omit=dev` 由 1 critical＋3 high 降為 0。
+  3. 升級範圍僅 next／eslint-config-next 及其傳遞相依（含 @swc/helpers、@next/*、fastq 的 dev 傳遞變動）；
+     不順便升 @mui／react／@supabase。lockfile 無新增或移除套件、無新增 install script、integrity 與 registry 一致
+     （security-reviewer 快速複審通過）。
+  4. proxy.ts、next.config.ts 不需修改。16.4.3 release note 唯一相關的是「proxy.ts 不再載入 app-page runtime」；
+     本專案 proxy 路徑只用 next/server 與 @supabase/ssr，不依賴它，且未登入存取 /admin/* 仍 307 導向 /login
+     （dev 與 production 皆已實測）。
+情境：Epic「儀表板與報表」完成後 security-reviewer 總覽審查建議；公告涉及的功能（next/image、next/og、use cache、
+      Server Actions）本專案目前都沒用，但日後新增就可能碰到。
+已知限制：
+  - 完整 `npm audit`（含 dev）仍有 7 項（vitest 鏈的 tinypool critical、vite／@vitest/mocker、zod、js-yaml、
+    brace-expansion），皆為測試／lint 工具，不進正式環境。其中 tinypool 需 vitest 主版本升級，另案評估。
+  - package.json 的 dependencies 全為精確版本，但 devDependencies 本來就有 `^`（eslint、typescript、vitest 等），
+    與任務卡「無 ^」的描述不符，以此為準；部署與 CI 應用 npm ci 以鎖定 lockfile。
+  - 升級後第一次 `next build` 曾失敗於 next/font/google 的 Noto_Serif_TC（找不到 turbopack font 模組），之後同一份
+    程式碼連跑 4 次 build 都成功。dev server 日誌顯示當時 fonts.gstatic.com 的 woff2 下載「Connection timed out」，
+    且我清空 .next 使字型快取歸零而需要重新下載近百個子集；網路恢復、重啟 dev server 後恢復正常。判斷為字型下載逾時，
+    而非 16.4.3 的缺陷，但沒有在 16.3.0 上重現對照；若日後在 CI 或部署偶發，先檢查對 Google Fonts 的網路。
+影響：正式環境（Vercel）要重新部署才會套用；部署由使用者決定。
+```

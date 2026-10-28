@@ -238,3 +238,24 @@ describe("formatFilteredEmptyTitle", () => {
     expect(formatFilteredEmptyTitle([LIN, WANG], chips)).toBe("林小美、王大明本週沒有預約");
   });
 });
+
+// TASK-088：參數型別放寬為 Pick<WeekAppointment, "designer_id" | "status">，行為不變。
+describe("只有設計師與狀態的最小資料（報表轉接）", () => {
+  const minimal = [
+    { designer_id: LIN, status: "confirmed" as const },
+    { designer_id: LIN, status: "cancelled" as const },
+    { designer_id: CHEN, status: "completed" as const },
+  ];
+
+  it("buildDesignerChips：計數規則與完整預約相同（排除已取消）", () => {
+    expect(buildDesignerChips(OPTIONS, minimal).map((chip) => [chip.id, chip.count])).toEqual([
+      [LIN, 1],
+      [CHEN, 1],
+      [WANG, 0],
+    ]);
+  });
+
+  it("countActiveAppointments：排除已取消", () => {
+    expect(countActiveAppointments(minimal)).toBe(2);
+  });
+});
