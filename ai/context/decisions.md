@@ -583,6 +583,7 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     `__proto__`、`toString` 等 Object.prototype 成員時，該儲存格會寫成 `function Object() { [native code] }` 之類的
     內容、Excel 開檔會跳修復對話框。只影響完整性（不是注入、不是 prototype pollution），名稱只有店長能寫；
     不在匯出端偷改文字，列為已知限制，向上游回報，必要時以 patch-package 改成 Object.create(null)。
+    （2026-10-28 TASK-096：已重現、備妥上游回報草稿，使用者選定方案 A 等上游修，不改程式碼；見文末 TASK-096 段。）
   - 公式注入的殘留風險：字串儲存格開檔不會被計算；但使用者在該格按 F2＋Enter、另存 CSV 再開、或經純文字剪貼簿貼回，
     Excel 會重新解析成公式。目前匯出內容只有店長自己寫的名稱，屬自己攻擊自己；**日後若匯出顧客可控的文字
     （姓名、備註），必須重新評估（屆時需加 ' 前綴或改寫規則）**。
@@ -649,4 +650,38 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     且我清空 .next 使字型快取歸零而需要重新下載近百個子集；網路恢復、重啟 dev server 後恢復正常。判斷為字型下載逾時，
     而非 16.4.3 的缺陷，但沒有在 16.3.0 上重現對照；若日後在 CI 或部署偶發，先檢查對 Google Fonts 的網路。
 影響：正式環境（Vercel）要重新部署才會套用；部署由使用者決定。
+```
+
+## TASK-096（維運）：write-excel-file 共用字串表缺陷——重現、上游回報草稿，選方案 A（等上游修）
+
+```text
+日期：2026-10-28
+決策：
+  1. 選方案 A「等上游修，維持已知限制」（使用者選定，agent 建議）：不改任何程式碼與相依，不新增 patch-package 或 install script，
+     不在匯出端改文字或擋匯出。
+  2. 已重現並備妥上游回報草稿：ai/artifacts/儀表板與報表/upstream-issue-write-excel-file.md。送出由使用者自行決定與操作；
+     agent 沒有對外發布任何內容。上游 write-excel-file 4.1.1 已是 npm latest（2026-10-28 查證），尚未修。
+  3. 查證結果（比 TASK-093 當時的描述更精確）：
+     - 受影響的是 Object.prototype 的全部 12 個自有屬性名稱：constructor、__proto__、toString、valueOf、hasOwnProperty、
+       isPrototypeOf、propertyIsEnumerable、toLocaleString、__defineGetter__、__defineSetter__、__lookupGetter__、__lookupSetter__。
+       大小寫不同（Constructor）或加字尾（constructors）都不受影響。
+     - ESM（modules/）與 CommonJS（commonjs/）兩份建置都有同一個缺陷；本專案瀏覽器端與測試走的是 ESM。
+     - 套件內其他 lookup table（initializeStyles.js 的 format／font／fill／border）的鍵由程式本身產生，不是使用者輸入，
+       只有共用字串表會被使用者文字打到。
+     - 以真實匯出管線（buildExportSheets）實測：設計師篩選名稱為 toString → 「彙總」表 B3 壞掉；服務名稱為 constructor →
+       「熱門服務排行」表 B3 壞掉；兩個字串都不在 sharedStrings.xml；同檔的正常服務「剪髮」不受影響。
+     - 建議修法（Map）已在暫存副本套用到兩份建置並驗證：重現腳本由 5／9 個儲存格錯誤變為 0／9。
+情境：TASK-093 security-reviewer L-1（Low）與 Epic 總覽審查；只影響匯出檔完整性，不是注入、也不是 prototype pollution，
+      名稱只有店長能寫入，且店長幾乎不會把服務取名為這些字。
+考慮過的替代方案：
+  - B 本地 patch（patch-package）：要同時 patch ESM 與 CommonJS 兩個檔案，新增 devDependency 與 postinstall 安裝腳本
+    （供應鏈與維護成本，升級套件時 patch 可能失效）；效益與風險不成比例。
+  - C 匯出端防呆（偵測 12 個保留名稱並拒絕匯出）：改變匯出行為與提示文案，要維護保留名稱清單，
+    且讓店長因為一個冷門限制而無法匯出；效益不成比例。
+影響：
+  - 在上游修好前，名稱為上述 12 個字之一的服務或設計師，匯出檔該格內容會錯、Excel 開檔會跳修復對話框。
+  - 觸發條件與因應（改名）：店長只要避免這些字當服務或設計師名稱即可；其餘匯出內容不受影響。
+  - 上游修好後：升級 write-excel-file（依 TASK-095 慣例精確版本、單獨升、單獨驗證），並新增一則讀回測試
+    （名稱為 constructor 的服務，匯出後解開仍是共用字串且內容原樣）；屆時可關閉此已知限制。
+  - 建議每次評估升級依賴時順便看一下上游 issue 狀態；本專案不自動追蹤。
 ```
