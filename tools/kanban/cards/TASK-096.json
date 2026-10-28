@@ -3,7 +3,7 @@
   "createdAt": "2026-10-25",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "node repro-write-excel-file.mjs（scratchpad，連跑兩次輸出相同）：5/9 儲存格錯誤，對照組 4/4 正常",
+      "真實匯出管線一次性探測（已刪除）：設計師名稱 toString、服務名稱 constructor 皆寫壞",
+      "暫存副本套用 Map 修法（ESM＋CJS）：0/9 錯誤",
+      "npm view write-excel-file：4.1.1 為 latest，上游未修"
+    ],
+    "findings": [
+      "受影響名稱共 12 個（Object.prototype 全部自有屬性），比任務卡多；ESM 與 CommonJS 兩份建置都有；只有共用字串表會被使用者文字打到"
+    ],
+    "residual": "上游回報草稿尚未送出（由使用者自行決定）；上游修好前，名稱為這 12 個字之一的服務／設計師匯出檔該格會錯；本專案不自動追蹤上游。"
   },
   "id": "TASK-096",
   "title": "write-excel-file 名稱為 constructor／__proto__ 等時匯出檔寫壞（重現、上游回報草稿、選定因應方式）",
@@ -42,7 +49,7 @@
     "screenSpec": "",
     "mockupDecision": "",
     "taskCard": "ai/artifacts/儀表板與報表/task-cards/TASK-096.md",
-    "verificationReport": "",
+    "verificationReport": "ai/artifacts/儀表板與報表/verification/TASK-096.md",
     "pr": ""
   },
   "refs": [
@@ -54,6 +61,21 @@
       "name": "Claude Code",
       "time": "2026-10-25",
       "text": "依 TASK-093 與 Epic 總覽審查的 L-1 建立。對外回報由使用者自行送出；因應方式（A／B／C）待使用者選定。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-28",
+      "text": "使用者下達「開始做TASK-096」並指定從 master 建立獨立分支 feat/task-096-excel-name-guard 開發，視為核准計畫。先做最小重現與上游回報草稿，方案 A／B／C 待使用者選定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-28",
+      "text": "重現與上游回報草稿完成；使用者選定方案 A（等上游修），不改程式碼與相依，decisions／README／TASK-093 已知限制已同步。轉 verify，待人工驗收。開發分支 feat/task-096-excel-name-guard（尚未 commit）。"
+    },
+    {
+      "name": "使用者",
+      "time": "2026-10-28",
+      "text": "人工驗收通過，轉 Done。"
     }
   ]
 }
