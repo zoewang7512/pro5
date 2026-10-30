@@ -49,6 +49,7 @@
 - `docs/demo-account.md`：建立帳戶、匯入圖片、dry-run 與真實還原、**備份**、啟用／關閉入口（改 `DEMO_ENABLED` 並 **Redeploy**）、啟用／關閉排程（`DEMO_RESET_ENABLED` 並 Redeploy）、緊急關閉（`demo:disable`）、Demo 帳戶被改壞時的修復 SQL（SQL Editor 的 `postgres` 角色）、輪換 Demo 密碼（只能走 SQL Editor，admin API 也被觸發器擋）。
 - 手冊另須寫明：(1) 更新展示內容的流程是 `demo:export-base` → `demo:upload-images --overwrite` → commit → 部署，**整理展示內容前先關閉 `DEMO_RESET_ENABLED`**，否則在後台新上傳的圖會在當晚被當成孤兒永久刪除；(2) Auth 平台升級後若登入全面回 500，第一步先套用觸發器的 `_down.sql`；(3) 正式環境若沒設 `DESIGNER_EMAIL`，`getDemoConfig` 的 Email 比對無作用，`is_demo` 檢查才是主要防線；(4) `DEMO_EMAIL` 是公開的，必須是作者控制的信箱。
 - `project-map.md` 與實作一致。
+- `docs/demo-account.md` 加入：寄信行為（Demo 發動的改期／取消不寄信、預約確認信照寄）、各表筆數上限與數字、備份流程與還原 `restore.sql` 的步驟、備份檔何時可刪。
 
 ## 驗收標準
 
@@ -61,6 +62,7 @@
 ## 實作備註
 
 - README 截圖（若要放登入頁入口）須在 TASK-112 完成後補。
+- `TASK-080` 的註記要寫成：確認信開啟；Demo 發動的改期／取消不寄信（TASK-114）。
 
 ## 驗證契約
 

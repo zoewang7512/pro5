@@ -7,7 +7,7 @@
 - 上層 Epic：Demo 體驗帳戶
 - 上層 User Story：文件與入口公開
 - 分軌：前後端串接
-- 前置任務（dependsOn）：TASK-097, TASK-098, TASK-099, TASK-100, TASK-101, TASK-102, TASK-103, TASK-104, TASK-105, TASK-106, TASK-107, TASK-108, TASK-109, TASK-110, TASK-111, TASK-113
+- 前置任務（dependsOn）：TASK-097, TASK-098, TASK-099, TASK-100, TASK-101, TASK-102, TASK-103, TASK-104, TASK-105, TASK-106, TASK-107, TASK-108, TASK-109, TASK-110, TASK-111, TASK-113, TASK-114, TASK-115, TASK-116, TASK-117
 - 狀態：草稿（待人工核准）
 - 風險等級：高
 - Agent owner：Claude Code
@@ -43,10 +43,12 @@
 - 逐條對照 feature-spec「驗收標準」並附證據（測試名稱、指令輸出或截圖）。
 - 執行並貼出所有相關測試套件：`test`、`test:rls`、`test:booking`、`test:admin-booking`、`test:business-hours`、`test:store-settings`、`test:booking-policy`、`test:services`、`test:designers`、`test:account`、`test:mfa-rls`、`test:notifications`、`test:audit-log`、`test:reports`，以及本 Epic 新增的 `test:demo-lock`、`test:demo-rate-limit`、`test:demo-enter`、`test:demo-seed-bucket`、`test:demo-reset`，加上 `tsc`、`lint`、`build`。**真實還原後必須把既有整合套件再跑一次**（它們對同一個正式庫執行，可能依賴現有資料，例如「預設設計師」以 `created_at` 排序辨識）；若有測試依賴還原前的資料，另開卡修正測試，不改 seed。
 - 本機以瀏覽器走完整流程：登入頁按「進入體驗帳號」→ 說明視窗 → 橫幅 → 後台主要操作 → 帳號設定頁三項鎖定 → Demo 登出不影響其他 session → 前台用自己的 Email 預約並確認收到確認信。
-- **真實還原前的備份：** 先確認 Supabase 方案有沒有 PITR 或可下載備份；並做一次完整 data-only 匯出（含 `appointments`、`customers`、`audit_log`、`admins`），寫出還原步驟，經使用者確認後才執行。
+- **真實還原前的備份：** Supabase 為 Free Plan，沒有專案備份。必須先以 `npm run demo:backup`（TASK-117）完成備份，核對各表筆數與圖片數量，**經使用者確認備份可用**後，才可執行真實還原。
 - 還原後驗證：各表筆數等於 seed；`designer001` 的 `auth.users` 雜湊與 `updated_at`、`admins` 列、頭像物件、`audit_log` 其他列與還原前一致；`designer001` 仍可登入（含既有 MFA 狀態）；沒有寄出任何信。
 - 人工驗證手動還原成功後，才由使用者決定是否把 `DEMO_ENABLED` 與 `DEMO_RESET_ENABLED` 依序設為 true（各需 Redeploy）；確認排程第一次觸發的結果。
 - 回報殘留風險（架構筆記第 8 節）目前實況，以及使用者對各項決定的最終結論。
+- 寄信行為驗證：Demo 改期與取消**不寄信**（含畫面說明視窗出現且按繼續後資料正確變更）；面試官以自己的 Email 在前台預約，**確認信照寄**；非 Demo 管理員的改期與取消**照常寄信**。
+- 筆數上限驗證：Demo 新增第 6 位設計師被拒絕；其餘上限依使用者核准的數字抽測。
 
 ## 驗收標準
 
@@ -56,6 +58,8 @@
 - 正式環境真實還原只執行一次且經使用者同意、已備份，結果符合預期。
 - `DEMO_ENABLED=false` 時登入頁與現況逐字一致。
 - 使用者人工驗收通過。
+- Demo 改期／取消不寄信、確認信照寄、非 Demo 照常寄信，皆有證據。
+- 真實還原之前已有可用備份並經使用者確認。
 
 ## 實作備註
 
@@ -65,7 +69,7 @@
 ## 驗證契約
 
 - 單元測試：全套 `npm run test`。
-- 整合測試：上列各 `test:*`（含真實還原後的回歸重跑）。
+- 整合測試：上列各 `test:*`（含真實還原後的回歸重跑）。；`test:demo-mail-suppress`、`test:demo-row-caps`、`test:storage-owner`。
 - E2E 測試：瀏覽器完整走查（含正式站）。
 - 型別檢查：`npx tsc --noEmit` 無錯誤
 - Lint：`npm run lint` 無錯誤

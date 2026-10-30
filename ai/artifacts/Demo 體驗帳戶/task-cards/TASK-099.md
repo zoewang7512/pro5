@@ -42,7 +42,7 @@
 - `DEMO_PASSWORD` 長度至少 32；`DEMO_EMAIL` 不得等於 `DESIGNER_EMAIL`（不分大小寫），否則中止。
 - 帳戶不存在：`createUser({ email, password, email_confirm: true, app_metadata: { is_demo: true } })`。
 - 帳戶已存在：若 `app_metadata.is_demo !== true` 就**中止並提示**（絕不把既有的非 Demo 帳戶轉成 Demo，也不改它的密碼）；若是 Demo 則略過建立。
-- 確保 `admins` 有登記；`admins.display_name` 設為「體驗帳號」（只動這個帳戶那一列）。
+- 確保 `admins` 有登記；`admins.display_name` 設為「Demo帳號」（使用者指定），只動這個帳戶那一列。
 - 若該帳戶存在任何 MFA factor，刪除並提示。
 - 全程不印出密碼、service role key、token；只印出步驟結果。
 

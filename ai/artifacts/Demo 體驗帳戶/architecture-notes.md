@@ -144,7 +144,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 ### D9 排程與手動還原
 
-- `GET /api/cron/demo-reset`，`vercel.json` 加第二個 cron：`0 19 * * *`（UTC，台北 03:00；Hobby 只保證在該小時內觸發，文案是否改為「每日凌晨 3 點左右」待使用者決定）。
+- `GET /api/cron/demo-reset`，`vercel.json` 加第二個 cron：`0 19 * * *`（UTC，台北 03:00；Hobby 只保證在該小時內觸發，畫面文案已由使用者定為「每日凌晨 3 點左右還原」，2026-10-30）。
 - 驗證：`verifyBearerSecret(req.headers.get("authorization"), process.env.CRON_SECRET)`。
 - **旗標與手動路徑（修正先前會互相卡死的設計）：** `DEMO_RESET_ENABLED` 只管**排程**自動觸發。手動真實還原帶 `?confirm=RESET_DEMO`（加上 `Bearer CRON_SECRET`）即可執行，不受 `DEMO_RESET_ENABLED` 約束；`?dry_run=1` 只做 dry-run。判斷方式：排程呼叫（無 `confirm`／`dry_run`）→ 看旗標；有 `dry_run=1` → 只 dry-run；有 `confirm` → 真實還原。這樣首次真實還原可以在旗標關閉時由人工執行，驗證成功後才開旗標。
 - `maxDuration = 60`，時間預算沿用提醒信排程做法；中止點只能在步驟 1 與步驟 3（交易不可中斷）。
@@ -156,7 +156,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 1. 本 Epic 的 migration 全部是**加法**（新表、新函式、新觸發器、新 bucket、新 Storage policy），不改既有物件；觸發器只對 `is_demo` 帳戶生效。
 2. 順序：先套用 migration → **先合併到 master，`DEMO_ENABLED` 與 `DEMO_RESET_ENABLED` 皆保持關閉** → 正式部署（Vercel 環境變數改動需 Redeploy）→ 建立 Demo 帳戶、上傳圖片 → 手動 dry-run → **（先備份，使用者同意）手動真實還原一次** → 驗證 → 開 `DEMO_ENABLED` 並 Redeploy → 最後才開 `DEMO_RESET_ENABLED` 並 Redeploy。
-3. **備份：** 整表覆寫的資料無法由 `_down.sql` 復原。真實還原前先確認 Supabase 方案有沒有 PITR／可下載備份，並做一次完整 data-only 匯出（含 `appointments`、`customers`、`audit_log`、`admins`）與還原步驟（TASK-112）。
+3. **備份：** 整表覆寫的資料無法由 `_down.sql` 復原。使用者確認 Supabase 為 Free Plan，**沒有專案備份**，所以改用自建備份（D15、TASK-117）：真實還原前必須先備份並確認備份檔可讀，才可執行（TASK-112）。
 4. TASK-098 的實驗會暫時在正式 Supabase 建觸發器，結束必須 drop 並附驗證輸出。
 5. 合併到 master 的前提：所有高風險卡已核准、`DEMO_ENABLED=false` 時登入頁與現況逐字一致（測試證明）。
 
@@ -174,6 +174,27 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - `demo:disable`：刪除 Demo 的 `admins` 列（`is_admin()` 每次請求重新判斷，**立即全面失效**）→ 呼叫 `demo_revoke_sessions()` 撤銷 session → 以 admin API 設定 `ban_duration`（`banned_until` 不在鎖定欄位內）。
 - `demo:enable`：反向（重新登記 `admins`、解除封鎖）。
 - 手冊寫明兩種情境與完整步驟；每日還原也會撤銷 Demo 的 session，使單一濫用者最多持續 24 小時。
+
+### D13 Demo 發動的改期／取消不寄信，並以說明視窗示意（使用者決定，TASK-114、TASK-115）
+
+- 使用者選擇方案 A：新 migration 以 `create or replace` 改寫 `notify_appointment_update()`，在函式開頭加一道守門：`coalesce(auth.jwt() -> 'app_metadata' ->> 'is_demo', '') = 'true'` 時 `return new`，不呼叫 `net.http_post`。**其餘本文逐字沿用 `0012`**，觸發器本身與 `when` 條件不動。`_down.sql` 還原成 `0012` 的原函式本文。
+- 只擋 UPDATE（改期／取消）；`notify_appointment_insert`（預約確認信）**不動**，面試官自己預約的確認信照寄。cron 與 service role 沒有 JWT，不受影響。
+- **未知事項（TASK-114 實測）：** 在 `security definer`、`search_path = ''` 的觸發器函式內，`auth.jwt()` 是否讀得到發動 UPDATE 的請求 JWT（它讀 `request.jwt.claims` 設定值，理論上可行）；以拋棄式帳號實測，並用 `net._http_response`／請求佇列確認「Demo 改期零請求、非 Demo 改期照常有請求」。
+- **前端（TASK-115）：** Demo 登入時，按下改期與取消的**最終確認**後先跳出說明視窗：顯示「顧客會收到的通知信」示意圖與一句說明（「正式環境會寄這封信，體驗帳號不會真的寄出」），按下確認後照常執行。一般管理員完全不變。視窗內容以圖片為主；需先出畫面規格與 mockup 給使用者確認。
+- 殘留：`reminder_sent_at` 可被清成 null 造成提醒信重寄，頻率受每日排程限制，維持列為殘留風險。
+
+### D14 Demo 專屬資料筆數上限（使用者決定做完整一套，TASK-116）
+
+- 設計師最多 5 位（使用者指定）。其他表（服務、預約、顧客、公休日、作品集、請假）的上限在 TASK-106 產出 seed 後，依 seed 數量的約 2～3 倍列表給使用者核准，不先猜數字。
+- 做法：對各表加 `BEFORE INSERT` 觸發器，**只在 JWT 的 `is_demo` 為真時**檢查該表目前列數，達上限就 `raise exception`；一般管理員與 service role（含還原）不受影響。上限是軟上限（並行時可能略超），可接受。
+- 目的：避免單一 Demo session 以腳本灌爆免費方案的資料庫容量，拖垮整個正式專案。與 TASK-113（Storage 擁有者與上傳上限）互補。
+
+### D15 備份策略（Free Plan 沒有專案備份，TASK-117）
+
+- 使用者確認：Free Plan 不含專案備份（Pro 才有最多 7 天排程備份）。因此**真實還原前必須先自建備份**。
+- `scripts/backup-demo-tables.mjs`：以 service role 唯讀匯出會被覆寫的表（`services`、`designers` 及三張子表、`business_hours`、`closed_dates`、`booking_policy`、`store_settings`、`appointments`、`customers`、`audit_log`、`admins`）為 JSON，並下載三個公開 bucket 的物件；輸出到本機 `backups/`（加入 `.gitignore`，因含顧客資料，絕不進 git）；附筆數與雜湊清單供核對。
+- **更正我先前對你說的話：** 我說過「備份格式和 seed 一樣，還原備份就是把它當 seed 再跑一次」。那不完全正確：`reset_demo_data` 為了不寄信，**拒絕任何 `customer_email` 非 null 的預約**，所以含真實 Email 的備份不能用它還原。備份的還原改走另一條手動路徑：腳本同時產生依外鍵順序的 `restore.sql`，在 SQL Editor 以 `postgres` 角色於單一交易內執行，並暫停寄信觸發器（`session_replication_role = replica` 是否可用需實測，列為 TASK-117 的未知事項）。這是最後手段，不是日常工具。
+- 備份必須在 TASK-112 的真實還原**之前**完成並由使用者確認；備份檔有效期間（還原成功並驗證後多久可刪）由使用者決定。
 
 ## 4. 資料與 API 契約
 
@@ -234,7 +255,25 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 ## 8. 殘留風險與待使用者決定的事
 
-### 需要使用者明確決定
+### 使用者決定結果（2026-10-30，第二輪）
+
+| 項目 | 決定 | 落地 |
+|---|---|---|
+| 1 寄信濫用 | 選 A：Demo 發動的改期／取消不寄信，確認信照寄；按改期／取消後跳說明視窗示意通知信 | D13、TASK-114、TASK-115 |
+| 2 資料量被灌爆 | 做完整一套筆數上限，設計師最多 5 位，其他表數字待 seed 後給使用者核准 | D14、TASK-116 |
+| 3 前台被竄改 | 接受（最長約 24 小時） | 殘留風險，手冊註明立即手動還原流程 |
+| 4 顧客資料互相可見 | 接受（使用者確認；正式庫現有資料都是使用者自己的測試資料） | 殘留風險 |
+| 5 備份 | Free Plan 無備份，改自建備份 | D15、TASK-117 |
+| 6 全站限流 | 保留，並設得低於 Supabase 的限額（使用者確認） | D4、TASK-102 |
+| — 還原時間文案 | 「每日凌晨 3 點左右還原」 | 全部文案與常數 |
+| — 規格書調整 | 使用者要求白話說明後，已回覆「可以」 | 本檔第 9 節 |
+| — 單一串接卡 | 可以 | 第 10 節 |
+| — Demo 帳號顯示名稱 | 「Demo帳號」 | TASK-099、TASK-106 |
+| — Demo 登入 Email | `hair_demo@gmail.com`（使用者提供；原 `demo@gmail.com` 因可能屬他人而改掉） | TASK-099、`.env` 的 `DEMO_EMAIL` |
+
+7. **`DEMO_EMAIL` 已定為 `hair_demo@gmail.com`**（須為使用者自己控制的信箱；它會顯示在帳號設定頁）。使用者補充：Demo 一律由登入頁「進入體驗帳號」直接進入，不會用到登入頁的「忘記密碼」；資料庫觸發器仍保留作為最後防線（有人在登入頁輸入此 Email 要求重設時，也改不了密碼）。
+
+### 需要使用者明確決定（原始問題紀錄，已決定者見上表）
 
 1. **寄信濫用（安全審查 M3，已核對屬實）。** 後台登入帳號可直接修改預約的 `status`、`start_at`、`end_at`、`reminder_sent_at`（`0015` 第 103 行）；預約有 Email 時，每次改開始或結束時間都會觸發寄信（`0012` 觸發器，無節流）；信件內的店名、電話、設計師名、服務名都可被 Demo 修改。攻擊者可先在前台用受害者 Email 預約（每個 Email 最多 3 筆），再用 Demo session 反覆改期，**以你的寄件網域對受害者發出內容可控的信，並耗盡 Resend 額度**。「同一 Email 最多 3 筆」只限制建立，擋不住這點。選項：
    - **A（建議）：** 新 migration 修改 `notify_appointment_update`：**修改者是 Demo 帳戶時不寄信**（函式內 `auth.uid()` 仍是呼叫者）。面試官自己預約的確認信照寄。這會修改一個既有函式（非純加法），風險高，需獨立卡與審查。
@@ -257,7 +296,9 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - `CRON_SECRET` 敏感度提高：外洩者可觸發還原（回到 seed、不洩漏資料；手動真實還原另需 `confirm` 參數）。
 - Vercel Hobby 的排程限制待核對（見 D9）。
 
-## 9. 對已核准規格書的調整（需使用者確認）
+## 9. 對已核准規格書的調整（使用者已於 2026-10-30 同意）
+
+> 第 6 項（還原時間文案）使用者已決定改為「每日凌晨 3 點左右還原」；第 1～5、7 項使用者要求白話說明後回覆可以。
 
 1. **忘記密碼：** 原要求「前端辨識 Demo Email 並顯示提示」。Demo 的 Email 其實會顯示在帳號設定頁（登入前才不知道），前端在登入頁無法辨識。改為「資料庫觸發器擋下，登入頁顯示既有通用錯誤」；`screen-spec-登入頁體驗入口.md` 的「忘記密碼（輸入體驗帳號信箱）」狀態列取消。
 2. **`designer001`：** 不動他的登入憑證、`admins` 個人資料、頭像與稽核紀錄；只還原業務資料與 Demo 自己的那一列。
@@ -290,6 +331,10 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 | TASK-111 | 文件、營運指令（`demo:disable`／`enable`）與公開入口 | 文件與入口公開 | 不適用 | 中 | 100、104、105、110 |
 | TASK-112 | 端到端串接、暗啟動、首次正式環境 seed 與驗收 | 文件與入口公開 | 前後端串接 | **高** | 097～113 |
 | TASK-113 | Storage 擁有者限制與 Demo 上傳上限（migration） | 濫用防護與緊急開關 | 後端 | **高** | 097 |
+| TASK-114 | Demo 發動的改期／取消不寄信（改寫 `notify_appointment_update`） | 濫用防護與緊急開關 | 後端 | **高** | 097 |
+| TASK-115 | Demo 寄信說明視窗（改期／取消確認後的通知信示意圖） | 體驗帳號提示橫幅 | 前端 | 低 | 097 |
+| TASK-116 | Demo 專屬資料筆數上限（設計師最多 5 位等，migration） | 濫用防護與緊急開關 | 後端 | **高** | 106 |
+| TASK-117 | 還原前備份腳本 `backup-demo-tables`（含 `restore.sql`） | 整庫還原 | 後端 | 中 | 097 |
 
 ### 為什麼只有一張串接卡
 
@@ -297,7 +342,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 ### MECE 檢查
 
-- **完全窮盡：** 規格書 7 個故事皆有對應卡片（S1→099、S2→102/103/104、S3→098/100/101、S4→106/107、S5→108/109/110、S6→105、S7→111）；另新增「濫用防護與緊急開關」→ 113 與 111 的營運指令。寄信開啟的決定落在 111（更新 `TASK-080` 註記）與 112（驗證寄信行為），第 8 節第 1 項的決定會再衍生卡片。
+- **完全窮盡：** 規格書 7 個故事皆有對應卡片（S1→099、S2→102/103/104、S3→098/100/101、S4→106/107、S5→108/109/110、S6→105、S7→111）；另新增「濫用防護與緊急開關」→ 113 與 111 的營運指令。寄信開啟的決定落在 111（更新 `TASK-080` 註記）與 112（驗證寄信行為）；寄信濫用的決定衍生 114（資料庫）與 115（前端視窗）；筆數上限 → 116；備份 → 117。共 21 張（097～117）。
 - **相互排斥：** 下列檔案**會被多張卡修改**，已用依賴順序排開，實作時以後一張卡「只追加、不改既有內容」為準：
 
 | 檔案 | 修改的卡 | 分工 |

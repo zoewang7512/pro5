@@ -51,7 +51,7 @@
 - `isDemoUser(user)`：只有 `user.app_metadata?.is_demo === true`（嚴格布林）才為真；字串 `"true"`、`undefined`、`null` 一律為假。
 - `getDemoConfig()`：`DEMO_ENABLED === "true"` 且 `DEMO_EMAIL`、`DEMO_PASSWORD` 皆非空，且 `DEMO_EMAIL` 與 `DESIGNER_EMAIL` 不同（不分大小寫）才回傳設定，否則回傳 `null`。
 - `isDemoEntryEnabled()`：只回傳布林，不含任何密碼；供登入頁伺服器元件使用。
-- `DEMO_RESET_LABEL = "每日 03:00"` 放在不含 `server-only` 的 `lib/demo/notice-copy.ts`（文案是否改為「每日凌晨 3 點左右」待使用者決定，見架構筆記第 9 節）。
+- `DEMO_RESET_LABEL = "每日凌晨 3 點左右"` 放在不含 `server-only` 的 `lib/demo/notice-copy.ts`（使用者已於 2026-10-30 定案；整句為「資料${DEMO_RESET_LABEL}還原」）。
 - `app/admin/layout.tsx` 計算 `isDemo = isDemoUser(user)` 傳入 `AdminProfileProvider`；`useAdminProfile()` 回傳 `isDemo`。
 
 ## 驗收標準

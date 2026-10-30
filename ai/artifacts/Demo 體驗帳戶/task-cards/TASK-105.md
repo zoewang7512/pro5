@@ -46,7 +46,7 @@
 
 - **Demo 登入時，登出按鈕改用 `signOut({ scope: "local" })`**：預設的 global 登出會撤銷所有面試官共用的 Demo session，任何一位按「登出」都會把其他人踢掉。非 Demo 行為不變。
 - `isDemo` 為假：渲染 `null`。
-- 橫幅：info Alert，文字「您正在使用體驗帳號。不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。」，右側「了解更多」與 ✕；✕ 設 `demo-banner-dismissed`，關閉後同分頁不再顯示。
+- 橫幅：info Alert，文字「您正在使用體驗帳號。不開放改密碼、改 Email、啟用 MFA；資料每日凌晨 3 點左右還原。」，右側「了解更多」與 ✕；✕ 設 `demo-banner-dismissed`，關閉後同分頁不再顯示。
 - 說明視窗：標題「您正在使用體驗帳號」，兩份清單「可以體驗」（預約週曆、改期、取消、標記完成；設計師、作品集、請假與服務設定；營業時間、公休日、儀表板與報表）與「不開放」（修改密碼、登入 Email；啟用／停用雙重驗證（MFA）），按鈕「開始體驗」。
 - 掛載時若 `demo-welcome-pending` 存在：開啟視窗並清除旗標。「了解更多」開啟同一份視窗。Esc 與按鈕可關閉，關閉後焦點回到頁面（`aria-labelledby`、焦點陷阱由 MUI Dialog 處理）。
 - `sessionStorage` 讀寫全部包 `try/catch`；不可用時每次進後台都顯示橫幅與視窗。

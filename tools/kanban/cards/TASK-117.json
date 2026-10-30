@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-117",
+  "title": "還原前備份腳本 backup-demo-tables（含 restore.sql，備份不進 git）",
+  "content": "scripts/backup-demo-tables.mjs：唯讀匯出會被還原覆寫的資料表（JSON＋筆數雜湊）與三個公開 bucket 圖片到本機 backups/（加入 .gitignore，不進 git），並產生依外鍵順序的 restore.sql；Free Plan 沒有專案備份，這是首次真實還原前的前置條件。",
+  "risk": "medium",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "整庫還原",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 117,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-117.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-117.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

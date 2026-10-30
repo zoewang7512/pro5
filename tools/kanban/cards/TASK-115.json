@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-115",
+  "title": "Demo 寄信說明視窗：改期／取消確認後顯示通知信示意圖（前端）",
+  "content": "Demo 登入時，改期與取消在最終確認後先跳出說明視窗：顯示通知信示意圖與一句說明（正式環境會寄、體驗帳號不會寄），按繼續才照常執行；一般管理員不變。需先經使用者確認 mockup。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "體驗帳號提示橫幅",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 115,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "ai/artifacts/Demo 體驗帳戶/screen-spec-Demo寄信說明視窗.md",
+    "mockupDecision": "ai/artifacts/Demo 體驗帳戶/mockup-decision-Demo寄信說明視窗.md",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-115.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-115.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}
