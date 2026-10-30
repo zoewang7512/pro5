@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -19,12 +19,21 @@
     "architecture": false,
     "security": false,
     "test": false,
-    "code_review": false
+    "code_review": true
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/lib/demo-config.test.ts tests/components/admin-shell.test.tsx tests/components/account-settings-view.test.tsx → 92 項通過",
+      "npx tsc --noEmit → 0 錯誤",
+      "npm run lint → 0 error",
+      "npm run build → 通過；暫時讓 DemoNotice 匯入 DEMO_RESET_LABEL 再 build 亦通過，.next/static 搜尋不到 DEMO_PASSWORD",
+      "npx vitest run --maxWorkers=3 → 第二次 91 檔 1641 項全過（第一次 1 項 UI 測試逾時，既有並行不穩定）"
+    ],
+    "findings": [
+      "全套測試偶發逾時為既有問題，非本卡造成",
+      "DESIGNER_EMAIL 未設定時 Email 比對無作用，主要防線為 is_demo 驗證（TASK-103），手冊需註明"
+    ],
+    "residual": "isDemo 僅前端提示；真正的鎖由後續資料庫卡保證。正式環境尚未設定 DEMO_* 變數，入口維持關閉。"
   },
   "id": "TASK-097",
   "title": "Demo 體驗帳戶 架構基礎：Demo 識別、設定與 isDemo 貫穿後台外殼",
@@ -61,6 +70,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者於對話中指示「開始做 TASK-097」，視為核准動工（低風險卡，一般程式碼審查）。推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "實作與驗證完成，放入 Verify 等待人工驗收；一般程式碼審查（code_review 關卡）待人工勾選，agent 自我驗證不等同核准。報表：verification/TASK-097.md"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }

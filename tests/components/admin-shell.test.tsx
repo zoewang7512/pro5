@@ -23,6 +23,11 @@ vi.mock("@/app/admin/logout-button", () => ({
   LogoutButton: () => <button type="button">登出</button>,
 }));
 
+// 真實的 AdminProfileProvider 建立時會呼叫 createClient()（TASK-097 的 isDemo 案例用到）。
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({ rpc: vi.fn(), auth: { getUser: vi.fn() } }),
+}));
+
 describe("AdminShell 導覽項目", () => {
   afterEach(() => {
     cleanup();
@@ -171,6 +176,42 @@ describe("AdminShell 未儲存變更攔截（TASK-081）", () => {
 
     await user.click(screen.getByRole("link", { name: "預約規則" }));
     expect(screen.queryByText("有尚未儲存的變更")).not.toBeInTheDocument();
+  });
+});
+
+// 上面的 mock 把 useAdminProfile 換成固定值；這裡用 importActual 取回真實的 Provider，
+// 驗證 isDemo 選填且預設 false（TASK-097：既有只傳四個 props 的呼叫端不必修改）。
+describe("AdminProfileProvider 的 isDemo（TASK-097）", () => {
+  afterEach(cleanup);
+
+  async function renderProbe(isDemo?: boolean) {
+    const actual = await vi.importActual<typeof import("@/app/admin/_components/AdminProfileContext")>(
+      "@/app/admin/_components/AdminProfileContext",
+    );
+    function Probe() {
+      return <div>{`isDemo:${String(actual.useAdminProfile().isDemo)}`}</div>;
+    }
+    render(
+      <actual.AdminProfileProvider
+        initialDisplayName={null}
+        initialAvatarUrl={null}
+        email="a@example.com"
+        initialPendingEmail={null}
+        {...(isDemo === undefined ? {} : { isDemo })}
+      >
+        <Probe />
+      </actual.AdminProfileProvider>,
+    );
+  }
+
+  it("未傳 isDemo 時為 false", async () => {
+    await renderProbe();
+    expect(screen.getByText("isDemo:false")).toBeInTheDocument();
+  });
+
+  it("傳入 isDemo 時 useAdminProfile 回傳該值", async () => {
+    await renderProbe(true);
+    expect(screen.getByText("isDemo:true")).toBeInTheDocument();
   });
 });
 

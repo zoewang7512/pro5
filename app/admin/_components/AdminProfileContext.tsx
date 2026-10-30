@@ -22,6 +22,9 @@ export type AdminProfileContextValue = {
   avatarUrl: string | null;
   email: string;
   pendingEmail: string | null;
+  // 目前登入者是否為 Demo 體驗帳號（TASK-097）。來源是伺服器端讀 `app_metadata.is_demo`，
+  // 一次灌入、不隨 refresh() 變動（身分在同一個 session 內不會改變）。
+  isDemo: boolean;
   refresh: () => Promise<void>;
 };
 
@@ -32,12 +35,15 @@ export function AdminProfileProvider({
   initialAvatarUrl,
   email: initialEmail,
   initialPendingEmail,
+  isDemo = false,
   children,
 }: {
   initialDisplayName: string | null;
   initialAvatarUrl: string | null;
   email: string;
   initialPendingEmail: string | null;
+  // 選填且預設 false：既有只傳四個 props 的呼叫端與元件測試不必修改。
+  isDemo?: boolean;
   children: React.ReactNode;
 }) {
   const supabase = React.useMemo(() => createClient(), []);
@@ -75,8 +81,8 @@ export function AdminProfileProvider({
   }, [supabase]);
 
   const value = React.useMemo(
-    () => ({ displayName, avatarUrl, email, pendingEmail, refresh }),
-    [displayName, avatarUrl, email, pendingEmail, refresh],
+    () => ({ displayName, avatarUrl, email, pendingEmail, isDemo, refresh }),
+    [displayName, avatarUrl, email, pendingEmail, isDemo, refresh],
   );
 
   return <AdminProfileContext.Provider value={value}>{children}</AdminProfileContext.Provider>;

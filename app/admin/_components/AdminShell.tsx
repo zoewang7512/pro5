@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar, type SidebarItem } from "@/components/ui/Sidebar";
 import { LogoutButton } from "../logout-button";
 import { useAdminProfile } from "./AdminProfileContext";
+import { DemoNotice } from "./DemoNotice";
 import { UnsavedChangesProvider, useUnsavedChangesActions } from "./UnsavedChangesProvider";
 import { resolveAdminDisplayName } from "@/lib/admin/account";
 
@@ -165,6 +166,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
         onItemNavigate={guardNavigate}
       />
       <Box component="main" sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <DemoNotice />
         {children}
       </Box>
     </Box>

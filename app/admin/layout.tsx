@@ -4,6 +4,7 @@ import { AdminShell } from "./_components/AdminShell";
 import { AdminProfileProvider } from "./_components/AdminProfileContext";
 import { getAdminProfile, resolveAdminAvatarUrl } from "@/lib/admin/account";
 import { isAalSatisfied } from "@/lib/auth/aal";
+import { isDemoUser } from "@/lib/demo/config";
 
 // 明確宣告動態渲染：目前雖然透過 createClient() 內部的 cookies() 隱含觸發動態渲染，
 // 但這是全站唯一的驗證關卡，用顯式宣告當作萬一未來重構動了 createClient() 內部實作、
@@ -53,6 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       initialAvatarUrl={avatarUrl}
       email={user.email ?? ""}
       initialPendingEmail={user.new_email ?? null}
+      isDemo={isDemoUser(user)}
     >
       <AdminShell>{children}</AdminShell>
     </AdminProfileProvider>
