@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npm run test:seed-demo-account → 14 passed（建立、冪等、拒絕轉換非 Demo、DESIGNER_EMAIL 衝突、密碼長度與缺變數、MFA 刪除、designer001 快照不變）",
+      "npx tsc --noEmit、npm run lint、npm run build → 通過",
+      "grep .next/static 找不到 seed-demo-account／DEMO_PASSWORD；清理檢查：拋棄式帳號 0 殘留、is_demo 帳戶 0 個"
+    ],
+    "findings": [
+      "修正：拒絕分支在連線未關時 process.exit(1) 於 Windows 崩潰（0xC0000409），改丟例外並設 exitCode",
+      "實作者自查完成；任務卡列的安全性、驗證審查關卡尚未跑子代理審查（agent 意見也不等同人工核准）"
+    ],
+    "residual": "designer001 密碼雜湊未直接比對（API 不暴露，改用 updated_at／last_sign_in_at／admins 列；腳本在連線前就拒絕衝突，不會觸及他）；正式環境尚未設定 DEMO_EMAIL／DEMO_PASSWORD，實際建立在 TASK-112；DEMO_EMAIL 會公開顯示，須為作者控制的信箱。詳見 verification/TASK-099.md。"
   },
   "id": "TASK-099",
   "title": "Demo 帳戶建立腳本（seed:demo-account）",
@@ -53,6 +60,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者指示「開始做 task-099」，視為動工核准；前置 TASK-097 已 Done。開始實作腳本與整合測試。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "實作與自動化驗證完成，放入 Verify 等待人工驗收（不自行轉 Done）。報告：verification/TASK-099.md。審查關卡（安全性、驗證）尚未跑子代理；是否要跑請你決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }

@@ -8,10 +8,10 @@
 - 上層 User Story：建立與標記 Demo 帳戶
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：完成（人工驗收通過，2026-10-30）
 - 風險等級：中
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（2026-10-30 指示「開始做 task-099」）
 
 ## 目標
 
@@ -78,9 +78,9 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 變更的檔案：`scripts/seed-demo-account.mjs`、`package.json`、`tests/seed-demo-account.integration.test.ts`、`vitest.seed-demo-account.config.ts`
+- 執行過的指令：`npm run test:seed-demo-account`、`npx tsc --noEmit`、`npm run lint`、`npm run build`
+- 測試輸出：14 項整合測試通過，tsc／lint／build 通過；詳見 [`verification/TASK-099.md`](../verification/TASK-099.md)
+- 螢幕截圖：不適用
+- 已知限制：designer001 密碼雜湊未直接比對；正式環境尚未建立 Demo 帳戶（TASK-112）；安全性與驗證子代理審查尚未執行
+- 後續任務：TASK-103（一鍵進入端點依賴本卡）、TASK-111（手冊補輪換密碼走 SQL Editor）、TASK-112（正式環境建立）
