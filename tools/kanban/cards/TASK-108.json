@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-108",
+  "title": "還原函式 reset_demo_data 與唯讀物件清單 RPC（migration，單一交易、含 dry-run）",
+  "content": "migration：reset_demo_data(payload, dry_run) 單一交易整表覆寫（守門字串、最低筆數、advisory lock、Demo 使用者由函式自己查且剛好 1 個、預約 email 必須全 null），audit_log 只刪 Demo 列，admins 只動 Demo 列，不碰 auth schema，dry-run 以子交易回滾；另有唯讀 demo_list_storage_objects；整合測試只能 dry-run。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "整庫還原",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-106"
+  ],
+  "order": 108,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-108.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-108.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

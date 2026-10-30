@@ -1,0 +1,61 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-109",
+  "title": "還原編排：lib/demo/reset.ts（圖片差異同步、呼叫 RPC、孤兒清理、帳戶處理、健康檢查）",
+  "content": "lib/demo/reset.ts：差異同步 seed 圖片（先 remove 再 copy）→呼叫 reset_demo_data→成功後清理孤兒（admin-assets 只刪 Demo 擁有者、解析失敗跳過、絕不碰 demo-seed）→刪 Demo 的 MFA 與 session→用獨立 anon client 健康檢查；各階段失敗不留半套。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "整庫還原",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-100",
+    "TASK-107",
+    "TASK-108"
+  ],
+  "order": 109,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-109.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-109.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

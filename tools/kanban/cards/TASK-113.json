@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-113",
+  "title": "Storage 擁有者限制與 Demo 上傳上限（migration，RESTRICTIVE policy）",
+  "content": "migration：對 storage.objects 新增 RESTRICTIVE policy，admin-assets 的 update／delete 限擁有者（避免 Demo 刪 designer001 頭像），並限制 Demo 在三個公開 bucket 的上傳物件數；只新增、不改既有 policy。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 113,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-113.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-113.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

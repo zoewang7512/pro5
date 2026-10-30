@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-104",
+  "title": "登入頁體驗入口與說明視窗旗標（前端）",
+  "content": "login-form 新增「面試官／訪客？」區塊與「進入體驗帳號」按鈕，呼叫 /api/demo/enter，載入與失敗狀態依 mockup，成功後設 sessionStorage 旗標並導向後台；demoEnabled 為假時完全不渲染。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "登入頁體驗入口",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 104,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "ai/artifacts/Demo 體驗帳戶/screen-spec-登入頁體驗入口.md",
+    "mockupDecision": "ai/artifacts/Demo 體驗帳戶/mockup-decision-登入頁體驗入口.md",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-104.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-104.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>登入頁體驗入口 · 已選定 A（一鍵進入）最終狀態</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* token 取自 ai/context/design-system.md S3（亮色模式）；暗色模式由 MUI theme 自動帶入 */
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E; --primary-50:#FBF4E2;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; line-height: 1.25; }
+  .page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 24px; line-height: 1.7; max-width: 900px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; align-items: flex-start; margin-bottom: 24px; }
+  .frame { flex: 0 0 auto; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { background: var(--grey-100); border-radius: 16px; box-shadow: var(--shadow-1); position: relative; overflow: hidden; }
+  .screen.login { width: 420px; min-height: 560px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+  .screen.login.m { width: 375px; padding: 24px 16px; }
+  .screen.desk { width: 980px; height: 560px; display: flex; }
+  .screen.mob { width: 375px; height: 700px; display: flex; flex-direction: column; }
+
+  .card { width: 100%; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 32px 28px; }
+  .m .card { padding: 24px 20px; }
+  .brand { text-align: center; margin-bottom: 24px; }
+  .brand .title { font-size: 20px; font-weight: 700; line-height: 1.25; }
+  .brand .sub { font-size: 12px; color: var(--grey-700); margin-top: 4px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input { width: 100%; height: 42px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 13px; font-family: inherit; color: var(--grey-900); }
+  .field input:disabled { background: var(--grey-200); border-color: var(--grey-200); color: var(--grey-500); }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 44px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 700; border: none; font-family: inherit; }
+  .btn.outline { background: transparent; color: var(--primary-700); border: 1px solid var(--primary-500); height: 40px; font-weight: 600; }
+  .btn.outline.loading { color: var(--grey-700); border-color: var(--grey-300); }
+  .btn.disabled { background: var(--grey-300); color: var(--grey-500); }
+  .spinner { width: 14px; height: 14px; border-radius: 999px; border: 2px solid var(--grey-300); border-top-color: var(--primary-500); }
+  .link-row { text-align: center; margin-top: 16px; }
+  .link { font-size: 12px; color: var(--primary-700); font-weight: 600; }
+  .or { display: flex; align-items: center; gap: 12px; margin: 24px 0 16px; font-size: 11px; color: var(--grey-500); }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--grey-300); }
+  .demo-box { background: var(--grey-100); border-radius: var(--radius-sm); padding: 16px; }
+  .demo-box .t { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .demo-box .d { font-size: 12px; color: var(--grey-700); line-height: 1.5; margin-bottom: 12px; }
+  .alert { display: flex; gap: 10px; align-items: flex-start; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; line-height: 1.5; margin-top: 12px; }
+  .alert .dot { width: 8px; height: 8px; border-radius: 999px; margin-top: 5px; flex-shrink: 0; }
+  .alert.error { background: var(--danger-light); } .alert.error .dot { background: var(--danger); }
+
+  /* 後台（背景示意）與橫幅 A */
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; display: flex; flex-direction: column; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .sidebar-profile { margin-top: auto; padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--grey-200); }
+  .avatar { width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .sidebar-profile .name { font-size: 12px; font-weight: 600; }
+  .sidebar-profile .logout { font-size: 11px; color: var(--grey-500); }
+  .topbar { height: 48px; background: var(--surface); border-bottom: 1px solid var(--grey-300); display: flex; align-items: center; padding: 0 16px; gap: 12px; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .banner { display: flex; align-items: center; gap: 12px; background: var(--info-light); padding: 10px 28px; font-size: 12px; line-height: 1.5; flex-shrink: 0; }
+  .mob .banner { padding: 10px 16px; align-items: flex-start; }
+  .banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--info); flex-shrink: 0; }
+  .banner .txt { flex: 1; } .banner .txt b { font-weight: 600; }
+  .banner .more { color: var(--primary-700); font-weight: 600; white-space: nowrap; }
+  .banner .x { color: var(--grey-700); font-size: 16px; line-height: 1; padding: 4px; }
+  .page { flex: 1; padding: 24px 28px; }
+  .mob .page { padding: 16px; }
+  .page h2 { font-size: 16px; font-weight: 600; margin: 0 0 16px; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .mob .week { grid-template-columns: repeat(3, 1fr); }
+  .day { background: var(--surface); border-radius: var(--radius-sm); min-height: 120px; padding: 8px; font-size: 11px; color: var(--grey-700); }
+  .ev { background: var(--primary-50); border-radius: 6px; padding: 6px; margin-top: 6px; font-size: 11px; color: var(--grey-900); }
+
+  /* 說明對話框 */
+  .overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .dlg { width: 420px; max-width: 100%; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .dlg h3 { font-size: 16px; font-weight: 700; margin: 0 0 4px; line-height: 1.3; }
+  .dlg .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; line-height: 1.5; }
+  .dlg .h { font-size: 12px; font-weight: 600; color: var(--grey-700); margin: 0 0 4px; }
+  .dlg ul { list-style: none; padding: 0; margin: 0 0 16px; font-size: 13px; line-height: 1.7; }
+  .dlg ul li { display: flex; gap: 8px; }
+  .dlg ul.ok li::before { content: "✓"; color: var(--success); font-weight: 700; }
+  .dlg ul.no li::before { content: "🔒"; font-size: 11px; line-height: 2; }
+  .dlg .actions { display: flex; justify-content: flex-end; }
+  .dlg .btn { width: auto; height: 36px; padding: 0 16px; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">登入頁體驗入口 · 已選定 A（一鍵進入）最終狀態</h1>
+  <p class="page-note">
+    依你的決定修改：面試官按下「進入體驗帳號」後，<b>直接登入並進入後台，不需要輸入任何帳密</b>，進入後立即彈出說明視窗（內容為你提供的文字）；
+    後台頂端是已選定的提示橫幅 A。畫面上不再出現 Email 與密碼欄位的填入動作，也不顯示體驗帳號的帳密。
+    實作與驗收由伺服器端代為登入（見規格書更新）。以下是原本 A 沒畫到的新狀態：預設、載入中、失敗、進入後的說明視窗（桌面與手機）。
+  </p>
+
+  <div class="strip">
+    <div class="frame"><div class="label">F1 · 預設</div>
+      <div class="screen login"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。</div>
+          <div class="btn outline">進入體驗帳號</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">F2 · 載入中（按下之後）</div>
+      <div class="screen login"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input disabled placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input disabled type="password" placeholder="••••••••" /></div>
+        <div class="btn disabled">登入</div>
+        <div class="link-row"><span class="link" style="color:var(--grey-500);">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。</div>
+          <div class="btn outline loading"><span class="spinner"></span>正在進入體驗帳號…</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">F3 · 失敗（網路或服務暫時無法使用）</div>
+      <div class="screen login"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。</div>
+          <div class="btn outline">重新嘗試進入體驗帳號</div>
+          <div class="alert error" role="alert"><span class="dot"></span>目前無法進入體驗帳號，請稍後再試。</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">F4 · 手機（375）預設</div>
+      <div class="screen login m"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。</div>
+          <div class="btn outline">進入體驗帳號</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="frame"><div class="label">F5 · 進入後台後：說明視窗（桌面），背後是提示橫幅 A</div>
+      <div class="screen desk">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div><div class="nav-item">儀表板與報表</div><div class="nav-item">服務設定</div><div class="nav-item">營業時間</div><div class="nav-item">帳號設定</div>
+          <div class="sidebar-profile"><div class="avatar">體</div><div><div class="name">體驗帳號</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="content">
+          <div class="banner"><span class="dot"></span><span class="txt"><b>您正在使用體驗帳號。</b>不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。</span><span class="more">了解更多</span><span class="x">✕</span></div>
+          <div class="page"><h2>預約</h2>
+            <div class="week"><div class="day">週一<div class="ev">10:00 剪髮造型</div></div><div class="day">週二<div class="ev">14:00 染髮設計</div></div><div class="day">週三</div><div class="day">週四<div class="ev">11:00 頭皮護理</div></div><div class="day">週五</div><div class="day">週六<div class="ev">10:00 剪髮造型</div></div><div class="day">週日</div></div>
+          </div>
+        </div>
+        <div class="overlay"><div class="dlg" role="dialog" aria-labelledby="t1">
+          <h3 id="t1" class="serif">您正在使用體驗帳號</h3>
+          <p class="h">可以體驗</p>
+          <ul class="ok"><li>預約週曆、改期、取消、標記完成</li><li>設計師、作品集、請假與服務設定</li><li>營業時間、公休日、儀表板與報表</li></ul>
+          <p class="h">不開放</p>
+          <ul class="no"><li>修改密碼、登入 Email</li><li>啟用／停用雙重驗證（MFA）</li></ul>
+          <div class="actions"><span class="btn">開始體驗</span></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="frame"><div class="label">F6 · 手機（375）說明視窗</div>
+      <div class="screen mob">
+        <div class="topbar"><span>☰</span><span class="serif">理髮廳後台</span></div>
+        <div class="banner"><span class="dot" style="margin-top:6px;"></span><span class="txt"><b>您正在使用體驗帳號。</b>不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。 <span class="more">了解更多</span></span><span class="x">✕</span></div>
+        <div class="page"><h2>預約</h2>
+          <div class="week"><div class="day">週一<div class="ev">10:00 剪髮</div></div><div class="day">週二<div class="ev">14:00 染髮</div></div><div class="day">週三</div></div>
+        </div>
+        <div class="overlay"><div class="dlg" role="dialog" aria-labelledby="t2">
+          <h3 id="t2" class="serif">您正在使用體驗帳號</h3>
+          <p class="h">可以體驗</p>
+          <ul class="ok"><li>預約週曆、改期、取消、標記完成</li><li>設計師、作品集、請假與服務設定</li><li>營業時間、公休日、儀表板與報表</li></ul>
+          <p class="h">不開放</p>
+          <ul class="no"><li>修改密碼、登入 Email</li><li>啟用／停用雙重驗證（MFA）</li></ul>
+          <div class="actions"><span class="btn" style="width:100%;">開始體驗</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

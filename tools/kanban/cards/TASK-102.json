@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-102",
+  "title": "一鍵進入限流：demo_entry_attempts 資料表與 demo_entry_check RPC",
+  "content": "migration：demo_entry_attempts 與 demo_entry_check RPC（原子計數、service_role 專用、IP 以 HMAC 雜湊、出錯拒絕進入），lib/demo/rate-limit.ts 包裝；可選，使用者可決定不做。",
+  "risk": "medium",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "登入頁體驗入口",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 102,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-102.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-102.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

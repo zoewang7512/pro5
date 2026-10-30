@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-098",
+  "title": "觸發器可行性實驗：auth.users／auth.mfa_factors 觸發器（拋棄式帳號，實驗後清除）",
+  "content": "用拋棄式帳號在 Supabase 實測 auth.users／auth.mfa_factors 觸發器能否擋下 Demo 帳戶改密碼、改 Email、重設密碼與啟用 MFA，且不誤擋登入；實驗後清除，產出採用或備案結論。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "鎖定帳號安全三項",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 98,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-098.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-098.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-112",
+  "title": "Demo 體驗帳戶 端到端串接、暗啟動、首次正式環境 seed 與驗收",
+  "content": "逐條驗收、跑全套測試與瀏覽器走查，並在使用者同意下於正式環境依序執行 migration、建立 Demo 帳戶、上傳圖片、dry-run 與一次真實還原，證明 designer001 不受影響；人工驗收後合併分支。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "文件與入口公開",
+  "track": "integration",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-098",
+    "TASK-099",
+    "TASK-100",
+    "TASK-101",
+    "TASK-102",
+    "TASK-103",
+    "TASK-104",
+    "TASK-105",
+    "TASK-106",
+    "TASK-107",
+    "TASK-108",
+    "TASK-109",
+    "TASK-110",
+    "TASK-111",
+    "TASK-113"
+  ],
+  "order": 112,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-112.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-112.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

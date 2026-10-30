@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-099",
+  "title": "Demo 帳戶建立腳本（seed:demo-account）",
+  "content": "scripts/seed-demo-account.mjs：用 service role 建立 Demo 管理員（is_demo、admins 登記、顯示名稱），冪等，拒絕與 DESIGNER_EMAIL 相同或轉換既有非 Demo 帳戶，密碼不印出。",
+  "risk": "medium",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "建立與標記 Demo 帳戶",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 99,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-099.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-099.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

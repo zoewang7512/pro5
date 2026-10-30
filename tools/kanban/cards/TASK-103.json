@@ -1,0 +1,60 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-103",
+  "title": "一鍵進入端點 POST /api/demo/enter",
+  "content": "POST /api/demo/enter：僅 POST、同源、限流（出錯不放行），cookie 先暫存、驗證 is_demo 與非 aal2 通過才寫入回應，失敗一律讓 sb-* cookie 過期且不依賴 signOut；no-store；失敗回應不可分辨原因，log 不含帳密；上線前先完成 is_admin() 寫入面盤點。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "登入頁體驗入口",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-099",
+    "TASK-102"
+  ],
+  "order": 103,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-103.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-103.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

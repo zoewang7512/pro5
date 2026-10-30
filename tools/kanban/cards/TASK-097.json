@@ -1,0 +1,66 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-097",
+  "title": "Demo 體驗帳戶 架構基礎：Demo 識別、設定與 isDemo 貫穿後台外殼",
+  "content": "新增 lib/demo/config.ts（isDemoUser、getDemoConfig、isDemoEntryEnabled、DEMO_RESET_LABEL）與文案常數，admin layout 傳 isDemo 進 AdminProfileContext，AdminShell 預留空的 DemoNotice 掛載點，.env.example 補五個變數。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "建立與標記 Demo 帳戶",
+  "track": "不適用",
+  "dependsOn": [
+    "TASK-001",
+    "TASK-002",
+    "TASK-003",
+    "TASK-004",
+    "TASK-005",
+    "TASK-006",
+    "TASK-007",
+    "TASK-008",
+    "TASK-009"
+  ],
+  "order": 97,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-097.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-097.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

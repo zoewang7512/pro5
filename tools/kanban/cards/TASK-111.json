@@ -1,0 +1,62 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-111",
+  "title": "文件、營運指令（demo:disable／enable）與公開入口：README、決策紀錄、營運手冊",
+  "content": "demo:disable／enable 緊急關閉與恢復指令（刪 admins 列、撤銷 session、封鎖）；README 體驗說明、decisions.md 全部決策、project-map 同步、更新 TASK-080 的寄信註記、docs/demo-account.md 營運手冊（備份、Redeploy、修復 SQL、輪換密碼、更新展示內容流程）。",
+  "risk": "medium",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "不適用",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-100",
+    "TASK-104",
+    "TASK-105",
+    "TASK-110"
+  ],
+  "order": 111,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-111.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-111.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

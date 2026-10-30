@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>登入頁體驗帳號入口 · Variant A / B / C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* token 取自 ai/context/design-system.md S3（亮色模式）；暗色模式由 MUI theme 自動帶入，mockup 不重畫 */
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E; --primary-50:#FBF4E2;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; line-height: 1.25; }
+  .page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 32px; line-height: 1.7; max-width: 880px; }
+  h2.variant-title { font-size: 18px; font-weight: 700; margin: 40px 0 4px; line-height: 1.25; }
+  .variant-desc { font-size: 13px; color: var(--grey-700); margin: 0 0 16px; line-height: 1.7; max-width: 880px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; align-items: flex-start; }
+  .frame { flex: 0 0 auto; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { background: var(--grey-100); border-radius: 16px; box-shadow: var(--shadow-1); display: flex; align-items: center; justify-content: center; padding: 40px 24px; min-height: 560px; }
+  .screen.d420 { width: 420px; }
+  .screen.m375 { width: 375px; padding: 24px 16px; }
+  .screen.wide { width: 880px; gap: 24px; align-items: flex-start; }
+
+  .card { width: 100%; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 32px 28px; }
+  .m375 .card { padding: 24px 20px; }
+  .brand { text-align: center; margin-bottom: 24px; }
+  .brand .title { font-size: 20px; font-weight: 700; line-height: 1.25; }
+  .brand .sub { font-size: 12px; color: var(--grey-700); margin-top: 4px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--grey-700); }
+  .field input { width: 100%; height: 42px; border-radius: var(--radius-sm); border: 1px solid var(--grey-300); background: var(--surface); padding: 0 12px; font-size: 13px; color: var(--grey-900); font-family: inherit; }
+  .field input.filled { border-color: var(--primary-500); background: var(--primary-50); }
+  .field input:disabled { background: var(--grey-200); color: var(--grey-500); }
+
+  .btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 13px; font-weight: 700; border: none; font-family: inherit; }
+  .btn.outline { background: transparent; color: var(--primary-700); border: 1px solid var(--primary-500); height: 40px; font-weight: 600; }
+  .btn.disabled { background: var(--grey-300); color: var(--grey-500); }
+  .link-row { text-align: center; margin-top: 16px; }
+  .link { font-size: 12px; color: var(--primary-700); font-weight: 600; }
+  .back-link { font-size: 12px; color: var(--grey-700); font-weight: 500; display: inline-block; margin-bottom: 16px; }
+
+  .alert { display: flex; gap: 10px; align-items: flex-start; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; line-height: 1.5; margin-bottom: 16px; }
+  .alert .dot { width: 8px; height: 8px; border-radius: 999px; margin-top: 5px; flex-shrink: 0; }
+  .alert.info { background: var(--info-light); } .alert.info .dot { background: var(--info); }
+  .alert.success { background: var(--success-light); } .alert.success .dot { background: var(--success); }
+
+  /* 體驗帳號區塊（A） */
+  .or { display: flex; align-items: center; gap: 12px; margin: 24px 0 16px; font-size: 11px; color: var(--grey-500); }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--grey-300); }
+  .demo-box { background: var(--grey-100); border-radius: var(--radius-sm); padding: 16px; }
+  .demo-box .t { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .demo-box .d { font-size: 12px; color: var(--grey-700); line-height: 1.5; margin-bottom: 12px; }
+
+  /* 分段切換（B） */
+  .seg { display: flex; background: var(--grey-200); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 24px; }
+  .seg span { flex: 1; text-align: center; font-size: 12px; font-weight: 500; color: var(--grey-700); height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+  .seg span.on { background: var(--surface); color: var(--grey-900); font-weight: 700; box-shadow: 0 2px 6px rgba(43,38,34,.10); }
+
+  /* 雙欄（C） */
+  .col-login { flex: 0 0 380px; }
+  .col-demo { flex: 1; }
+  .demo-card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 32px 28px; }
+  .demo-card h3 { font-size: 16px; font-weight: 700; margin: 0 0 4px; line-height: 1.3; }
+  .demo-card .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 20px; }
+  .cred { background: var(--grey-100); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px; }
+  .cred .row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+  .cred .row span:first-child { color: var(--grey-700); }
+  .cred .row span:last-child { font-weight: 600; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .list-h { font-size: 12px; font-weight: 600; color: var(--grey-700); margin: 0 0 8px; }
+  .list { list-style: none; padding: 0; margin: 0 0 16px; font-size: 13px; line-height: 1.7; }
+  .list li { display: flex; gap: 8px; }
+  .list li::before { content: "✓"; color: var(--success); font-weight: 700; }
+  .list.lock li::before { content: "🔒"; font-size: 11px; line-height: 2; }
+  .list.lock li { color: var(--grey-700); }
+  .acc { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-1); padding: 16px 20px; margin-top: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
+  .acc small { font-size: 11px; color: var(--grey-700); font-weight: 400; display: block; margin-top: 2px; }
+  .acc .chev { color: var(--primary-700); font-size: 12px; }
+  .acc-open { margin-top: 16px; }
+  .acc-open .demo-card { padding: 20px; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">登入頁體驗帳號入口 · 三個變體</h1>
+  <p class="page-note">
+    三個變體都由既有元件組成（TextField／Button／Alert／Divider／ToggleButtonGroup／Card），沒有新元件與新 token。
+    差異在資訊架構：A 把入口放在既有登入卡片內（不改已核准的置中單卡片版型）、B 用分段切換、C 改成桌面雙欄並多一張說明卡。
+    共同行為：按鈕只「填入」欄位、不自動送出；仍走正常登入與限流。Email、顯示文字皆為佔位，實作時由環境設定決定。
+    本檔只畫亮色模式，暗色模式由 theme 自動帶入。
+  </p>
+
+  <!-- ============ Variant A ============ -->
+  <h2 class="variant-title serif">Variant A：卡片內「或」分隔＋體驗帳號區塊</h2>
+  <p class="variant-desc">版型與已核准的「置中單卡片」一致，只在表單下方多一塊平面背景的說明區與一顆 outlined 按鈕。手機上不用捲動就看得到。</p>
+  <div class="strip">
+
+    <div class="frame"><div class="label">A1 · 預設</div>
+      <div class="screen d420"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">用體驗帳號進入後台，所有功能都能操作。不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。</div>
+          <div class="btn outline">填入體驗帳號</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">A2 · 按下「填入體驗帳號」後（尚未送出）</div>
+      <div class="screen d420"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="alert success"><span class="dot"></span>已填入體驗帳號，請按「登入」進入後台。</div>
+        <div class="field"><label>Email</label><input class="filled" value="demo@example.com" /></div>
+        <div class="field"><label>密碼</label><input class="filled" type="password" value="••••••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">用體驗帳號進入後台，所有功能都能操作。不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。</div>
+          <div class="btn outline">重新填入體驗帳號</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">A3 · 忘記密碼輸入體驗帳號信箱</div>
+      <div class="screen d420"><div class="card">
+        <span class="back-link">← 返回登入</span>
+        <div class="brand" style="text-align:left; margin-bottom:20px;"><div class="title serif" style="font-size:16px;">重設密碼</div><div class="sub">輸入登入信箱，我們會寄送重設密碼連結</div></div>
+        <div class="alert info"><span class="dot"></span>體驗帳號不開放重設密碼，請直接回登入頁使用「填入體驗帳號」。</div>
+        <div class="field"><label>Email</label><input value="demo@example.com" /></div>
+        <div class="btn disabled">寄送重設信</div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">A4 · 手機（375）</div>
+      <div class="screen m375"><div class="card">
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+        <div class="or">或</div>
+        <div class="demo-box">
+          <div class="t">面試官／訪客？</div>
+          <div class="d">用體驗帳號進入後台，所有功能都能操作。不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。</div>
+          <div class="btn outline">填入體驗帳號</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ============ Variant B ============ -->
+  <h2 class="variant-title serif">Variant B：卡片頂端分段切換「設計師登入｜體驗帳號」</h2>
+  <p class="variant-desc">兩種身分一開始就並列，面試官不會漏看。「體驗帳號」分頁直接是填好的表單，按「登入」才送出。代價：多一個互動層級，登入主流程的卡片多了一排切換。</p>
+  <div class="strip">
+
+    <div class="frame"><div class="label">B1 · 預設（設計師登入分頁）</div>
+      <div class="screen d420"><div class="card">
+        <div class="seg"><span class="on">設計師登入</span><span>體驗帳號</span></div>
+        <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+        <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+        <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+        <div class="btn">登入</div>
+        <div class="link-row"><span class="link">忘記密碼？</span></div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">B2 · 體驗帳號分頁（帳密已填入、唯讀）</div>
+      <div class="screen d420"><div class="card">
+        <div class="seg"><span>設計師登入</span><span class="on">體驗帳號</span></div>
+        <div class="brand"><div class="title serif">體驗帳號</div><div class="sub">後台功能全開，歡迎實際操作</div></div>
+        <div class="alert info"><span class="dot"></span>不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原成初始內容。</div>
+        <div class="field"><label>Email</label><input disabled value="demo@example.com" /></div>
+        <div class="field"><label>密碼</label><input disabled type="password" value="••••••••••••" /></div>
+        <div class="btn">以體驗帳號登入</div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="label">B3 · 手機（375），體驗帳號分頁</div>
+      <div class="screen m375"><div class="card">
+        <div class="seg"><span>設計師登入</span><span class="on">體驗帳號</span></div>
+        <div class="brand"><div class="title serif">體驗帳號</div><div class="sub">後台功能全開，歡迎實際操作</div></div>
+        <div class="alert info"><span class="dot"></span>不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原成初始內容。</div>
+        <div class="field"><label>Email</label><input disabled value="demo@example.com" /></div>
+        <div class="field"><label>密碼</label><input disabled type="password" value="••••••••••••" /></div>
+        <div class="btn">以體驗帳號登入</div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ============ Variant C ============ -->
+  <h2 class="variant-title serif">Variant C：桌面雙欄，右側「體驗帳號」說明卡</h2>
+  <p class="variant-desc">資訊最完整：面試官一眼看到「能玩什麼、被鎖什麼」。但會改動已核准的置中單卡片版型；手機上體驗卡排在登入卡下方，需要往下找，所以做成可展開的摺疊列。</p>
+  <div class="strip">
+
+    <div class="frame"><div class="label">C1 · 桌面（880）預設</div>
+      <div class="screen wide">
+        <div class="col-login"><div class="card">
+          <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+          <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+          <div class="btn">登入</div>
+          <div class="link-row"><span class="link">忘記密碼？</span></div>
+        </div></div>
+        <div class="col-demo"><div class="demo-card">
+          <h3 class="serif">面試官／訪客的體驗帳號</h3>
+          <p class="sub">不用註冊，直接進後台操作。</p>
+          <div class="cred">
+            <div class="row"><span>Email</span><span>demo@example.com</span></div>
+            <div class="row"><span>密碼</span><span>（按下按鈕自動填入）</span></div>
+          </div>
+          <p class="list-h">可以體驗</p>
+          <ul class="list"><li>預約週曆、改期、取消、標記完成</li><li>設計師、作品集、請假與服務設定</li><li>營業時間、公休日、儀表板與報表</li></ul>
+          <p class="list-h">不開放</p>
+          <ul class="list lock"><li>修改密碼、登入 Email</li><li>啟用／停用雙重驗證（MFA）</li></ul>
+          <div class="btn outline">填入體驗帳號</div>
+          <p style="font-size:11px;color:var(--grey-700);margin:12px 0 0;text-align:center;">資料每日 03:00 還原成初始內容</p>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="frame"><div class="label">C2 · 手機（375）預設：體驗帳號為摺疊列</div>
+      <div class="screen m375" style="flex-direction:column; align-items:stretch; justify-content:flex-start;">
+        <div class="card">
+          <div class="brand"><div class="title serif">設計師登入</div><div class="sub">王牌理髮廳後台管理系統</div></div>
+          <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+          <div class="btn">登入</div>
+          <div class="link-row"><span class="link">忘記密碼？</span></div>
+        </div>
+        <div class="acc"><span>面試官／訪客？<small>點此展開體驗帳號</small></span><span class="chev">展開 ▾</span></div>
+      </div>
+    </div>
+
+    <div class="frame"><div class="label">C3 · 手機（375）已展開</div>
+      <div class="screen m375" style="flex-direction:column; align-items:stretch; justify-content:flex-start;">
+        <div class="card">
+          <div class="brand" style="margin-bottom:16px;"><div class="title serif">設計師登入</div></div>
+          <div class="field"><label>Email</label><input placeholder="you@example.com" /></div>
+          <div class="field"><label>密碼</label><input type="password" placeholder="••••••••" /></div>
+          <div class="btn">登入</div>
+        </div>
+        <div class="acc-open"><div class="demo-card">
+          <h3 class="serif">面試官／訪客的體驗帳號</h3>
+          <p class="sub">不用註冊，直接進後台操作。</p>
+          <p class="list-h">可以體驗</p>
+          <ul class="list"><li>預約管理、設計師、營業時間、報表</li></ul>
+          <p class="list-h">不開放</p>
+          <ul class="list lock"><li>改密碼、改 Email、MFA</li></ul>
+          <div class="btn outline">填入體驗帳號</div>
+          <p style="font-size:11px;color:var(--grey-700);margin:12px 0 0;text-align:center;">資料每日 03:00 還原成初始內容</p>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

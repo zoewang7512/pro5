@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-101",
+  "title": "帳號設定頁 Demo 鎖定狀態（前端）",
+  "content": "AccountSettingsView 在 isDemo 時把密碼、Email、MFA 三張卡片停用並加上「🔒 體驗帳號不開放」標籤，個人資料卡片維持可用；非 Demo 行為不變。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "鎖定帳號安全三項",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 101,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "ai/artifacts/Demo 體驗帳戶/screen-spec-帳號設定頁鎖定狀態.md",
+    "mockupDecision": "ai/artifacts/Demo 體驗帳戶/mockup-decision-帳號設定頁鎖定狀態.md",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-101.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-101.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

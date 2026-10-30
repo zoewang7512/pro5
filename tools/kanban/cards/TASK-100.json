@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-100",
+  "title": "資料庫鎖定 migration：Demo 帳戶不可改密碼、Email、MFA（auth 觸發器）與撤銷 session 函式",
+  "content": "migration：auth.users／auth.mfa_factors 觸發器（SECURITY INVOKER、WHEN 限定 is_demo），擋下改密碼、改 Email、重設密碼與 MFA 註冊；另有 demo_revoke_sessions()。拋棄式帳號整合測試，對照組與 designer001 不受影響。須 TASK-098 結論為採用。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "鎖定帳號安全三項",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-098"
+  ],
+  "order": 100,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-100.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-100.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

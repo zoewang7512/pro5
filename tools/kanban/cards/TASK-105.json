@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-105",
+  "title": "體驗帳號橫幅、說明視窗與 Demo 本地登出（前端）",
+  "content": "DemoNotice：僅 Demo 顯示可關閉橫幅，並在一鍵進入後以 sessionStorage 旗標彈出說明視窗一次（可以體驗／不開放清單），了解更多可重開；Demo 登出改 scope local，避免踢掉其他面試官；一般管理員完全不渲染。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "體驗帳號提示橫幅",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-097"
+  ],
+  "order": 105,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "ai/artifacts/Demo 體驗帳戶/screen-spec-體驗帳號提示.md",
+    "mockupDecision": "ai/artifacts/Demo 體驗帳戶/mockup-decision-體驗帳號提示.md",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-105.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-105.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

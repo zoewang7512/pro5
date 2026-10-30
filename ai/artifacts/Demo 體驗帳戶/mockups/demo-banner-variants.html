@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>後台體驗帳號提示 · Variant A / B / C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* token 取自 ai/context/design-system.md S3（亮色模式） */
+  :root {
+    --grey-100:#F6F3EE; --grey-200:#EFEAE2; --grey-300:#E4DDD1; --grey-500:#A79E92; --grey-700:#6B6259; --grey-900:#2B2622;
+    --primary-300:#DDB55A; --primary-500:#A9812F; --primary-700:#6F531E; --primary-50:#FBF4E2;
+    --success:#7A8B76; --success-light:#E4EBE1; --warning:#C97A3D; --warning-light:#F6E8D6;
+    --danger:#B3462E; --danger-light:#F3DEDA; --info:#5B7C99; --info-light:#E1E8ED; --surface:#FFFFFF;
+    --radius-sm:8px; --radius-md:12px;
+    --shadow-1: 0 8px 24px rgba(43,38,34,0.10), 0 2px 6px rgba(43,38,34,0.06);
+    --shadow-2: 0 16px 40px rgba(43,38,34,0.16), 0 4px 10px rgba(43,38,34,0.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD5C8; font-family: 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; padding: 32px; color: var(--grey-900); }
+  .serif { font-family: 'Noto Serif TC','PingFang TC','Microsoft JhengHei',serif; }
+  h1.page-title { font-size: 20px; font-weight: 700; margin: 0 0 8px; line-height: 1.25; }
+  .page-note { font-size: 13px; color: var(--grey-700); margin: 0 0 32px; line-height: 1.7; max-width: 880px; }
+  h2.variant-title { font-size: 18px; font-weight: 700; margin: 40px 0 4px; line-height: 1.25; }
+  .variant-desc { font-size: 13px; color: var(--grey-700); margin: 0 0 16px; line-height: 1.7; max-width: 880px; }
+  .strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 16px; align-items: flex-start; }
+  .frame { flex: 0 0 auto; }
+  .frame .label { font-size: 12px; font-weight: 600; color: var(--grey-700); letter-spacing: .06em; margin-bottom: 8px; }
+  .screen { background: var(--grey-100); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-1); display: flex; position: relative; }
+  .screen.desk { width: 980px; height: 560px; }
+  .screen.mob { width: 375px; height: 640px; flex-direction: column; }
+
+  .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--grey-300); padding: 20px 0; flex-shrink: 0; display: flex; flex-direction: column; }
+  .sidebar .logo { font-size: 14px; font-weight: 700; padding: 0 20px 20px; }
+  .nav-item { padding: 10px 20px; font-size: 13px; color: var(--grey-700); font-weight: 500; }
+  .nav-item.active { color: var(--primary-700); background: var(--grey-200); border-right: 3px solid var(--primary-500); font-weight: 600; }
+  .sidebar-profile { padding: 16px 20px; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--grey-200); }
+  .avatar { width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, var(--primary-300), var(--primary-700)); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sidebar-profile .name { font-size: 12px; font-weight: 600; }
+  .sidebar-profile .logout { font-size: 11px; color: var(--grey-500); }
+  .topbar { height: 48px; background: var(--surface); border-bottom: 1px solid var(--grey-300); display: flex; align-items: center; padding: 0 16px; gap: 12px; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .page { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+  .mob .page { padding: 16px; }
+  .page h2 { font-size: 16px; font-weight: 600; margin: 0; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .mob .week { grid-template-columns: repeat(3, 1fr); }
+  .day { background: var(--surface); border-radius: var(--radius-sm); min-height: 140px; padding: 8px; font-size: 11px; color: var(--grey-700); }
+  .ev { background: var(--primary-50); border-radius: 6px; padding: 6px; margin-top: 6px; font-size: 11px; color: var(--grey-900); line-height: 1.4; }
+
+  /* 橫幅（A） */
+  .banner { display: flex; align-items: center; gap: 12px; background: var(--info-light); padding: 10px 28px; font-size: 12px; line-height: 1.5; flex-shrink: 0; }
+  .mob .banner { padding: 10px 16px; align-items: flex-start; }
+  .banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--info); flex-shrink: 0; }
+  .banner .txt { flex: 1; }
+  .banner .txt b { font-weight: 600; }
+  .banner .more { color: var(--primary-700); font-weight: 600; white-space: nowrap; }
+  .banner .x { color: var(--grey-700); font-size: 16px; line-height: 1; padding: 4px; }
+
+  /* 側邊欄徽章（B、C） */
+  .demo-badge { margin: 0 12px 12px; background: var(--info-light); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .demo-badge .t { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .demo-badge .t::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--info); }
+  .demo-badge .d { font-size: 11px; color: var(--grey-700); margin-top: 2px; line-height: 1.5; }
+  .demo-badge .a { font-size: 11px; font-weight: 600; color: var(--primary-700); margin-top: 6px; }
+  .sidebar .spacer { flex: 1; }
+
+  /* 對話框（B 展開、C 首次歡迎） */
+  .overlay { position: absolute; inset: 0; background: rgba(43,38,34,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .dlg { width: 420px; max-width: 100%; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: 24px; }
+  .dlg h3 { font-size: 16px; font-weight: 700; margin: 0 0 4px; line-height: 1.3; }
+  .dlg .sub { font-size: 12px; color: var(--grey-700); margin: 0 0 16px; line-height: 1.5; }
+  .dlg .h { font-size: 12px; font-weight: 600; color: var(--grey-700); margin: 0 0 4px; }
+  .dlg ul { list-style: none; padding: 0; margin: 0 0 16px; font-size: 13px; line-height: 1.7; }
+  .dlg ul li { display: flex; gap: 8px; }
+  .dlg ul.ok li::before { content: "✓"; color: var(--success); font-weight: 700; }
+  .dlg ul.no li::before { content: "🔒"; font-size: 11px; line-height: 2; }
+  .dlg .actions { display: flex; justify-content: flex-end; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: var(--radius-sm); background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1 class="page-title serif">後台體驗帳號提示 · 三個變體</h1>
+  <p class="page-note">
+    只有 Demo 登入才會出現；一般管理員完全看不到。要傳達三件事：你在體驗帳號、哪三項不開放、資料每日 03:00 還原。
+    三個變體都由既有元件組成（Alert／Dialog／Button／Chip），沒有新元件與新 token。底下用「預約週曆」當背景示意。
+  </p>
+
+  <!-- ============ Variant A ============ -->
+  <h2 class="variant-title serif">Variant A：內容區頂端常駐橫幅，可關閉</h2>
+  <p class="variant-desc">最直接、不會被漏看。佔用一列垂直空間（桌面約 44px、手機兩行約 64px）。可按 ✕ 關閉；關閉狀態只記在這次瀏覽器分頁（sessionStorage），重新登入或開新分頁會再出現。「了解更多」開啟同 B2 的說明對話框。</p>
+  <div class="strip">
+    <div class="frame"><div class="label">A1 · 桌面：預設</div>
+      <div class="screen desk">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div><div class="nav-item">儀表板與報表</div><div class="nav-item">服務設定</div><div class="nav-item">營業時間</div><div class="nav-item">帳號設定</div>
+          <div class="spacer"></div>
+          <div class="sidebar-profile"><div class="avatar">體</div><div><div class="name">體驗帳號</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="content">
+          <div class="banner"><span class="dot"></span><span class="txt"><b>您正在使用體驗帳號。</b>不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。</span><span class="more">了解更多</span><span class="x" aria-label="關閉">✕</span></div>
+          <div class="page"><h2>預約</h2>
+            <div class="week">
+              <div class="day">週一<div class="ev">10:00 剪髮造型</div></div><div class="day">週二<div class="ev">14:00 染髮設計</div></div><div class="day">週三</div><div class="day">週四<div class="ev">11:00 頭皮護理</div></div><div class="day">週五</div><div class="day">週六<div class="ev">10:00 剪髮造型</div><div class="ev">15:00 染髮設計</div></div><div class="day">週日</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame"><div class="label">A2 · 手機（375）：文字換行成兩到三行</div>
+      <div class="screen mob">
+        <div class="topbar"><span>☰</span><span class="serif">理髮廳後台</span></div>
+        <div class="banner"><span class="dot" style="margin-top:6px;"></span><span class="txt"><b>您正在使用體驗帳號。</b>不開放改密碼、改 Email、啟用 MFA；資料每日 03:00 還原。 <span class="more">了解更多</span></span><span class="x" aria-label="關閉">✕</span></div>
+        <div class="page"><h2>預約</h2>
+          <div class="week"><div class="day">週一<div class="ev">10:00 剪髮</div></div><div class="day">週二<div class="ev">14:00 染髮</div></div><div class="day">週三</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Variant B ============ -->
+  <h2 class="variant-title serif">Variant B：側邊欄底部「體驗帳號」徽章，點擊開啟說明對話框</h2>
+  <p class="variant-desc">不佔內容區空間，長駐可見。缺點：手機版側邊欄是收起來的抽屜，面試官不打開就看不到，等於手機上沒有提示。適合桌面為主的瀏覽情境。</p>
+  <div class="strip">
+    <div class="frame"><div class="label">B1 · 桌面：預設</div>
+      <div class="screen desk">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div><div class="nav-item">儀表板與報表</div><div class="nav-item">服務設定</div><div class="nav-item">營業時間</div><div class="nav-item">帳號設定</div>
+          <div class="spacer"></div>
+          <div class="demo-badge"><div class="t">體驗帳號</div><div class="d">資料每日 03:00 還原</div><div class="a">查看限制 ›</div></div>
+          <div class="sidebar-profile"><div class="avatar">體</div><div><div class="name">體驗帳號</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="content"><div class="page"><h2>預約</h2>
+          <div class="week"><div class="day">週一<div class="ev">10:00 剪髮造型</div></div><div class="day">週二<div class="ev">14:00 染髮設計</div></div><div class="day">週三</div><div class="day">週四<div class="ev">11:00 頭皮護理</div></div><div class="day">週五</div><div class="day">週六<div class="ev">10:00 剪髮造型</div></div><div class="day">週日</div></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="frame"><div class="label">B2 · 桌面：點「查看限制」後的說明對話框</div>
+      <div class="screen desk">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div><div class="nav-item">儀表板與報表</div><div class="nav-item">服務設定</div><div class="nav-item">營業時間</div><div class="nav-item">帳號設定</div>
+          <div class="spacer"></div>
+          <div class="demo-badge"><div class="t">體驗帳號</div><div class="d">資料每日 03:00 還原</div><div class="a">查看限制 ›</div></div>
+          <div class="sidebar-profile"><div class="avatar">體</div><div><div class="name">體驗帳號</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="content"><div class="page"><h2>預約</h2></div></div>
+        <div class="overlay"><div class="dlg">
+          <h3 class="serif">您正在使用體驗帳號</h3>
+          <p class="sub">這是公開的展示帳號，所有面試官共用同一份資料。</p>
+          <p class="h">可以操作</p>
+          <ul class="ok"><li>預約改期、取消、標記完成</li><li>設計師、作品集、服務、營業時間、公休日</li><li>儀表板、報表、稽核紀錄</li></ul>
+          <p class="h">不開放</p>
+          <ul class="no"><li>修改密碼、登入 Email</li><li>啟用／停用雙重驗證（MFA）</li></ul>
+          <p class="sub" style="margin-bottom:16px;">資料每日 03:00 還原成初始內容，您的修改不會長久保留。</p>
+          <div class="actions"><span class="btn">知道了</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Variant C ============ -->
+  <h2 class="variant-title serif">Variant C：首次登入顯示歡迎對話框，之後只留側邊欄小徽章（手機改用頂列小標籤）</h2>
+  <p class="variant-desc">第一次登入就把規則講清楚，之後不打擾。手機版徽章放在頂列右側，不需要打開抽屜。缺點：對話框會擋住畫面一次；「是否已看過」要記在瀏覽器（localStorage），換瀏覽器會再看到一次。</p>
+  <div class="strip">
+    <div class="frame"><div class="label">C1 · 桌面：登入後第一次</div>
+      <div class="screen desk">
+        <div class="sidebar">
+          <div class="logo serif">理髮廳後台</div>
+          <div class="nav-item active">預約</div><div class="nav-item">儀表板與報表</div><div class="nav-item">服務設定</div><div class="nav-item">營業時間</div><div class="nav-item">帳號設定</div>
+          <div class="spacer"></div>
+          <div class="demo-badge"><div class="t">體驗帳號</div><div class="d">資料每日 03:00 還原</div><div class="a">查看限制 ›</div></div>
+          <div class="sidebar-profile"><div class="avatar">體</div><div><div class="name">體驗帳號</div><div class="logout">登出</div></div></div>
+        </div>
+        <div class="content"><div class="page"><h2>預約</h2>
+          <div class="week"><div class="day">週一<div class="ev">10:00 剪髮造型</div></div><div class="day">週二<div class="ev">14:00 染髮設計</div></div><div class="day">週三</div><div class="day">週四</div><div class="day">週五</div><div class="day">週六</div><div class="day">週日</div></div>
+        </div></div>
+        <div class="overlay"><div class="dlg">
+          <h3 class="serif">歡迎體驗後台</h3>
+          <p class="sub">您正在使用公開的體驗帳號，所有面試官共用同一份資料。</p>
+          <p class="h">可以操作</p>
+          <ul class="ok"><li>預約改期、取消、標記完成</li><li>設計師、作品集、服務、營業時間、公休日</li><li>儀表板、報表、稽核紀錄</li></ul>
+          <p class="h">不開放</p>
+          <ul class="no"><li>修改密碼、登入 Email</li><li>啟用／停用雙重驗證（MFA）</li></ul>
+          <p class="sub" style="margin-bottom:16px;">資料每日 03:00 還原成初始內容，您的修改不會長久保留。</p>
+          <div class="actions"><span class="btn">開始體驗</span></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="frame"><div class="label">C2 · 手機（375）：看過之後，頂列右側小標籤</div>
+      <div class="screen mob">
+        <div class="topbar"><span>☰</span><span class="serif">理髮廳後台</span><span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 10px; border-radius:999px; background:var(--info-light); font-size:11px; font-weight:600;">體驗帳號 ›</span></div>
+        <div class="page"><h2>預約</h2>
+          <div class="week"><div class="day">週一<div class="ev">10:00 剪髮</div></div><div class="day">週二<div class="ev">14:00 染髮</div></div><div class="day">週三</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

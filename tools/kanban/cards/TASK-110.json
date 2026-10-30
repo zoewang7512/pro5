@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-110",
+  "title": "還原排程端點、vercel.json 與手動還原指令（預設關閉）",
+  "content": "GET /api/cron/demo-reset（Bearer CRON_SECRET；dry_run=1 只試跑、confirm=RESET_DEMO 手動真實還原不受旗標約束、無參數的排程呼叫才受 DEMO_RESET_ENABLED 預設關閉約束）、vercel.json 第二個每日排程、npm run demo:reset（預設 dry-run，真實需 --yes）、cron 與文案一致性測試。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "整庫還原",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-109"
+  ],
+  "order": 110,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-110.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-110.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}
