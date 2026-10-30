@@ -738,3 +738,26 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 考慮過的替代方案：auth.identities 觸發器（擋外部帳號綁定）——增加對所有人註冊路徑的可用性風險，改為請使用者確認
   Dashboard 的 Manual Linking 關閉且無 OAuth 提供者，列為殘留風險；raw_user_meta_data 大小上限——交 TASK-109 評估。
 ```
+
+## TASK-102（Demo 體驗帳戶）：一鍵進入限流 migration 0022（待人工核准）
+
+```text
+日期：2026-10-30
+決策：
+  1. 新增 migration 0022：資料表 demo_entry_attempts(bucket, window_start, count)（RLS 開啟、無 policy、revoke all 後
+     只授權 service_role）與 RPC demo_entry_check(p_bucket, p_limit, p_window_seconds)（SECURITY INVOKER、
+     search_path = ''、只有 service_role 可執行）。刻意不用 SECURITY DEFINER：函式授權與資料表授權兩層，
+     誤授 execute 時仍會因無資料表權限而失敗。
+  2. 全站限流時間窗改為 300 秒、上限 14（原卡片為每小時）：Supabase 的登入限額是「每 IP 每 5 分鐘 30 次」
+     （使用者於 Dashboard 確認），必須同單位比較；固定窗交界最多放行 2 倍，14 × 2 = 28 < 30。
+     每 IP 維持 10 分鐘 10 次。Dashboard 限額若調整，lib/demo/rate-limit.ts 的兩個常數須一起重算。
+  3. 保留期 2 小時、窗長上限 3600 秒（原構想為 1 天／86400 秒）：攻擊者輪替 bucket 會讓列數隨請求成長，保留越短越不佔儲存配額。
+     間隔用 '2 hours'，不用 '1 day'（夏令時間下天數可能是 23 小時）。清除放在累加「之前」，不讓交易握著熱點列鎖。
+  4. 出錯一律不允許（RPC 錯誤、逾時 3 秒、回傳非布林、缺或太短（< 32 字元）的 DEMO_RATE_LIMIT_SECRET、client 建立失敗）。
+  5. IP 只以 HMAC-SHA256（DEMO_RATE_LIMIT_SECRET）進資料庫；IPv6 取 /64；IPv4-mapped 視為 IPv4；不合法 IP 視同取不到，只查全站。
+  6. getClientIp 只在 VERCEL === "1" 時採用 x-real-ip，其他環境回 null（只查全站，較嚴格而非較寬鬆）。
+  7. 先查每 IP、不通過就不累加全站：單一 IP 狂打只能用掉全站額度的一部分。
+情境：TASK-102 三個子代理審查（架構、安全、測試）；使用者於 Dashboard 確認登入限額 30 次／5 分鐘。詳見 verification/TASK-102.md。
+考慮過的替代方案：每 IP 再加每小時 bucket（多一個常數與一次 RPC，單一 IP 仍需 3 個 IP 才能擋入口，未採用）；
+  全站已滿時改用唯讀預檢以避免繼續寫入 IP 列（複雜度高，列為殘留風險）。
+```

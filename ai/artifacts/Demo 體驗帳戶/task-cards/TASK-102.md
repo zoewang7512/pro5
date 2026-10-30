@@ -8,7 +8,7 @@
 - 上層 User Story：登入頁體驗入口
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：已實作，待人工驗收（見 verification/TASK-102.md）
 - 風險等級：中
 - Agent owner：Claude Code
 - 人工核准者：待使用者核准

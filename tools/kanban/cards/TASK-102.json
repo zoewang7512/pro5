@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,15 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx vitest run tests/lib/demo-rate-limit.test.ts → 56 passed",
+      "npm run test:demo-rate-limit → 21 passed",
+      "npx tsc --noEmit → 0 errors",
+      "npm run lint → 0 errors",
+      "npm run build → success"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "全站已滿時仍寫入 IP 列；全站上限為阻斷服務槓桿（使用者已接受）；視窗翻轉整合案例依時鐘。詳見 verification/TASK-102.md。"
   },
   "id": "TASK-102",
   "title": "一鍵進入限流：demo_entry_attempts 資料表與 demo_entry_check RPC",
@@ -53,6 +59,26 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者指示開始做 TASK-102（全站限流保留的決定已於架構筆記第 8 節第 6 項確認）。已記錄核准並推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "實作與驗證完成，推進到 verify。架構／安全／測試三個子代理審查已執行並處理（agent 意見，不等於核准）；全站限流改為每 5 分鐘 14 次（Dashboard 限額 30 次／5 分鐘）。等待使用者人工驗收後才可轉 Done；gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者貼回 _down.sql 輸出 leftover_functions=0、leftover_tables=0，回滾完整移除的證據已補入驗證報告。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }
