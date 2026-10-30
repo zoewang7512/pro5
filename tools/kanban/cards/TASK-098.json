@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,21 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "TASK-098-spike.mjs observe → 26 PASS／0 FAIL（第三次；前兩次因專案預設啟用 RLS，觸發器寫日誌被拒而建立帳號 500）",
+      "TASK-098-spike.mjs block → 29 PASS／0 FAIL（第二次；第一次因設定表仍是 observe 而作廢）",
+      "TASK-098-spike.mjs revoke-check → demo 刪 session 後 refresh 失敗（PASS）；control 失敗為測試設計問題（token 在其自行改密碼後才存）",
+      "TASK-098-spike.mjs cleanup → 剩餘 0；SQL 步驟 8 → leftover_triggers／schema／functions／users 皆 0",
+      "designer001 前後比對：pw_hash_md5 8874451a… 一致；updated_at／last_sign_in_at 差異來自使用者本人 13:37 登入",
+      "npx tsc --noEmit、npm run lint、npm run build → 皆通過"
+    ],
+    "findings": [
+      "結論：採用觸發器；鎖定欄位清單見 verification/TASK-098.md 與 decisions.md",
+      "專案預設對新表啟用 RLS：觸發器讀寫的表必須顯式處理（TASK-100）",
+      "資料庫例外原文會直接傳到客戶端 HTTP 500 回應：正式訊息須通用（TASK-100）",
+      "postgres 不能 set role supabase_auth_admin；輪換 Demo 密碼只能走 SQL Editor（TASK-099／111 手冊）"
+    ],
+    "residual": "未執行架構／安全／測試子代理審查（本卡無保留的資料庫物件或程式碼，併入 TASK-100）；phone_change 與用戶端 updateUser({phone}) 未實測；實驗期間曾短暫在正式庫存在觸發器（已清除並附證據）。"
   },
   "id": "TASK-098",
   "title": "觸發器可行性實驗：auth.users／auth.mfa_factors 觸發器（拋棄式帳號，實驗後清除）",
@@ -53,6 +65,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者指示「開始做 TASK-098」，視為核准動工。依任務卡，實驗 SQL 與腳本須先交使用者審閱並同意後才執行；在那之前不對正式資料庫做任何寫入。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "實驗完成並已清除，結論：採用觸發器（待人工核准結論）。放入 Verify；architecture／security／test 關卡尚未勾選（agent 自我驗證不等同核准），建議併入 TASK-100 審查。報表：verification/TASK-098.md"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者人工驗收通過並核准結論（採用觸發器），轉 Done。架構／安全／測試子代理審查併入 TASK-100，本卡對應關卡不勾選。"
     }
   ]
 }

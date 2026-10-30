@@ -685,3 +685,31 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     （名稱為 constructor 的服務，匯出後解開仍是共用字串且內容原樣）；屆時可關閉此已知限制。
   - 建議每次評估升級依賴時順便看一下上游 issue 狀態；本專案不自動追蹤。
 ```
+
+## TASK-098（Demo 體驗帳戶）：auth 觸發器可行性實驗，結論採用觸發器（待人工核准）
+
+```text
+日期：2026-10-30
+決策：
+  1. 結論：採用觸發器（架構筆記 D5 的層 2 可行）。託管 Supabase 允許在 auth.users（BEFORE UPDATE）與 auth.mfa_factors
+     （BEFORE INSERT）建立觸發器；GoTrue 的資料庫角色是 supabase_auth_admin，以 current_user 區分 GoTrue 與維修通道成立。
+     結論待使用者人工核准後生效；TASK-100 才真正新增 migration。
+  2. 鎖定欄位清單（auth.users）：encrypted_password、email、email_change、email_change_token_new、
+     email_change_token_current、recovery_token、phone、phone_change。phone_change 未實測（保守保留）。
+     不得列入：confirmed_at（generated column，BEFORE 觸發器看到過期值，每列都「變動」）、last_sign_in_at、updated_at、
+     email_confirmed_at、raw_user_meta_data、banned_until（D12 緊急關閉依賴它可寫）。
+  3. 實測：block 模式下 Demo 帳號的改密碼、改 Email、重設密碼、啟用 MFA，以及 admin API（service_role）的改密碼／改 Email／
+     改電話皆被擋；登入、refresh、登出、改 user_metadata、ban、非 Demo 帳號（含啟用 MFA）、designer001 登入皆不受影響。
+     postgres 可 delete from auth.sessions（刪除後該 session 的 refresh token 失效）。
+情境：TASK-098 實驗（拋棄式帳號，實驗後已清除，附證據）。詳見 ai/artifacts/Demo 體驗帳戶/verification/TASK-098.md。
+考慮過的替代方案：實驗失敗就退回備案（層 3 加強並請使用者重新確認殘留風險）；因實驗成功而未採用。
+影響（給 TASK-100 與後續手冊）：
+  - 這個專案新建資料表預設啟用 RLS 且無 policy。觸發器以 supabase_auth_admin 讀寫的表必須顯式處理，否則寫入被拒
+    （42501）會讓符合 WHEN 的 Auth 操作全回 500（含建立 Demo 帳戶）、讀取則靜默讀到零列。正式觸發器建議不讀任何設定表。
+  - 資料庫例外原文（SQLSTATE P0001 與訊息）會直接出現在客戶端的 HTTP 500 回應（改密碼、改 Email、重設密碼路徑；
+    啟用 MFA 路徑只有通用 unexpected_failure）；supabase-js 呈現為 message = {}。正式訊息須為不含欄位名稱的通用文字，
+    前端不得依賴錯誤文字辨識被鎖。
+  - postgres 無法 set role supabase_auth_admin（42501），SQL Editor 不能模擬 GoTrue；維修通道成立（postgres 直接改不受鎖）。
+  - 輪換 Demo 密碼只能走 SQL Editor（admin API 也被擋）。建立 Demo 帳戶時 GoTrue 會連續 UPDATE 兩次，皆不在鎖定欄位。
+  - is_demo 缺鍵時為 null，判斷需 coalesce／is true。Auth 平台升級可能改變行為，手冊須寫「登入全面回 500 時先移除觸發器」。
+```
