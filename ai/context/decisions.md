@@ -713,3 +713,28 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
   - 輪換 Demo 密碼只能走 SQL Editor（admin API 也被擋）。建立 Demo 帳戶時 GoTrue 會連續 UPDATE 兩次，皆不在鎖定欄位。
   - is_demo 缺鍵時為 null，判斷需 coalesce／is true。Auth 平台升級可能改變行為，手冊須寫「登入全面回 500 時先移除觸發器」。
 ```
+
+## TASK-100（Demo 體驗帳戶）：資料庫鎖定 migration 0021（待人工核准）
+
+```text
+日期：2026-10-30
+決策：
+  1. 新增 migration 0021：auth.users BEFORE UPDATE 觸發器（WHEN old.raw_app_meta_data ->> 'is_demo' = 'true'）與
+     auth.mfa_factors BEFORE INSERT 觸發器；兩個函式皆為 SECURITY INVOKER、search_path = ''，第一行
+     `current_user <> 'supabase_auth_admin'` 即放行（維修通道：SQL Editor 的 postgres 不受限）。
+     SECURITY DEFINER 會讓 current_user 變成擁有者、鎖等於沒做；migration 尾端自我檢查 prosecdef = false。
+  2. 鎖定欄位（最終）：encrypted_password、email、email_change、email_change_token_new、email_change_token_current、
+     recovery_token、reauthentication_token（安全審查後新增）、phone、phone_change；另外 raw_app_meta_data.is_demo
+     標記本身不可被改動（防止分兩步清標記繞過）。比對用 to_jsonb(NEW)／to_jsonb(OLD) 同名鍵，欄位被 Auth 移除時
+     不會丟例外（代價：鎖會靜默變弱）。使用者已決定維持現狀，不改 fail-closed。
+  3. 錯誤訊息固定為 'DEMO_LOCKED: this demo account is read-only'（資料庫例外原文會出現在 Auth API 的 HTTP 500 回應；
+     不含欄位名稱）。前端不得依賴錯誤文字，鎖定 UI 以 isDemo 為準。
+  4. 不建任何設定表、模式固定為擋（TASK-098：專案新表預設啟用 RLS，觸發器讀寫自建表會被拒而讓 Auth 操作回 500）。
+  5. demo_revoke_sessions()：SECURITY DEFINER、search_path = ''、只有 service_role 可執行；自己查 is_demo 帳戶，
+     筆數不是剛好 1 就 raise；刪除其 auth.sessions，回傳刪除筆數。
+  6. 緊急處置分兩種用途：緊急時只貼兩行 drop trigger（保留 demo_revoke_sessions，因 demo:disable 依賴它）；
+     _down.sql 只用在下線整個 Demo 功能。
+情境：TASK-098 實驗結論；TASK-100 三個子代理審查（架構、安全、測試）。詳見 verification/TASK-100.md。
+考慮過的替代方案：auth.identities 觸發器（擋外部帳號綁定）——增加對所有人註冊路徑的可用性風險，改為請使用者確認
+  Dashboard 的 Manual Linking 關閉且無 OAuth 提供者，列為殘留風險；raw_user_meta_data 大小上限——交 TASK-109 評估。
+```

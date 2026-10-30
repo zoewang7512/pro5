@@ -47,7 +47,7 @@
 - README：說明「登入頁按『進入體驗帳號』即可體驗後台」、哪三項不開放、資料還原時間、所有面試官共用同一份資料、請勿輸入真實個資。README 不得出現 Demo 帳號 Email 或密碼。
 - `decisions.md`：同庫全功能 Demo、一鍵進入（推翻早先的只填入）、鎖三層與觸發器欄位清單與寫法限制、還原範圍與順序、`designer001` 不動清單、寄信決定、暗啟動順序、殘留風險（含顧客資料互相可見、配額、前台竄改）。
 - `docs/demo-account.md`：建立帳戶、匯入圖片、dry-run 與真實還原、**備份**、啟用／關閉入口（改 `DEMO_ENABLED` 並 **Redeploy**）、啟用／關閉排程（`DEMO_RESET_ENABLED` 並 Redeploy）、緊急關閉（`demo:disable`）、Demo 帳戶被改壞時的修復 SQL（SQL Editor 的 `postgres` 角色）、輪換 Demo 密碼（只能走 SQL Editor，admin API 也被觸發器擋）。
-- 手冊另須寫明：(1) 更新展示內容的流程是 `demo:export-base` → `demo:upload-images --overwrite` → commit → 部署，**整理展示內容前先關閉 `DEMO_RESET_ENABLED`**，否則在後台新上傳的圖會在當晚被當成孤兒永久刪除；(2) Auth 平台升級後若登入全面回 500，第一步先套用觸發器的 `_down.sql`；(3) 正式環境若沒設 `DESIGNER_EMAIL`，`getDemoConfig` 的 Email 比對無作用，`is_demo` 檢查才是主要防線；(4) `DEMO_EMAIL` 是公開的，必須是作者控制的信箱。
+- 手冊另須寫明：(1) 更新展示內容的流程是 `demo:export-base` → `demo:upload-images --overwrite` → commit → 部署，**整理展示內容前先關閉 `DEMO_RESET_ENABLED`**，否則在後台新上傳的圖會在當晚被當成孤兒永久刪除；(2) Auth 平台升級後若登入全面回 500，第一步只貼觸發器 migration 檔頭的兩行 `drop trigger`（不要用 `_down.sql`：它會連 `demo_revoke_sessions()` 一起刪掉，`demo:disable` 依賴它）；(3) 正式環境若沒設 `DESIGNER_EMAIL`，`getDemoConfig` 的 Email 比對無作用，`is_demo` 檢查才是主要防線；(4) `DEMO_EMAIL` 是公開的，必須是作者控制的信箱。
 - `project-map.md` 與實作一致。
 - `docs/demo-account.md` 加入：寄信行為（Demo 發動的改期／取消不寄信、預約確認信照寄）、各表筆數上限與數字、備份流程與還原 `restore.sql` 的步驟、備份檔何時可刪。
 

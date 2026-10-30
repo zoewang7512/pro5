@@ -95,7 +95,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - `auth.mfa_factors` BEFORE INSERT：WHEN 不得用子查詢，函式精簡（查 `auth.users` 該 `user_id` 是否 `is_demo`）；**必須測試非 Demo 帳號啟用 MFA 的路徑不受影響**。
 - **為什麼用 `current_user`：** GoTrue 呼叫資料庫時沒有使用者 JWT，`auth.uid()` 在觸發器內是 null。`SQL Editor`（`postgres`）與維護者的 `SECURITY DEFINER` 函式不受限，這是**維修通道**。
 - **admin API（service_role）改 Demo 帳號也經過 GoTrue，角色一樣是 `supabase_auth_admin`，也會被擋。** 輪換 Demo 密碼、修復帳號只能走 SQL Editor；TASK-099、TASK-111 的手冊要寫清楚。
-- 動工前準備好「緊急 `drop trigger`」的 SQL；套用後立刻實測 `designer001` 登入；手冊寫明「Auth 平台升級後若登入全面回 500，第一步先套用 `_down.sql` 移除觸發器」。
+- 動工前準備好「緊急 `drop trigger`」的 SQL；套用後立刻實測 `designer001` 登入；手冊寫明「Auth 平台升級後若登入全面回 500，第一步只貼 migration 檔頭的兩行 `drop trigger` 移除觸發器（**不要用 `_down.sql`**：它會連 `demo_revoke_sessions()` 一起刪掉，而 `demo:disable` 依賴它）」。
 - **未知事項（TASK-098 要回答）：** (a) 託管 Supabase 是否允許在 `auth.users`／`auth.mfa_factors` 建立觸發器；(b) GoTrue 連線角色是否確為 `supabase_auth_admin`；(c) 登入、refresh、登出是否都不誤觸發；(d) `updateUser({ email })` 實際寫入哪些欄位；(e) 密碼重設寫入哪些欄位；(f) 觸發器例外在客戶端看到的錯誤碼與文字；(g) `postgres` 能否 `delete from auth.sessions`（撤銷 session RPC 需要）。
 - **若實驗失敗：** 層 2 改為文件化的殘留風險，並請使用者重新確認可否接受。
 

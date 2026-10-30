@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,19 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npm run test:demo-lock（第二版 migration，鎖定中）→ 24 passed",
+      "DEMO_LOCK_EXPECT=off npm run test:demo-lock（套用 _down.sql 後，第一版）→ 17 passed／5 skipped；重新套用後 22 passed",
+      "npm run test:account → 17 passed；npm run test:mfa-rls → 20 passed",
+      "npx tsc --noEmit、npm run lint → 通過；npm run build → 通過（第一版後執行）"
+    ],
+    "findings": [
+      "架構／安全／測試三個子代理審查已執行並處理（agent 意見，非人工核准）：緊急處置改為只貼兩行 drop trigger、is_demo 標記鎖、reauthentication_token 入鎖定清單、測試強化",
+      "designer001 套用後 pw_hash_md5 與前一致（8874451a…），登入正常（使用者回報）",
+      "使用者決定 to_jsonb 維持現狀，不改 fail-closed",
+      "Dashboard 已確認：Sign In / Providers 只啟用 Email，Allow manual linking 關閉（日後啟用提供者須重新評估 auth.identities）"
+    ],
+    "residual": "auth.identities 路徑目前由 Dashboard 設定擋住（只啟用 Email、manual linking 關閉），日後改動需重評；raw_user_meta_data 無大小上限；撤銷 session 不使已發 access token 失效（約 1 小時）；phone／phone_change／signInWithOtp 鎖定未實測；第二版未再實跑 off 模式與 build。其餘見 verification/TASK-100.md。"
   },
   "id": "TASK-100",
   "title": "資料庫鎖定 migration：Demo 帳戶不可改密碼、Email、MFA（auth 觸發器）與撤銷 session 函式",
@@ -54,6 +64,31 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者指示「開始做 task-100」，視為動工核准；前置 TASK-097、TASK-098 皆 Done。開始實作 migration 0021、_down、整合測試。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "實作與自動化驗證完成，放入 Verify 等待人工驗收（不自行轉 Done）。待你確認三件事：Dashboard Manual Linking／OAuth 設定、to_jsonb 是否改 fail-closed、套用後 designer001 基準輸出。報告：verification/TASK-100.md。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "designer001 比對完成、fail-closed 維持現狀已記錄。尚待使用者確認 Dashboard 的 Sign In / Providers（只啟用 Email、Allow manual linking 關閉）後，才能人工驗收轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "Dashboard 設定已由使用者確認。所有自動化驗證與待確認項目皆已完成，等待人工驗收；通過後才轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }
