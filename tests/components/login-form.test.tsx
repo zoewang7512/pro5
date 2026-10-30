@@ -335,3 +335,218 @@ describe("LoginForm - MFA 挑戰步驟（TASK-044）", () => {
     expect(await screen.findByRole("heading", { name: "設計師登入" })).toBeInTheDocument();
   });
 });
+
+describe("LoginForm - 體驗帳號入口（TASK-104）", () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    sessionStorage.clear();
+  });
+
+  // 登入表單的密碼欄 helperText 永遠帶 role="alert"（既有設計），所以不能用 findByRole("alert") 唯一定位；
+  // 改用文案定位並確認它確實位於 alert 區域內。
+  async function findFailureAlert() {
+    const message = await screen.findByText(failureText);
+    expect(message.closest('[role="alert"]')).not.toBeNull();
+    return message;
+  }
+
+  function jsonResponse(body: unknown, status = 200) {
+    return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  }
+
+  const enterButtonName = "進入體驗帳號";
+  const failureText = "目前無法進入體驗帳號，請稍後再試。";
+
+  it("demoEnabled 未提供或為假時完全不渲染入口，也不呼叫端點", () => {
+    const { unmount } = render(<LoginForm />);
+    expect(screen.queryByText("面試官／訪客？")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
+    unmount();
+
+    render(<LoginForm demoEnabled={false} />);
+    expect(screen.queryByText("面試官／訪客？")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
+    expect(screen.queryByText("或")).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("demoEnabled 為真時顯示說明文字與入口按鈕，登入仍是唯一的 submit 主按鈕", () => {
+    render(<LoginForm demoEnabled />);
+
+    expect(screen.getByText("面試官／訪客？")).toBeInTheDocument();
+    expect(screen.getByText("一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。")).toBeInTheDocument();
+    const enter = screen.getByRole("button", { name: enterButtonName });
+    expect(enter).toBeEnabled();
+    expect(enter).toHaveAttribute("type", "button");
+    expect(screen.getByRole("button", { name: "登入" })).toHaveAttribute("type", "submit");
+  });
+
+  it("只在 login 模式出現：切到忘記密碼表單後入口消失，返回登入後又出現", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: "忘記密碼？" }));
+    expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
+    expect(screen.queryByText("面試官／訪客？")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "← 返回登入" }));
+    expect(screen.getByRole("button", { name: enterButtonName })).toBeInTheDocument();
+  });
+
+  it("以 ?mode=forgot-password 進入時不顯示入口", () => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("mode=forgot-password"));
+    render(<LoginForm demoEnabled />);
+
+    expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
+  });
+
+  it("載入中：按鈕顯示「正在進入體驗帳號…」，Email、密碼、登入、忘記密碼同時停用，重複點擊不會再送出", async () => {
+    fetchMock.mockImplementation(() => new Promise(() => {}));
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+
+    const loading = await screen.findByRole("button", { name: "正在進入體驗帳號…" });
+    expect(loading).toBeDisabled();
+    expect(screen.getByLabelText("Email", { exact: false })).toBeDisabled();
+    expect(screen.getByLabelText("密碼", { exact: false })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "登入" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "忘記密碼？" })).toBeDisabled();
+
+    fireEvent.click(loading);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("成功：以不帶任何帳密的 POST 呼叫端點，設定兩個旗標後導向 /admin 並 refresh，且不走一般登入", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+    sessionStorage.setItem("demo-banner-dismissed", "1");
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.type(screen.getByLabelText("Email", { exact: false }), "someone@example.com");
+    await user.type(screen.getByLabelText("密碼", { exact: false }), "typed-password");
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+
+    await waitFor(() => expect(routerReplaceMock).toHaveBeenCalledWith("/admin"));
+    expect(routerRefreshMock).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem("demo-welcome-pending")).toBe("1");
+    expect(sessionStorage.getItem("demo-banner-dismissed")).toBeNull();
+    expect(signInWithPasswordMock).not.toHaveBeenCalled();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/demo/enter");
+    expect(init.method).toBe("POST");
+    // 不帶 body 與 credentials 參數：被登入的帳號只由伺服器決定，表單欄位不外送。
+    expect(init).not.toHaveProperty("body");
+    expect(init).not.toHaveProperty("credentials");
+    expect(JSON.stringify(init)).not.toContain("someone@example.com");
+    expect(JSON.stringify(init)).not.toContain("typed-password");
+
+    // 導向期間維持停用，防止重複點擊。
+    expect(screen.getByRole("button", { name: "正在進入體驗帳號…" })).toBeDisabled();
+  });
+
+  it("失敗（403 { ok: false }）：顯示通用錯誤 Alert、按鈕變「重新嘗試進入體驗帳號」且可再按，不設旗標、不導向，其餘表單恢復可用", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: false }, 403));
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+
+    await findFailureAlert();
+    expect(screen.getByRole("button", { name: "重新嘗試進入體驗帳號" })).toBeEnabled();
+    expect(screen.getByLabelText("Email", { exact: false })).toBeEnabled();
+    expect(screen.getByLabelText("密碼", { exact: false })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "登入" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "忘記密碼？" })).toBeEnabled();
+    expect(sessionStorage.getItem("demo-welcome-pending")).toBeNull();
+    expect(routerReplaceMock).not.toHaveBeenCalled();
+    expect(routerRefreshMock).not.toHaveBeenCalled();
+  });
+
+  it("網路錯誤（fetch 拋例外）：與失敗相同的畫面", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+
+    await findFailureAlert();
+    expect(screen.getByRole("button", { name: "重新嘗試進入體驗帳號" })).toBeEnabled();
+    expect(sessionStorage.getItem("demo-welcome-pending")).toBeNull();
+    expect(routerReplaceMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP 200 但本文不是 { ok: true }", () => jsonResponse({ ok: false }, 200)],
+    ["HTTP 200 但本文缺 ok", () => jsonResponse({}, 200)],
+    ["HTTP 200 但本文不是 JSON", () => new Response("<html>oops</html>", { status: 200 })],
+    ["HTTP 429（被限流）", () => jsonResponse({ ok: false }, 429)],
+    ["HTTP 500", () => new Response("", { status: 500 })],
+  ])("%s 一律視為失敗，且文案不區分原因", async (_label, makeResponse) => {
+    fetchMock.mockResolvedValue(makeResponse());
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+
+    await findFailureAlert();
+    expect(routerReplaceMock).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("demo-welcome-pending")).toBeNull();
+  });
+
+  it("失敗後重新嘗試成功：錯誤 Alert 在重試開始時消失，並導向 /admin", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: false }, 403)).mockResolvedValueOnce(jsonResponse({ ok: true }));
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+    await findFailureAlert();
+
+    await user.click(screen.getByRole("button", { name: "重新嘗試進入體驗帳號" }));
+
+    await waitFor(() => expect(routerReplaceMock).toHaveBeenCalledWith("/admin"));
+    expect(screen.queryByText(failureText)).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("sessionStorage 不可用（寫入拋例外）時入口不壞：仍然導向 /admin", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("denied", "SecurityError");
+    });
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+
+    await waitFor(() => expect(routerReplaceMock).toHaveBeenCalledWith("/admin"));
+    expect(routerRefreshMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(failureText)).not.toBeInTheDocument();
+  });
+
+  it("入口失敗不影響一般登入：失敗後仍可用 Email／密碼登入", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: false }, 403));
+    signInWithPasswordMock.mockResolvedValue({ error: null });
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await user.click(screen.getByRole("button", { name: enterButtonName }));
+    await findFailureAlert();
+    await fillAndSubmit(user);
+
+    await waitFor(() => expect(routerReplaceMock).toHaveBeenCalledWith("/admin"));
+    expect(signInWithPasswordMock).toHaveBeenCalledTimes(1);
+  });
+});

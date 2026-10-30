@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAalSatisfied } from "@/lib/auth/aal";
+import { isDemoEntryEnabled } from "@/lib/demo/config";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
@@ -23,5 +24,5 @@ export default async function LoginPage() {
     }
   }
 
-  return <LoginForm />;
+  return <LoginForm demoEnabled={isDemoEntryEnabled()} />;
 }

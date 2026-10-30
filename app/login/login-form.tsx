@@ -11,6 +11,7 @@ import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Alert from "@mui/material/Alert";
+import Divider from "@mui/material/Divider";
 import { createClient } from "@/lib/supabase/client";
 import { OtpInput, OTP_LENGTH } from "@/components/ui/OtpInput";
 
@@ -35,7 +36,20 @@ function mfaVerifyErrorMessage(code: string | undefined): string {
   return "發生未預期的錯誤，請稍後再試。";
 }
 
-export function LoginForm() {
+// 體驗帳號說明視窗與橫幅的前端旗標（架構筆記 D6）：一鍵進入成功後設前者、移除後者，後台的
+// DemoNotice 掛載時讀取。sessionStorage 在隱私模式等情況可能不可用或拋例外，不能讓入口壞掉——
+// 讀寫失敗時後台每次都會顯示說明，只是少了「本次工作階段只彈一次」的便利。
+function setDemoNoticeFlags() {
+  try {
+    sessionStorage.setItem("demo-welcome-pending", "1");
+    sessionStorage.removeItem("demo-banner-dismissed");
+  } catch {
+    // 忽略
+  }
+}
+
+// demoEnabled 由伺服器元件（page.tsx）依環境設定決定；為假時完全不渲染入口。
+export function LoginForm({ demoEnabled = false }: { demoEnabled?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "forgot-password" ? "forgot-password" : "login");
@@ -44,6 +58,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [demoEntering, setDemoEntering] = useState(false);
+  const [demoError, setDemoError] = useState(false);
 
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
@@ -108,6 +125,32 @@ export function LoginForm() {
       setError("發生未預期的錯誤，請稍後再試。");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // 一鍵進入體驗帳號：不送任何帳密，也不讀表單欄位——被登入的帳號只由伺服器環境變數決定
+  // （TASK-103）。成功時伺服器已經把 session cookie 寫進回應。失敗（含限流、網路錯誤）一律顯示
+  // 同一句通用文案，不區分原因。成功後刻意不把 demoEntering 設回 false：頁面即將離開，保持停用
+  // 才能防止導覽期間重複點擊。
+  async function handleDemoEnter() {
+    if (demoEntering) return;
+    setDemoError(false);
+    setDemoEntering(true);
+    try {
+      const response = await fetch("/api/demo/enter", { method: "POST", cache: "no-store" });
+      const body: unknown = await response.json().catch(() => null);
+      const ok = response.ok && typeof body === "object" && body !== null && (body as { ok?: unknown }).ok === true;
+      if (!ok) {
+        setDemoError(true);
+        setDemoEntering(false);
+        return;
+      }
+      setDemoNoticeFlags();
+      router.replace("/admin");
+      router.refresh();
+    } catch {
+      setDemoError(true);
+      setDemoEntering(false);
     }
   }
 
@@ -265,7 +308,7 @@ export function LoginForm() {
                   size="small"
                   autoComplete="username"
                   value={email}
-                  disabled={submitting}
+                  disabled={submitting || demoEntering}
                   onChange={(event) => setEmail(event.target.value)}
                 />
                 <TextField
@@ -277,13 +320,13 @@ export function LoginForm() {
                   size="small"
                   autoComplete="current-password"
                   value={password}
-                  disabled={submitting}
+                  disabled={submitting || demoEntering}
                   onChange={(event) => setPassword(event.target.value)}
                   error={Boolean(error)}
                   helperText={error ?? " "}
                   slotProps={{ formHelperText: { role: "alert", "aria-live": "polite" } }}
                 />
-                <Button type="submit" variant="contained" fullWidth loading={submitting}>
+                <Button type="submit" variant="contained" fullWidth loading={submitting} disabled={demoEntering}>
                   登入
                 </Button>
               </Stack>
@@ -352,12 +395,41 @@ export function LoginForm() {
                 component="button"
                 type="button"
                 variant="caption"
+                disabled={demoEntering}
                 onClick={() => setMode("forgot-password")}
                 sx={{ fontWeight: 600 }}
               >
                 忘記密碼？
               </Link>
             </Box>
+          )}
+
+          {mode === "login" && demoEnabled && (
+            <>
+              <Divider sx={{ mt: 3, mb: 2, fontSize: 11, color: "grey.500" }}>或</Divider>
+              <Box sx={{ bgcolor: "grey.100", borderRadius: 1, p: 2 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>面試官／訪客？</Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary", display: "block", lineHeight: 1.5, mb: 1.5 }}>
+                  一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。
+                </Typography>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  fullWidth
+                  loading={demoEntering}
+                  loadingPosition="start"
+                  onClick={handleDemoEnter}
+                  sx={{ minHeight: 40 }}
+                >
+                  {demoEntering ? "正在進入體驗帳號…" : demoError ? "重新嘗試進入體驗帳號" : "進入體驗帳號"}
+                </Button>
+                {demoError && (
+                  <Alert severity="error" sx={{ mt: 1.5, fontSize: 12 }}>
+                    目前無法進入體驗帳號，請稍後再試。
+                  </Alert>
+                )}
+              </Box>
+            </>
           )}
 
           {mode === "mfa" && (

@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx vitest run tests/components/login-form.test.tsx → 30 passed（既有 14 未改斷言＋新增 16）",
+      "npx tsc --noEmit → 0 errors",
+      "npm run lint → 0 errors",
+      "npm run build → success",
+      "grep .next/static DEMO_PASSWORD|DEMO_EMAIL → 無命中",
+      "Browser 走查：F1／F2／F3、手機 375（無橫向捲動、按鈕 40px）、亮／暗色"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "畫面規格「忘記密碼輸入體驗帳號信箱」前端攔截未實作（卡片禁止前端出現 Demo Email，且第一道防線在 TASK-100）；F4 與暗色手機未截圖；真正端對端於 TASK-112。詳見 verification/TASK-104.md。"
   },
   "id": "TASK-104",
   "title": "登入頁體驗入口與說明視窗旗標（前端）",
@@ -53,6 +60,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者於對話中指示「開始做 TASK-104」，視為核准任務卡；推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與自我驗證完成，推進到 verify，等待人工驗收；未勾選 gates、未轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }
