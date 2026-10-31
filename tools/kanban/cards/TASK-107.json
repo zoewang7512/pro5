@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npm run test:demo-seed-bucket → 11 passed（對正式 Supabase，拋棄式帳號與測試物件已清除）",
+      "npm run demo:upload-images -- --from-public → 45/45 張（9.20 MB）；重跑全部略過；--overwrite 修復路徑實跑",
+      "公開 bucket 匯入前後物件數與位元組逐項相同",
+      "npx tsc --noEmit → 0 errors",
+      "npm run lint → 0 errors",
+      "npm run build → success"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "安全性子代理審查於驗收時尚未回報，結果待補記；_down.sql 未在正式庫實跑；之後若更動圖片需重跑 --overwrite。詳見 verification/TASK-107.md。"
   },
   "id": "TASK-107",
   "title": "Demo 圖片素材：私有 demo-seed bucket 與上傳／匯入腳本",
@@ -54,6 +61,16 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做 TASK-107。前置 097／106 皆為 Done。已記錄核准並推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做 TASK-107，已記錄核准並實作。使用者套用 migration 0023 後完成測試與真實匯入，使用者人工驗收通過，轉 Done。安全性子代理審查當時仍在執行，結果回報後補記並視需要追加修正。"
     }
   ]
 }
