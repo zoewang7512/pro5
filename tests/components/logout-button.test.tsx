@@ -11,6 +11,13 @@ const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   replace: vi.fn(),
   refresh: vi.fn(),
+  isDemo: false,
+}));
+
+// LogoutButton 讀 useAdminProfile().isDemo（TASK-105）；既有案例沒有包 AdminProfileProvider，
+// 這裡以 mock 提供預設 isDemo=false，既有斷言不必修改。
+vi.mock("@/app/admin/_components/AdminProfileContext", () => ({
+  useAdminProfile: () => ({ isDemo: mocks.isDemo }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -32,6 +39,7 @@ describe("LogoutButton（TASK-081 未儲存變更攔截）", () => {
     mocks.signOut.mockReset().mockResolvedValue({ error: null });
     mocks.replace.mockReset();
     mocks.refresh.mockReset();
+    mocks.isDemo = false;
   });
   afterEach(() => {
     cleanup();
@@ -43,6 +51,28 @@ describe("LogoutButton（TASK-081 未儲存變更攔截）", () => {
 
     await user.click(screen.getByRole("button", { name: "登出" }));
     expect(mocks.signOut).toHaveBeenCalledTimes(1);
+    expect(mocks.replace).toHaveBeenCalledWith("/login");
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("一般管理員登出維持預設行為：signOut 不帶任何參數（global）", async () => {
+    const user = userEvent.setup();
+    render(<LogoutButton />);
+
+    await user.click(screen.getByRole("button", { name: "登出" }));
+
+    expect(mocks.signOut).toHaveBeenCalledWith();
+  });
+
+  it("Demo 登出只清本機 session：scope 為 local，不撤銷其他面試官的 session，並照常導向 /login", async () => {
+    mocks.isDemo = true;
+    const user = userEvent.setup();
+    render(<LogoutButton />);
+
+    await user.click(screen.getByRole("button", { name: "登出" }));
+
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
+    expect(mocks.signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(mocks.replace).toHaveBeenCalledWith("/login");
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });

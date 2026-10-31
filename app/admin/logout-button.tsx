@@ -2,15 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAdminProfile } from "./_components/AdminProfileContext";
 import { useUnsavedChangesActions } from "./_components/UnsavedChangesProvider";
 
 export function LogoutButton() {
   const router = useRouter();
   const { confirmIfDirty } = useUnsavedChangesActions();
+  const { isDemo } = useAdminProfile();
 
   async function handleLogout() {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    // Demo 帳號由所有面試官共用同一個帳戶：預設的 global 登出會撤銷這個帳戶的所有 session，
+    // 任何一位按「登出」都會把其他正在體驗的人踢掉（架構筆記 D6），所以只清目前這個瀏覽器的 session。
+    // 非 Demo 維持原本的預設行為。
+    await (isDemo ? supabase.auth.signOut({ scope: "local" }) : supabase.auth.signOut());
     router.replace("/login");
     router.refresh();
   }
