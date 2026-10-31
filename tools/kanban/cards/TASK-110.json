@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "verify",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -75,6 +75,11 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "實作與驗證完成，推進到 verify。三個子代理審查已處理（agent 意見，不等於核准）：排程模式改為必須無 query、回應只回代碼、執行鎖加過期、指令加 --confirm-host。DEMO_RESET_ENABLED 仍關閉，未對任何站台真實還原。待使用者人工驗收；gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。整合面（真實 dry-run 計數、圖片同步、真實還原）待 TASK-112；DEMO_RESET_ENABLED 仍關閉。"
     }
   ]
 }
