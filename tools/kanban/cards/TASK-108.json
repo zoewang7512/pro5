@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "implementing",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -22,9 +22,14 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npm run test:demo-reset → 28 整合 + 3 掃描 passed，0 skipped（對正式 Supabase，只 dry-run；含重置閘門 4 項）",
+      "13 張表 + auth.users + 四個 bucket 在每個案例前後比對（每列 sha256）；dry-run 耗時約 0.85 秒（425 筆預約）",
+      "未知觸發器守門在正式庫通過（被覆寫的 11 張表上沒有白名單以外的觸發器）",
+      "npx tsc --noEmit → 0 errors；npm run lint → 0 errors；npm run build → success"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "真實還原路徑（p_dry_run=false）從未執行，首次在 TASK-112；DB 端第二道門待使用者決定；鎖的互斥未驗證；_down.sql 未演練；PostgREST statement_timeout 待確認。詳見 verification/TASK-108.md。"
   },
   "id": "TASK-108",
   "title": "還原函式 reset_demo_data 與唯讀物件清單 RPC（migration，單一交易、含 dry-run）",
@@ -59,6 +64,21 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "使用者指示開始做 TASK-108。前置 097／106 皆為 Done。已記錄核准並推進到 implementing。高風險：整合測試只用 dry-run，絕不對正式庫真實還原。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與驗證完成，推進到 verify。三個子代理審查已處理（agent 意見，不等於核准）；SQL 修訂版 0024 已由使用者重新套用，整合測試對修訂版重跑通過。待使用者人工驗收；gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者選 A：加入重置閘門（真實還原需閘門開著、成功時同交易關閘門）。0024 已重新套用，整合測試 31 項通過，13 張表與測試前備份逐列相同、閘門為關閉、無殘留帳號。仍待使用者人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。真實還原路徑（p_dry_run=false）尚未實跑，首次在 TASK-112。"
     }
   ]
 }

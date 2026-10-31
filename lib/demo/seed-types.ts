@@ -136,7 +136,8 @@ export type DemoSeedBase = {
 
 export type DemoSeedPayload = {
   confirm: "RESET_DEMO";
-  // 選填，只作 `reset_demo_data` 的交叉檢查；函式自己決定 Demo 使用者。
+  // `buildDemoSeed` 不產生；呼叫 `reset_demo_data` 前由還原編排（TASK-109）補上，函式要求必填，
+  // 只作交叉檢查（函式自己決定 Demo 使用者）。
   demo_user_id?: string;
   services: SeedService[];
   designers: SeedDesigner[];

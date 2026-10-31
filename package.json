@@ -25,6 +25,7 @@
     "test:demo-rate-limit": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-rate-limit.config.ts",
     "test:demo-enter": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-enter.config.ts",
     "test:demo-seed-bucket": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-seed-bucket.config.ts",
+    "test:demo-reset": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-reset.config.ts",
     "test:notifications": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.notifications.config.ts",
     "test:audit-log": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.audit-log.config.ts",
     "test:reports": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.reports.config.ts",

@@ -785,3 +785,32 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 考慮過的替代方案：先寫 cookie 再撤銷（signOut 失敗時管理員 session 會外流，已否決）；同源檢查在 Vercel 上只認 NEXT_PUBLIC_SITE_URL
   （preview 部署網址會被擋，且對 CSRF 無實質增益，未採用）；把 TOTP 判斷抽成共用函式（lib/auth/aal.ts 不在本卡範圍，列為建議）。
 ```
+
+## TASK-108（Demo 體驗帳戶）：還原函式 reset_demo_data 與 demo_list_storage_objects
+
+```text
+日期：2026-10-31
+決策：
+  1. reset_demo_data(p_payload jsonb, p_dry_run boolean)：SECURITY DEFINER、search_path 為空、只有 service_role 可執行；p_dry_run 無預設值且不得為 null。
+  2. dry-run 以內層 BEGIN…EXCEPTION 區塊在最後 raise 自訂 SQLSTATE 'RD001' 回滾子交易，只攔截該 SQLSTATE；鎖（pg_try_advisory_xact_lock、
+     lock_timeout、lock table appointments in exclusive mode）與守門放在內層之外，筆數變數宣告在外層。
+  3. 守門在任何寫入之前：confirm、必要鍵與型別、最低筆數（services／designers／designer_services／customers／appointments ≥ 1）、business_hours 剛好 7 列、
+     預約與顧客 email 必須為 null、預約不得帶 access_token。
+  4. Demo 使用者由函式查 is_demo 帳戶決定（必須剛好 1 個）；payload 的 demo_user_id 只作交叉檢查。admins 只更新 Demo 那一列，列不存在就 raise（不自行新增管理員）。
+  5. DELETE 一律 where true（相容 pg-safeupdate）；寫入一律以 jsonb_to_recordset 明確列欄位，沒有動態 SQL。
+  6. 整合測試只准 dry-run：唯一的呼叫點是 callReset，dryRun 型別是 true | null | "omitted"（編譯期就不能傳 false），另有掃描測試（tests/lib/demo-reset-test-scan.test.ts）
+     檢查整個 tests/ 目錄與 scripts／lib／app。「不傳 p_dry_run」不能用 undefined 表示（會觸發 JS 預設參數），改用 "omitted"。
+  7. 沒有真實 Demo 帳戶時，測試建立拋棄式 is_demo 帳戶並暫時登記進 admins；有真實 Demo 帳戶時直接使用、不修改它。
+  8. 審查後修訂：一條 lock table 鎖住 11 張被覆寫的表（customers → appointments → 其他）；守門區拒絕被覆寫表上白名單以外的觸發器
+     （新增觸發器要同步更新函式內白名單，例如 TASK-116）；demo_user_id 必填；Demo 必須已登記在 admins（守門區檢查）；portfolio_images 至少 1 筆；
+     非 dry-run 時 RD001 往外丟。回傳比任務卡多：counts 另含 booking_policy／store_settings／admins，另有 deleted（鍵名 portfolio_images 對應表 designer_portfolio_images）。
+  10. 重置閘門（使用者 2026-10-31 選 A）：demo_reset_gate 單列表 + demo_reset_open_gate(1～30 分鐘)／demo_reset_close_gate／demo_reset_gate_is_open，皆只有 service_role 可執行，
+     資料表不授權給任何 Data API 角色。真實還原（p_dry_run=false）需要閘門開著，成功時在同一個交易內關閘門（單次通行證）；dry-run 不需要。
+     還原端點（TASK-110）在呼叫前 open、finally 時 close。**只擋程式 bug 與誤呼叫，擋不住持有 service role key 的人**（open 同樣只有 service_role 能呼叫）；
+     更強的做法（例如 open 需要只存雜湊的第二組密鑰）未做。閘門關閉時拒絕真實還原的路徑不在測試中實跑（失敗代價是清空正式庫），
+     改由 0024 尾端自我檢查確認 reset_demo_data 本文含閘門檢查，並測閘門函式本身。
+  9. 測試端：每列只留 sha256（失敗輸出不外洩顧客個資與 access_token）、讀到列數必須等於總數、快照含 auth.users 與四個 bucket；callReset 有執行期護欄；
+     掃描測試改為全 repo 白名單並隨 test:demo-reset 一起執行（TASK-109 新增合法呼叫時，把該檔案加進白名單，不得刪除掃描測試）。
+情境：TASK-108 為高風險卡；第一次對正式庫跑 dry-run 前先做 13 張表的唯讀備份，測試後逐列比對。詳見 verification/TASK-108.md。
+考慮過的替代方案：回傳 referenced paths（改由 TS 端算，RPC 只回筆數）；鎖用 access exclusive（會擋前台讀取，改用 exclusive）；搶不到 advisory lock 時排隊（改為立即失敗）。
+```
