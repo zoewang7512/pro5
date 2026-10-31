@@ -814,3 +814,25 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 情境：TASK-108 為高風險卡；第一次對正式庫跑 dry-run 前先做 13 張表的唯讀備份，測試後逐列比對。詳見 verification/TASK-108.md。
 考慮過的替代方案：回傳 referenced paths（改由 TS 端算，RPC 只回筆數）；鎖用 access exclusive（會擋前台讀取，改用 exclusive）；搶不到 advisory lock 時排隊（改為立即失敗）。
 ```
+
+## TASK-109（Demo 體驗帳戶）：還原編排 lib/demo/reset.ts
+
+```text
+日期：2026-10-31
+決策：
+  1. 流程固定：prepare → sync_images → reset_database → cleanup_orphans → revoke_account → health_check。資料庫提交之前的失敗不留下半套；
+     提交之後的階段失敗不回滾、也不阻止後面的階段，最後回報第一個失敗階段，summary.databaseRestored 區分「資料沒動」與「資料已還原」。
+  2. runDemoReset 是唯一可以對正式庫真實呼叫 reset_demo_data(p_dry_run=false) 的程式；正式入口只接受 { supabase, now, dryRun, deadlineMs }，
+     dryRun 必須明確傳入且是 boolean（執行期檢查）。測試注入點在 runDemoResetWithDeps，掃描測試限制只有 reset.ts 與其單元測試能引用。
+  3. 圖片網址是否為本專案由網域判斷，沒有預設網域：拿不到就失敗；seed 內每個圖片網址都必須是本專案網址且至少一張，
+     否則引用集合會變空、孤兒清理會刪光公開 bucket（架構與安全審查共同列為高風險）。
+  4. 孤兒清理：只在資料庫提交之後；白名單寫死三個公開 bucket（絕不碰 demo-seed）；admin-assets 只刪擁有者是 Demo 且不被任何 admins 引用的；
+     只刪早於「還原開始時間減 60 秒」的物件；同網域但無法解析的引用網址 → 整個清理跳過並留警告（仍 ok: true）；列出剛好 1000 筆視為截斷。
+  5. 內容不同的圖片「先 remove 再 copy」（任務卡與 D7 的設計；Storage copy 不能覆寫）。已知取捨：remove 成功、copy 失敗時公開 bucket 暫時缺檔，
+     下次執行補回。TASK-112 必須實測 copy 後 eTag 與來源一致（第一次真實還原後 dry-run 的 sync.planned.replace 應為 0）。
+  6. 閘門：真實還原前才開（3 分鐘），只要呼叫過開門 finally 就關；進入資料庫前至少要剩 15 秒（交易、帳戶處理、健康檢查）。
+  7. 健康檢查用獨立 anon client（persistSession: false）登入，只結束自己剛建立的 session（scope: local），不修復、不改密碼。
+  8. 測試用假 client；以變異測試（13 項）證明關鍵規則被測試守住。
+情境：TASK-109 三個子代理審查（架構、安全、測試）；對正式庫只做唯讀實地驗證（真實 Storage 清單比對 45/45 相同）。詳見 verification/TASK-109.md。
+考慮過的替代方案：覆寫改用「下載後 upsert 上傳」（原子，但偏離任務卡，未採用）；origin 預設為專案網址常數（會與環境不一致，改為必須取得）。
+```

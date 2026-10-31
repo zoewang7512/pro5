@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,14 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx vitest run tests/lib/demo-reset.test.ts tests/lib/demo-reset-test-scan.test.ts → 57 passed（假 client，0 skipped）",
+      "變異測試 13 項：關鍵規則被弄壞時測試都會失敗",
+      "正式庫唯讀實地驗證：45 個 seed 引用物件與 demo-seed 比對全相同（0 複製、0 覆寫），流程停在「正式庫尚無 Demo 帳戶」，無任何寫入",
+      "npx tsc --noEmit → 0 errors；npm run lint → 0 errors；npm run build → success"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "整合面未驗證（真實 copy／eTag 一致性、真實還原、孤兒清理、健康檢查登入）等 TASK-112；remove 後 copy 失敗有破圖窗口；部分完成仍 ok:true，呼叫端需讀 stages／warnings。詳見 verification/TASK-109.md。"
   },
   "id": "TASK-109",
   "title": "還原編排：lib/demo/reset.ts（圖片差異同步、呼叫 RPC、孤兒清理、帳戶處理、健康檢查）",
@@ -56,6 +61,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做 TASK-109。前置 097／100／107／108 皆為 Done。已記錄核准並推進到 implementing。高風險：整合測試只用 dry-run，絕不對正式庫真實還原。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與驗證完成，推進到 verify。三個子代理審查已處理（agent 意見，不等於核准）。待使用者人工驗收；gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。整合面（真實 copy／eTag 一致性、真實還原、孤兒清理、健康檢查登入）待 TASK-112。"
     }
   ]
 }

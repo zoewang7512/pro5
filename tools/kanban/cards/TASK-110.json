@@ -54,6 +54,11 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "TASK-109 審查帶來的注意事項：(1) 只傳 { supabase, now, dryRun, deadlineMs } 給 runDemoReset，dryRun 必須是明確判斷出的 boolean，沒帶參數絕不能變成真實還原；dry_run=1 優先，confirm 必須完全等於 RESET_DEMO；(2) 先驗 Bearer 密鑰再建立 service role client，密鑰不放 query；(3) deadlineMs 要預留交易、帳戶處理與健康檢查時間（60 秒上限時約開始後 35～40 秒）；(4) 依 summary.databaseRestored 決定日誌嚴重度與狀態碼，stages 與 warnings 要輸出或告警（部分完成仍 ok:true）；(5) 回應只回摘要，不回原始例外；(6) 掃描測試白名單不要加端點檔案，維持端點只呼叫 runDemoReset；(7) 排程與手動可能同時執行，應用層可加一道執行鎖；(8) 首次真實還原前必須先備份（TASK-117）並取得使用者同意。"
     }
   ]
 }
