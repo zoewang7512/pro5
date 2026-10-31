@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDemoConfig, isDemoEntryEnabled, isDemoUser } from "@/lib/demo/config";
 import { DEMO_RESET_LABEL } from "@/lib/demo/notice-copy";
@@ -97,5 +99,42 @@ describe("DEMO_RESET_LABEL", () => {
   it("定案文案；config 重新匯出的是同一個值", () => {
     expect(DEMO_RESET_LABEL).toBe("每日凌晨 3 點左右");
     expect(DEMO_RESET_LABEL_FROM_CONFIG).toBe(DEMO_RESET_LABEL);
+  });
+});
+
+// TASK-110：畫面文案說「每日凌晨 3 點左右還原」，vercel.json 的排程要真的對得上。
+// cron 以 UTC 計算，台北 = UTC+8；Hobby 每日只跑一次、只保證在該小時內觸發，所以文案寫「左右」。
+describe("vercel.json 的 Demo 還原排程與 DEMO_RESET_LABEL 一致", () => {
+  const vercel = JSON.parse(readFileSync(path.resolve(__dirname, "../../vercel.json"), "utf8")) as {
+    crons: { path: string; schedule: string }[];
+  };
+  const demoCrons = vercel.crons.filter((cron) => cron.path === "/api/cron/demo-reset");
+
+  it("剛好有一個 Demo 還原排程，路徑指向端點檔案存在的位置", () => {
+    expect(demoCrons).toHaveLength(1);
+    expect(existsSync(path.resolve(__dirname, "../../app/api/cron/demo-reset/route.ts"))).toBe(true);
+  });
+
+  it("每日一次（Hobby 限制）：分、時為固定數字，日／月／星期為 *", () => {
+    const [minute, hour, day, month, weekday] = demoCrons[0].schedule.split(" ");
+    expect(demoCrons[0].schedule.split(" ")).toHaveLength(5);
+    expect(minute).toMatch(/^\d+$/);
+    expect(hour).toMatch(/^\d+$/);
+    expect([day, month, weekday]).toEqual(["*", "*", "*"]);
+  });
+
+  it("UTC 轉台北時間（+8）的小時，等於文案裡的「凌晨 N 點」", () => {
+    const taipeiHour = (Number(demoCrons[0].schedule.split(" ")[1]) + 8) % 24;
+    const labelHour = DEMO_RESET_LABEL.match(/凌晨 (\d+) 點/);
+    expect(labelHour).not.toBeNull();
+    expect(taipeiHour).toBe(Number(labelHour![1]));
+    expect(demoCrons[0].schedule).toBe("0 19 * * *");
+  });
+
+  it("既有的提醒信排程沒有被更動", () => {
+    expect(vercel.crons.find((cron) => cron.path === "/api/cron/appointment-reminders")).toEqual({
+      path: "/api/cron/appointment-reminders",
+      schedule: "0 1 * * *",
+    });
   });
 });

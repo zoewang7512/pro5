@@ -8,10 +8,10 @@
 - 上層 User Story：整庫還原
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097, TASK-109
-- 狀態：草稿（待人工核准）
+- 狀態：實作與驗證完成（待人工驗收）。見 [`verification/TASK-110.md`](../verification/TASK-110.md)
 - 風險等級：高
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（2026-10-31 指示開始）
 
 ## 目標
 
@@ -36,6 +36,8 @@
   - `scripts/reset-demo.mjs`（新增：呼叫上述端點的手動指令）
   - `package.json`（新增 `demo:reset`）
   - `tests/api/demo-reset-cron.test.ts`（新增）、`tests/lib/demo-config.test.ts`（啟用 TASK-097 預留的 cron 一致性斷言）
+  - `tests/lib/demo-reset-script.test.ts`（新增：手動指令的參數解析與以本機假伺服器跑完整流程；實作時補登記）
+  - `ai/artifacts/Demo 體驗帳戶/architecture-notes.md`（只更新 Hobby 核對結論）
 - 不得觸碰：
   - 既有的 `appointment-reminders` 排程與端點
   - `lib/demo/reset.ts` 的流程（TASK-109）

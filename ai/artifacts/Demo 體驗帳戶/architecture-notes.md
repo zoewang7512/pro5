@@ -148,7 +148,8 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - 驗證：`verifyBearerSecret(req.headers.get("authorization"), process.env.CRON_SECRET)`。
 - **旗標與手動路徑（修正先前會互相卡死的設計）：** `DEMO_RESET_ENABLED` 只管**排程**自動觸發。手動真實還原帶 `?confirm=RESET_DEMO`（加上 `Bearer CRON_SECRET`）即可執行，不受 `DEMO_RESET_ENABLED` 約束；`?dry_run=1` 只做 dry-run。判斷方式：排程呼叫（無 `confirm`／`dry_run`）→ 看旗標；有 `dry_run=1` → 只 dry-run；有 `confirm` → 真實還原。這樣首次真實還原可以在旗標關閉時由人工執行，驗證成功後才開旗標。
 - `maxDuration = 60`，時間預算沿用提醒信排程做法；中止點只能在步驟 1 與步驟 3（交易不可中斷）。
-- **待核對：** Vercel Hobby 允許的排程數量與頻率（現有已有一個每日排程；一般認為 Hobby 可有 2 個、每日一次）。若不允許，退而求其次：與提醒信排程合併，或只做手動。
+- **已核對（2026-10-31，TASK-110）：** Vercel 文件（cron-jobs/usage-and-pricing，2026-07-15 更新）：Hobby 每專案最多 100 個排程、每日最多一次、精度為「該小時內」（±59 分）。第二個每日排程可行，不需合併。`0 19 * * *` 會在 UTC 19:00–19:59（台北 03:00–03:59）觸發，與文案「每日凌晨 3 點左右」相符。
+- **排程模式必須完全不帶 query（TASK-110 安全審查）：** 只認 `dry_run`、`confirm` 兩個名稱，其他名稱（含打錯字的 `?dryrun=1`）回 400，避免手動打錯被當成排程、旗標開啟後變成真實還原。
 
 ### D10 部署與 migration 順序（**暗啟動**）
 
