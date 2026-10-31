@@ -26,3 +26,32 @@ export const DEMO_NOT_ALLOWED_TITLE = "不開放";
 export const DEMO_NOT_ALLOWED_ITEMS = ["修改密碼、登入 Email", "啟用／停用雙重驗證（MFA）"] as const;
 
 export const DEMO_NOTICE_CONFIRM_LABEL = "開始體驗";
+
+// 改期／取消最終確認後的寄信說明視窗（TASK-115）。只說明正式環境的行為，不宣稱「已寄出」；
+// 真正不寄信由資料庫守門保證（TASK-114），這個視窗不是安全邊界。
+export const DEMO_MAIL_NOTICE_NOTE = "正式環境會寄出這封信；體驗帳號不會真的寄出。";
+export const DEMO_MAIL_NOTICE_CONTINUE_LABEL = "我知道了，繼續";
+export const DEMO_MAIL_NOTICE_BACK_LABEL = "返回";
+
+export const DEMO_MAIL_NOTICE_COPY = {
+  reschedule: {
+    title: "顧客會收到這封改期通知信",
+    imageSrc: "/demo/mail-notice-reschedule.png",
+    // 圖片的實際像素（2x），元件以它推算長寬比預留高度，圖片載入前視窗不會跳動。
+    imageWidth: 1120,
+    imageHeight: 976,
+    imageAlt: "改期通知信示意：主旨「預約已改期：新日期與時間」，內容列出服務項目、原時段、新時段與設計師，並附店家聯絡方式。",
+    // 圖片載入失敗時的文字替代（畫面規格「錯誤」狀態），不顯示錯誤訊息。
+    fallbackSubject: "預約已改期：{新日期} {新時間}",
+    fallbackBody: "內容會列出服務項目、原時段與新時段，並附店家聯絡方式。",
+  },
+  cancel: {
+    title: "顧客會收到這封取消通知信",
+    imageSrc: "/demo/mail-notice-cancel.png",
+    imageWidth: 1120,
+    imageHeight: 1006,
+    imageAlt: "取消通知信示意：主旨「預約已取消：服務名稱與原日期時間」，內容列出服務項目與原預約時段，並附店家聯絡方式。",
+    fallbackSubject: "預約已取消：{服務名稱} {原日期} {原時間}",
+    fallbackBody: "內容會列出服務項目與原預約時段，並附店家聯絡方式。",
+  },
+} as const;

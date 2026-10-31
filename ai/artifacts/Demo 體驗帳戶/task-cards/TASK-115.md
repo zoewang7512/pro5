@@ -8,10 +8,10 @@
 - 上層 User Story：體驗帳號提示橫幅
 - 分軌：前端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：完成（人工驗收通過，2026-10-31）
 - 風險等級：低
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（zoewang7512），2026-10-31
 
 ## 目標
 
@@ -37,9 +37,11 @@ Demo 登入的面試官在後台按下改期或取消的最終確認後，先跳
 - 允許變更的檔案：
   - `app/admin/_components/DemoMailNoticeDialog.tsx`（新增）
   - `app/admin/_components/AdminDashboard.tsx`（只在改期與取消送出前，`isDemo` 時先顯示視窗；非 Demo 路徑逐字不變）
+  - `app/admin/_components/AppointmentDetailDialog.tsx`（**實作時補列**：改期的最終確認在這個元件內，只新增選填 prop `beforeReschedule`，未傳時行為不變）
   - `lib/demo/notice-copy.ts`（追加本視窗文案，不改既有常數）
-  - `public/demo/notification-email-preview.png`（新增；示意圖）
-  - `tests/components/demo-mail-notice-dialog.test.tsx`、`tests/components/admin-dashboard.test.tsx`（補 Demo 案例，不改既有斷言）
+  - `public/demo/mail-notice-reschedule.png`、`public/demo/mail-notice-cancel.png`（新增；示意圖，**實作時由單一檔名改為改期、取消各一張**，與畫面規格兩種狀態一致）
+  - `tests/components/demo-mail-notice-dialog.test.tsx`、`tests/components/admin-dashboard.test.tsx`（`admin-dashboard.test.tsx` 原本不存在，新建；`appointment-detail-dialog.test.tsx` 補 `beforeReschedule` 案例，不改既有斷言）
+  - `ai/context/design-system.md`（登記 `DemoMailNoticeDialog` 到元件庫 inventory）
 - 不得觸碰：
   - `lib/admin/appointments.ts`（資料層行為不變）
   - 寄信相關後端與 migration
@@ -82,9 +84,11 @@ UI（畫面與 mockup 一致）、驗證（測試工程）。
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+完整內容見 [`verification/TASK-115.md`](../verification/TASK-115.md)。
+
+- 變更的檔案：見上方「允許變更的檔案」（含實作時補登記的 `AppointmentDetailDialog.tsx`、兩張 PNG）。
+- 執行過的指令：相關測試 6 檔 95 項全過；`tsc`、`lint`、`build` 通過。
+- 測試輸出：見驗證報告。
+- 螢幕截圖：`verification/TASK-115-screenshots/`（亮色、暗色、手機 375 各一）。
+- 已知限制：TASK-114 未完成前視窗文案在後端不成立；全套件逾時為既有問題；尚未以 Demo 帳號實際走過（TASK-112）。
+- 後續任務：TASK-112 端到端走查；另立卡處理全套件測試逾時。

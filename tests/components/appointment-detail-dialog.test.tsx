@@ -11,6 +11,9 @@ import { isDateClosed } from "@/lib/admin/closed-dates";
 import { buildDateRange } from "@/lib/booking/date-range";
 import { getTaipeiToday } from "@/lib/admin/week-range";
 
+// 改期案例要逐步點過日期與時段，全套件平行執行時 5 秒預設逾時偶爾不夠（比照 reports-view.test.tsx）。
+vi.setConfig({ testTimeout: 30000 });
+
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
 vi.mock("@/lib/admin/appointments", async (importOriginal) => ({
@@ -128,6 +131,68 @@ describe("AppointmentDetailDialog 設計師", () => {
     expect(params.designerId).not.toBe(params.excludeAppointmentId);
     const [, leaveDesignerId] = vi.mocked(isDesignerOnLeave).mock.calls.at(-1)!;
     expect(leaveDesignerId).toBe(LIN_ID);
+  });
+
+  describe("beforeReschedule（TASK-115）", () => {
+    function renderWithHook(beforeReschedule?: () => Promise<boolean>) {
+      const onReschedule = vi.fn().mockResolvedValue({ ok: true, data: undefined });
+      render(
+        <ToastProvider>
+          <AppointmentDetailDialog
+            open
+            appointment={APPOINTMENT}
+            markCompletedLoading={false}
+            onClose={vi.fn()}
+            onMarkCompleted={vi.fn()}
+            onCancelRequest={vi.fn()}
+            onReschedule={onReschedule}
+            beforeReschedule={beforeReschedule}
+          />
+        </ToastProvider>,
+      );
+      return onReschedule;
+    }
+
+    async function pickTomorrowSlot() {
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name: "改期" }));
+      const tomorrow = buildDateRange(getTaipeiToday(), 21)[1];
+      await user.click(screen.getByRole("button", { name: `週${tomorrow.weekdayLabel} ${tomorrow.day}` }));
+      await user.click(await screen.findByRole("button", { name: "10:00" }));
+      return user;
+    }
+
+    it("回傳 false：不呼叫 onReschedule、不跳訊息，表單維持可再次送出", async () => {
+      const before = vi.fn().mockResolvedValue(false);
+      const onReschedule = renderWithHook(before);
+      const user = await pickTomorrowSlot();
+
+      await user.click(screen.getByRole("button", { name: "確認改期" }));
+
+      await waitFor(() => expect(before).toHaveBeenCalledTimes(1));
+      expect(onReschedule).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "確認改期" })).toBeEnabled();
+    });
+
+    it("回傳 true：才呼叫 onReschedule", async () => {
+      const before = vi.fn().mockResolvedValue(true);
+      const onReschedule = renderWithHook(before);
+      const user = await pickTomorrowSlot();
+
+      await user.click(screen.getByRole("button", { name: "確認改期" }));
+
+      await waitFor(() => expect(onReschedule).toHaveBeenCalledTimes(1));
+      expect(before).toHaveBeenCalledTimes(1);
+    });
+
+    it("未傳入：與以前相同，直接呼叫 onReschedule", async () => {
+      const onReschedule = renderWithHook(undefined);
+      const user = await pickTomorrowSlot();
+
+      await user.click(screen.getByRole("button", { name: "確認改期" }));
+
+      await waitFor(() => expect(onReschedule).toHaveBeenCalledTimes(1));
+    });
   });
 
   it("沒有請假：照常列出可選時段（對照組）", async () => {

@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,20 +11,29 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
-    "ui": false,
+    "ui": true,
     "architecture": false,
     "security": false,
     "test": false,
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/components/demo-mail-notice-dialog.test.tsx tests/components/admin-dashboard.test.tsx tests/components/appointment-detail-dialog.test.tsx tests/components/demo-notice.test.tsx tests/components/admin-shell.test.tsx tests/lib/demo-config.test.ts → 6 檔 95 項全過",
+      "npx tsc --noEmit → 0 錯誤",
+      "npm run lint → 0 錯誤",
+      "npm run build → 成功",
+      "亮色／暗色／手機 375 以暫時預覽頁實測（已刪除），截圖在 verification/TASK-115-screenshots/"
+    ],
+    "findings": [
+      "AppointmentDetailDialog 新增選填 beforeReschedule（任務卡原未列出，已補登記）；示意圖改為改期、取消各一張；admin-dashboard.test.tsx 原不存在，新建。",
+      "未啟動架構／安全／測試子代理審查（低風險純前端），審查關卡待人工決定。"
+    ],
+    "residual": "TASK-114（資料庫守門）尚未完成，視窗文案在其上線前不成立，兩卡須同次部署；全套件 vitest 在本機有既有的 5 秒逾時失敗（與本卡無關，建議另立卡）；尚未用 Demo 帳號在真實後台走完整流程（TASK-112）。"
   },
   "id": "TASK-115",
   "title": "Demo 寄信說明視窗：改期／取消確認後顯示通知信示意圖（前端）",
@@ -53,6 +62,16 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者已確認 mockup（出現時機＝最終確認後、標題＋一句說明、返回＋我知道了繼續、含主旨列的整封信），開始實作。範圍補充：改期的最終確認在 AppointmentDetailDialog 內，需加一個選填的 beforeReschedule 回呼（非 Demo 路徑不變）；示意圖改期、取消各一張，故檔案為兩個 PNG；tests/components/admin-dashboard.test.tsx 原本不存在，新建。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。殘留：TASK-114 完成前視窗文案在後端不成立，兩卡須同次部署（TASK-112 相依已涵蓋）；全套件測試逾時為既有問題，建議另立卡。"
     }
   ]
 }

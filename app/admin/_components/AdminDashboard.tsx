@@ -30,6 +30,8 @@ import {
 import { WeekCalendar } from "./WeekCalendar";
 import { AppointmentListView } from "./AppointmentListView";
 import { AppointmentDetailDialog } from "./AppointmentDetailDialog";
+import { DemoMailNoticeDialog, type DemoMailNoticeKind } from "./DemoMailNoticeDialog";
+import { useAdminProfile } from "./AdminProfileContext";
 import { DesignerFilterChips } from "./DesignerFilterChips";
 import {
   cancelAppointment,
@@ -55,6 +57,7 @@ type AppointmentsResult = { key: string; status: "loaded" | "error"; appointment
 export function AdminDashboard() {
   const supabase = React.useMemo(() => createClient(), []);
   const { showToast } = useToast();
+  const { isDemo } = useAdminProfile();
   const todayDate = React.useMemo(() => getTaipeiToday(), []);
 
   const [weekStart, setWeekStart] = React.useState(() => getWeekRange(todayDate).weekStart);
@@ -77,6 +80,14 @@ export function AdminDashboard() {
   // 這種情況，所以改期成功後改成整個重新查詢目前週次，而不是像標記完成／取消那樣直接
   // patch 本地 state；bump 這個 token 觸發下面 fetch effect 重新執行。
   const [refetchToken, setRefetchToken] = React.useState(0);
+  // Demo 的寄信說明視窗（TASK-115）：改期與取消在最終確認後先 await 這個視窗的結果，
+  // 使用者按「我知道了，繼續」才 resolve(true) 照常執行，返回／Esc／點遮罩 resolve(false) 不寫入。
+  // kind 在關閉後仍保留，淡出動畫期間視窗內容才不會閃成另一種信件。
+  const mailNoticeResolveRef = React.useRef<((proceed: boolean) => void) | null>(null);
+  const [mailNotice, setMailNotice] = React.useState<{ open: boolean; kind: DemoMailNoticeKind }>({
+    open: false,
+    kind: "reschedule",
+  });
 
   const weekRange = React.useMemo(() => getWeekRange(weekStart), [weekStart]);
   const weekDays = React.useMemo(() => buildWeekDays(weekRange.weekStart), [weekRange.weekStart]);
@@ -235,8 +246,23 @@ export function AdminDashboard() {
     setCancelConfirmOpen(true);
   }
 
+  function askDemoMailNotice(kind: DemoMailNoticeKind): Promise<boolean> {
+    return new Promise((resolve) => {
+      mailNoticeResolveRef.current = resolve;
+      setMailNotice({ open: true, kind });
+    });
+  }
+
+  function settleMailNotice(proceed: boolean) {
+    mailNoticeResolveRef.current?.(proceed);
+    mailNoticeResolveRef.current = null;
+    setMailNotice((prev) => ({ ...prev, open: false }));
+  }
+
   async function handleConfirmCancel() {
     if (!selectedAppointment) return;
+    // 說明視窗疊在取消確認框上；返回後取消確認框維持原狀，沒有任何寫入。
+    if (isDemo && !(await askDemoMailNotice("cancel"))) return;
     setCancelLoading(true);
     const res = await cancelAppointment(supabase, selectedAppointment.id);
     setCancelLoading(false);
@@ -349,7 +375,17 @@ export function AdminDashboard() {
         onMarkCompleted={handleMarkCompleted}
         onCancelRequest={handleCancelRequest}
         onReschedule={handleReschedule}
+        beforeReschedule={isDemo ? () => askDemoMailNotice("reschedule") : undefined}
       />
+
+      {isDemo && (
+        <DemoMailNoticeDialog
+          open={mailNotice.open}
+          kind={mailNotice.kind}
+          onContinue={() => settleMailNotice(true)}
+          onBack={() => settleMailNotice(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={cancelConfirmOpen}

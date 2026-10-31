@@ -52,6 +52,10 @@ export type AppointmentDetailDialogProps = {
   onMarkCompleted: () => void;
   onCancelRequest: () => void;
   onReschedule: (newStartAt: string, newEndAt: string) => Promise<RescheduleResult>;
+  // 選填：按下「確認改期」後、真正送出前的攔截點（TASK-115：Demo 先顯示寄信說明視窗）。
+  // 回傳 false 代表使用者選擇返回——不送出、不顯示任何訊息，停在改期表單原狀。
+  // 未傳入時行為與以前逐字相同（不多等一個 microtask）。
+  beforeReschedule?: () => Promise<boolean>;
 };
 
 type DetailResult = { key: string; status: "loaded" | "error"; data: AppointmentDetail | null };
@@ -67,6 +71,7 @@ export function AppointmentDetailDialog({
   onMarkCompleted,
   onCancelRequest,
   onReschedule,
+  beforeReschedule,
 }: AppointmentDetailDialogProps) {
   const supabase = React.useMemo(() => createClient(), []);
   const { showToast } = useToast();
@@ -203,6 +208,8 @@ export function AppointmentDetailDialog({
   async function handleSubmitReschedule() {
     if (!selectedSlot) return;
     const newEndAt = new Date(new Date(selectedSlot.startAt).getTime() + durationMinutes * 60_000).toISOString();
+
+    if (beforeReschedule && !(await beforeReschedule())) return;
 
     setRescheduleSubmitting(true);
     setRescheduleError(null);
