@@ -62,8 +62,8 @@
 | L5 防呆案例只看結束碼 | **已修正**：斷言輸出含「不在允許範圍」 |
 | L2 公開 bucket 前後比對未自動化 | 已以前後物件數與位元組比對記錄在本報告（手動），不另做自動化 |
 | I1 `--base` 的 JSON 錯誤可能帶出檔案開頭字元 | 接受（只能本機操作者觸發） |
-| **M2** migration 自我檢查只抓字面提到 demo-seed 的 policy，抓不到沒限定 bucket 的 policy | **待使用者決定**：改自我檢查需重新套用 0023；建議改為「列出所有 permissive storage.objects policy，凡 qual／with_check 不含固定 bucket 限定即 raise」，並請使用者在 SQL Editor 貼出 `pg_policies` 輸出核對。M1 的實測已覆蓋此威脅（is_admin 帳號被拒絕） |
-| **M3** Demo 上線後，來源公開 bucket 可能已被 Demo 竄改，此時重跑 `--from-public --overwrite` 會把竄改過的圖當原圖 | **待使用者決定**：建議腳本在 `DEMO_ENABLED=true` 或 Demo 的 admins 列存在時拒絕執行（需旗標才可略過），並在手冊註明 `--overwrite` 只能在 Demo 停用期間執行 |
+| M2 migration 自我檢查只抓字面提到 demo-seed 的 policy | **已修正（使用者 2026-10-31 同意）**：自我檢查改為「任何允許型（PERMISSIVE）storage.objects policy 沒有限定三個固定 bucket 就 raise 並列出名稱」，限制型 policy 不受影響；需重新套用 0023（`on conflict do update`，可重複執行）。啟發式檢查，實測由 is_admin 帳號被拒絕的整合測試覆蓋 |
+| M3 Demo 上線後重跑匯入可能把被竄改的圖當原圖 | **已修正（使用者 2026-10-31 同意）**：非 dry-run 時，`DEMO_ENABLED=true` 或有 is_demo 帳戶仍登記在 admins 就拒絕（查不到狀態也拒絕）；需 `--allow-while-demo-live` 才略過。整合測試 3 個案例（旗標、登記在 admins、停用後允許）；整合測試現為 14 項全過 |
 | L4 清空 demo-seed 可能無法復原 | 接受；併入 TASK-117 備份流程，down 檔頭已建議先備份 |
 
 ## 殘留風險與已知限制

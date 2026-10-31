@@ -6,6 +6,12 @@
 //                  沒帶時只報告差異，不動目的地，結束碼為 2。
 //   --dry-run      只檢查與列出計畫，不寫入任何東西（demo-seed 尚未建立也能執行，用來先檢查來源是否齊全）。
 //   --base <路徑>  改讀另一份基底資料（測試用）。
+//   --allow-while-demo-live  Demo 上線中仍要執行（見下方「Demo 上線中拒絕執行」）。平常不要用。
+//
+// Demo 上線中拒絕執行：Demo 帳戶就是管理員，可以替換公開 bucket 裡同路徑的圖片。Demo 上線後再從公開 bucket
+// 匯入，可能把被竄改的圖片當成「原圖」存進 demo-seed，之後每日還原還會把它推回公開 bucket。所以非 dry-run 時，
+// 只要 DEMO_ENABLED=true，或有任何 is_demo 帳戶仍登記在 admins（Demo 沒停用），就拒絕執行。
+// 要更新 seed 圖片：先停用 Demo（demo:disable，TASK-111 提供）、確認公開 bucket 的圖片是對的，再執行。
 //
 // 路徑規則：demo-seed/<來源 bucket>/<原路徑>。來源只認三個公開 bucket，且網址必須是本專案的 Storage 公開網址。
 // 只讀取公開 bucket，不改動、不刪除其中任何物件；來源缺檔會列出清單並在複製前中止，不產生半套。
@@ -32,6 +38,7 @@ const args = process.argv.slice(2);
 const fromPublic = args.includes("--from-public");
 const overwrite = args.includes("--overwrite");
 const dryRun = args.includes("--dry-run");
+const allowWhileDemoLive = args.includes("--allow-while-demo-live");
 const baseFlagIndex = args.indexOf("--base");
 const basePath = baseFlagIndex >= 0 ? path.resolve(args[baseFlagIndex + 1] ?? "") : DEFAULT_BASE_PATH;
 
@@ -138,6 +145,26 @@ async function runPool(items, worker) {
   return failures;
 }
 
+// Demo 上線中（旗標開啟，或有 is_demo 帳戶仍登記在 admins）就中止。查不到 Demo 狀態時也中止（寧可不寫）。
+async function assertDemoNotLive() {
+  if (process.env.DEMO_ENABLED === "true") {
+    abort("DEMO_ENABLED=true，Demo 上線中，拒絕匯入（來源圖片可能已被 Demo 竄改）。請先停用 Demo，或確認無誤後加 --allow-while-demo-live。");
+  }
+  const demoUserIds = [];
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) abort(`無法確認 Demo 是否上線（列出使用者失敗：${error.message}），已中止。`);
+    for (const user of data.users) if (user.app_metadata?.is_demo === true) demoUserIds.push(user.id);
+    if (data.users.length < 200) break;
+  }
+  if (demoUserIds.length === 0) return;
+  const { count, error } = await supabase.from("admins").select("user_id", { count: "exact", head: true }).in("user_id", demoUserIds);
+  if (error) abort(`無法確認 Demo 是否上線（查詢 admins 失敗：${error.message}），已中止。`);
+  if ((count ?? 0) > 0) {
+    abort("Demo 帳戶仍登記在 admins（Demo 上線中），拒絕匯入（來源圖片可能已被 Demo 竄改）。請先停用 Demo，或確認無誤後加 --allow-while-demo-live。");
+  }
+}
+
 const formatMb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 
 async function main() {
@@ -193,6 +220,8 @@ async function main() {
   for (const entry of plan.different) console.log(`  不同：${entry.bucket}/${entry.path}`);
 
   if (dryRun) return;
+
+  if (!allowWhileDemoLive) await assertDemoNotLive();
 
   // 3. 複製（缺少的）；內容不同的只有 --overwrite 才先刪再複製。
   const toCopy = [...plan.missing, ...(overwrite ? plan.different : [])];

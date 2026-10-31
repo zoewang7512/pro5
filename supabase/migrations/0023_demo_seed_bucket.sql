@@ -18,9 +18,14 @@
 -- 套用後的驗證查詢：
 --   select id, public, file_size_limit, allowed_mime_types from storage.buckets where id = 'demo-seed';
 --   -- 預期：demo-seed, false, 5242880, {image/jpeg,image/png,image/webp}
---   select count(*) from pg_policies where schemaname = 'storage' and tablename = 'objects'
---     and (coalesce(qual, '') || coalesce(with_check, '')) like '%demo-seed%';
---   -- 預期：0
+--   select policyname, permissive, roles, cmd, qual, with_check from pg_policies
+--     where schemaname = 'storage' and tablename = 'objects' order by policyname;
+--   -- 預期：目前 11 列（store-assets 4、admin-assets 4、designer-assets 3），全是 PERMISSIVE、roles 為 {authenticated}，
+--   --       每列的 qual／with_check 都以 bucket_id = '<固定 bucket>' 開頭。
+--   select policyname from pg_policies
+--     where schemaname = 'storage' and tablename = 'objects' and permissive = 'PERMISSIVE'
+--       and (coalesce(qual, '') || coalesce(with_check, '')) !~ $re$bucket_id = '(store-assets|admin-assets|designer-assets)'$re$;
+--   -- 預期：0 列（沒有任何允許型 policy 不限定 bucket——那種 policy 會讓 Demo 帳戶讀得到 demo-seed）
 
 begin;
 
@@ -39,18 +44,36 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
--- 尾端自我檢查：bucket 必須是私有，且沒有任何 policy 提到它。
+-- 尾端自我檢查：
+--   1. bucket 必須是私有。
+--   2. 沒有任何「允許型（PERMISSIVE）」policy 不限定 bucket：這種 policy（例如 Dashboard 手動建的
+--      using (public.is_admin())）不會出現 demo-seed 這個字，卻會讓 Demo 帳戶（authenticated + is_admin()）讀寫 demo-seed。
+--      現有 policy 都以 bucket_id = '<固定 bucket>' 開頭；不符合就 raise，並列出 policy 名稱。
+--      這是啟發式檢查（看文字，不是證明），實測見 tests/demo-seed-bucket.integration.test.ts（is_admin 帳號被拒絕）。
+--   3. 沒有任何允許型 policy 提到 demo-seed（私有 bucket 不得有 policy）。
+--      限制型（RESTRICTIVE）policy 只會收窄權限，不在 2、3 的檢查範圍；之後（如 TASK-113）新增限制型 policy 重跑本檔不會被誤擋。
 do $$
+declare
+  v_unbounded text;
 begin
   if exists (select 1 from storage.buckets where id = 'demo-seed' and public) then
     raise exception '0023 自我檢查失敗：demo-seed 不是私有 bucket';
   end if;
+
+  select string_agg(policyname, ', ' order by policyname) into v_unbounded
+  from pg_policies
+  where schemaname = 'storage' and tablename = 'objects' and permissive = 'PERMISSIVE'
+    and (coalesce(qual, '') || coalesce(with_check, '')) !~ $re$bucket_id = '(store-assets|admin-assets|designer-assets)'$re$;
+  if v_unbounded is not null then
+    raise exception '0023 自我檢查失敗：這些 storage.objects 允許型 policy 沒有限定 bucket，可能涵蓋 demo-seed：%', v_unbounded;
+  end if;
+
   if exists (
     select 1 from pg_policies
-    where schemaname = 'storage' and tablename = 'objects'
+    where schemaname = 'storage' and tablename = 'objects' and permissive = 'PERMISSIVE'
       and (coalesce(qual, '') || coalesce(with_check, '')) like '%demo-seed%'
   ) then
-    raise exception '0023 自我檢查失敗：有 storage.objects policy 提到 demo-seed，私有 bucket 不得有 policy';
+    raise exception '0023 自我檢查失敗：有允許型 storage.objects policy 提到 demo-seed，私有 bucket 不得有 policy';
   end if;
 end $$;
 

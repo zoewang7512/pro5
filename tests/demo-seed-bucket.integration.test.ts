@@ -84,8 +84,8 @@ async function snapshotBucket() {
   return JSON.stringify(files.sort());
 }
 
-function runScript(args: string[]) {
-  const result = spawnSync(process.execPath, [SCRIPT, ...args], { env: process.env, encoding: "utf8", timeout: 50000 });
+function runScript(args: string[], env: NodeJS.ProcessEnv = process.env) {
+  const result = spawnSync(process.execPath, [SCRIPT, ...args], { env, encoding: "utf8", timeout: 50000 });
   return { status: result.status, output: `${result.stdout}\n${result.stderr}` };
 }
 
@@ -246,6 +246,55 @@ describe("私有性：只有 service role 能存取", () => {
     const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
     const upload = await admin.storage.from(BUCKET).upload(`${TEST_PREFIX}/${randomUUID()}.svg`, svg, { contentType: "image/svg+xml" });
     expect(upload.error).not.toBeNull();
+  });
+});
+
+describe("scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不引用任何圖片的基底，只測護欄、不複製）", () => {
+  let demoLike: { id: string } | null = null;
+
+  afterAll(async () => {
+    if (!demoLike) return;
+    await admin.from("admins").delete().eq("user_id", demoLike.id);
+    const { error } = await admin.auth.admin.deleteUser(demoLike.id);
+    if (error) throw new Error(`刪除 Demo 樣態拋棄式帳號 ${demoLike.id} 失敗：${error.message}`);
+  });
+
+  it("DEMO_ENABLED=true 時拒絕；加 --allow-while-demo-live 才執行；--dry-run 不受影響", () => {
+    const empty = writeBase("empty.json", {});
+    const env = { ...process.env, DEMO_ENABLED: "true" };
+    const refused = runScript(["--from-public", "--base", empty], env);
+    expect(refused.status).toBe(1);
+    expect(refused.output).toContain("Demo 上線中");
+    expect(runScript(["--from-public", "--base", empty, "--allow-while-demo-live"], env).status).toBe(0);
+    expect(runScript(["--from-public", "--base", empty, "--dry-run"], env).status).toBe(0);
+  });
+
+  it("is_demo 帳戶仍登記在 admins 時拒絕；停用（移除 admins 列）後允許", async () => {
+    const empty = writeBase("empty2.json", {});
+    const email = `delivered+demoseedbucket-demo-${randomUUID().slice(0, 8)}@resend.dev`;
+    const created = await admin.auth.admin.createUser({
+      email,
+      password: `${randomUUID()}${randomUUID().slice(0, 8)}aA1!`,
+      email_confirm: true,
+      app_metadata: { demoseedbucket_test: true, is_demo: true },
+      user_metadata: { name: "__TEST__demoseedbucket-demo" },
+    });
+    if (created.error || !created.data.user) throw new Error(`建立 Demo 樣態拋棄式帳號失敗：${created.error?.message}`);
+    demoLike = { id: created.data.user.id };
+    const env = { ...process.env, DEMO_ENABLED: "false" };
+
+    // 帳戶存在但沒登記在 admins（Demo 已停用）→ 允許。
+    expect(runScript(["--from-public", "--base", empty], env).status).toBe(0);
+
+    const registered = await admin.from("admins").insert({ user_id: demoLike.id, display_name: "__TEST__demoseedbucket" });
+    expect(registered.error).toBeNull();
+    const refused = runScript(["--from-public", "--base", empty], env);
+    expect(refused.status).toBe(1);
+    expect(refused.output).toContain("Demo 上線中");
+    expect(runScript(["--from-public", "--base", empty, "--allow-while-demo-live"], env).status).toBe(0);
+
+    expect((await admin.from("admins").delete().eq("user_id", demoLike.id)).error).toBeNull();
+    expect(runScript(["--from-public", "--base", empty], env).status).toBe(0);
   });
 });
 
