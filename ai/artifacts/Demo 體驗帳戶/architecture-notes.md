@@ -183,6 +183,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - **未知事項（TASK-114 實測）：** 在 `security definer`、`search_path = ''` 的觸發器函式內，`auth.jwt()` 是否讀得到發動 UPDATE 的請求 JWT（它讀 `request.jwt.claims` 設定值，理論上可行）；以拋棄式帳號實測，並用 `net._http_response`／請求佇列確認「Demo 改期零請求、非 Demo 改期照常有請求」。
 - **前端（TASK-115）：** Demo 登入時，按下改期與取消的**最終確認**後先跳出說明視窗：顯示「顧客會收到的通知信」示意圖與一句說明（「正式環境會寄這封信，體驗帳號不會真的寄出」），按下確認後照常執行。一般管理員完全不變。視窗內容以圖片為主；需先出畫面規格與 mockup 給使用者確認。
 - 殘留：`reminder_sent_at` 可被清成 null 造成提醒信重寄，頻率受每日排程限制，維持列為殘留風險。
+- **TASK-114 審查後補記（2026-10-31，未關閉，待使用者決策）：** 方案 A 只堵「改期／取消信」。(R1) Demo 把預約改成 cancelled 會釋放「每個 Email 最多 3 筆」的額度（上限只計 pending／confirmed 且未來的預約），攻擊者可用同一個 Email 反覆預約，使確認信（0011，刻意保留）能無限次寄給任意 Email；(R2) Demo 正常改期會把 `reminder_sent_at` 設回 null，隔天提醒排程對任意 Email 寄提醒信。「每個 Email 最多 3 筆」在 Demo 存在時不是有效的寄信上限。詳見 `verification/TASK-114.md`。
 
 ### D14 Demo 專屬資料筆數上限（使用者決定做完整一套，TASK-116）
 

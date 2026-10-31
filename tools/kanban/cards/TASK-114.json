@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,20 +11,33 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "TASK-114-verify.sql 套用前：has_guard=f，五個增量皆 1（基準線）",
+      "使用者在 SQL Editor 套用 0026：Success",
+      "TASK-114-verify.sql 套用後：has_guard=t，demo_reschedule=0、demo_cancel=0，其餘 1",
+      "npm run test:demo-mail-suppress（DEMO_MAIL_TEST_EMAIL）→ 3/3；Vercel 每輪僅 1 次 webhook；使用者確認收到 1 封「預約已改期」",
+      "npm run test:notifications → 20/20；npm run test:demo-enter → 22/22",
+      "npx vitest run tests/lib/demo-mail-suppress-migration.test.ts → 5/5；tsc、lint 0 錯誤",
+      "改版後 TASK-114-verify.sql（使用者重跑）：has_guard=t、security_definer=t、proconfig=[search_path=\"\"]，11 個情境全符合預期，RESULT=ALL_OK（含 user_metadata／頂層／字串 false 的負向情境）",
+      "Dashboard 確認（使用者）：Auth Hooks 清單為空（無 Custom Access Token Hook）；Allow new users to sign up 為關閉"
+    ],
+    "findings": [
+      "整合測試首次執行因 pg_net 非同步而在預約被清掉後才抵達，信未寄出；已加 25 秒等待，重跑後信件送達。",
+      "三方子代理審查（架構、安全、測試）皆有條件核准、無 MUST FIX；已處理：新增掃描測試防止日後 migration 洗掉守門、逐字測試補強、verify.sql 改版（使用者已重跑，ALL_OK）、報告補原始輸出與證據效力說明、修正 0024 機制描述。",
+      "整合測試不是守門回歸測試（沒套用 0026 也會綠燈）；test:notifications 缺套用前基準，驗收標準未完全達成，已如實標註。"
+    ],
+    "residual": "未關閉：R1 Demo 靜默取消可解除每 Email 3 筆上限，確認信可無限次寄給任意 Email；R2 Demo 正常改期會清 reminder_sent_at 使提醒排程對任意 Email 寄信（已另開 TASK-120、TASK-121 草稿，待使用者決定修法）。另：回滾未實際套用。"
   },
   "id": "TASK-114",
   "title": "Demo 發動的改期／取消不寄信（改寫 notify_appointment_update，migration）",
@@ -53,6 +66,36 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做（高風險卡，依架構筆記 D13 方案 A）。已寫 0026／_down、逐字比對單元測試、TASK-114-verify.sql（rollback 驗證腳本）、test:demo-mail-suppress（真實信箱正反對照）。範圍補充：新增 tests/lib/demo-mail-suppress-migration.test.ts 與 verification/TASK-114-verify.sql（任務卡原未列出）。等待使用者在 SQL Editor 套用 0026 後驗證；agent 不自行套用 migration。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "0026 已由使用者套用並驗證通過，推進 Verify，等待人工驗收；子代理審查待使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "三方子代理審查完成並處理（agent 意見不等於人工核准，gates 維持未勾選）。D13 目標未完全收斂：R1、R2 待使用者決策。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "改版後 verify.sql 由使用者重跑，RESULT=ALL_OK。R1、R2 已另開 TASK-120、TASK-121（草稿）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者確認 Dashboard：無 Auth Hook、關閉新用戶註冊。TASK-114 的待確認項目全部完成，等待人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done；三個審查關卡以子代理審查（有條件核准、無 MUST FIX、意見已處理）加人工驗收勾選。殘留：R1、R2 已另開 TASK-120、TASK-121（草稿，待使用者決定修法）；回滾未實際套用。"
     }
   ]
 }

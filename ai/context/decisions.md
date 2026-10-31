@@ -858,3 +858,23 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 考慮過的替代方案：RLS policy 內計數（擋不住簽名網址與並行）；用 sequence 當不會回滾的票數（失敗嘗試也耗額度，且每日還原要多重置一步）；接受現況並改寫殘留風險（可在一天內灌爆免費方案配額）。
 為何選這個：觸發器在資料列真正寫入時執行，涵蓋 storage-api 所有寫入路徑，回滾只需 drop trigger 與 policy；託管 Supabase 已證實允許在 storage.objects 建立觸發器。
 ```
+
+## TASK-114（Demo 體驗帳戶）：Demo 發動的改期／取消不寄信 migration 0026
+
+```text
+日期：2026-10-31
+決策：
+  1. create or replace public.notify_appointment_update()：函式開頭多一道守門 `coalesce(auth.jwt() -> 'app_metadata' ->> 'is_demo', '') = 'true'` 就 return new，
+     不讀 Vault、不呼叫 net.http_post；其餘本文與 0012 逐字相同。觸發器 appointments_notify_update 不重建、WHEN 條件不動；notify_appointment_insert（確認信）不動。
+  2. 判斷來源是 JWT 的 app_metadata（簽章後的 claim，使用者無法改寫），不讀 user_metadata 等可被使用者修改的欄位。
+     與 0025 觸發器不同：這裡的 UPDATE 是 PostgREST 請求內的同一個交易，request.jwt.claims 有值；0025 的 storage-api 寫入不走使用者連線，所以當時改查 owner_id。
+  3. 失敗方向安全：守門內讀 JWT 若拋例外，既有 exception handler 吞掉並 return new，結果是「不寄信」。
+  4. 沒有 JWT 的呼叫者（cron、service role、顧客前台）行為與 0012 相同。注意：Demo 每日還原（0024）以 service role 執行、沒有 Demo JWT，但它對預約是先 delete 再 insert，不發 UPDATE，不會觸發本函式；INSERT 路徑由 0024 直接拒收帶 customer_email 的 seed（0024 第 236-241 行），不靠人工確認。守門依賴「Demo 的寫入一定帶 Demo JWT 經 PostgREST」，日後若新增伺服器端以 service role 代 Demo 改預約的功能，守門會靜默失效，需另行處理。
+  5. 驗證方式：(a) tests/lib/demo-mail-suppress-migration.test.ts 逐字比對 0026 與 0012、_down 與 0012；(b) TASK-114-verify.sql 在 SQL Editor 內以 set_config 模擬各種 JWT，數 net.http_request_queue 增量，
+     以 raise exception 收尾保證 rollback、不寄信；(c) test:demo-mail-suppress 以真實 Demo／非 Demo 拋棄式帳號改期／取消，用 DEMO_MAIL_TEST_EMAIL（使用者自己的信箱）做正反對照（套用後 1 封、套用前 3 封）。
+  6. 殘留：reminder_sent_at 可被清成 null 造成提醒信重寄（頻率受每日排程限制）；Demo 以外的管理員仍可對任意 Email 預約改期寄信（本來就是正式功能）。
+  7. 三方子代理審查（2026-10-31）皆有條件核准、無 MUST FIX。新增測試擋住「日後 migration 複製 0012 洗掉守門」（編號最大的重新定義者必須含守門條件）。verify.sql 改版：比對實際條件字串、只數起點 id 之後的列、補負向情境。
+  8. 未關閉的殘留（待使用者決策，見 verification/TASK-114.md）：R1 Demo 靜默取消可解除「每 Email 最多 3 筆」上限，使確認信（0011，D13 刻意保留）能無限次寄給任意 Email；R2 Demo 正常改期會清 reminder_sent_at，使提醒排程對任意 Email 寄提醒信。0026 只堵改期／取消信，D13「借寄件網域對任意 Email 發信」的目標並未完全收斂。
+情境：TASK-114 高風險卡（改寫既有函式）；對應 D13 使用者決定方案 A。migration 由使用者在 SQL Editor 套用。
+考慮過的替代方案：停用 Demo 的整個通知（改動面更大）；在應用程式層擋（webhook 由資料庫觸發，應用層擋不住 service role 以外的來源，且要改 route）；在 webhook 端點辨識 Demo（payload 不含發動者）。
+```

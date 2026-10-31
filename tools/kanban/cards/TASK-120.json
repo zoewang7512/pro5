@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-31",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-120",
+  "title": "Email 寄信上限改為建立時間滾動視窗（堵住 Demo 靜默取消解除上限，TASK-114 審查 R1）",
+  "content": "create_appointment 的同 Email／電話上限目前只計 pending／confirmed 且未開始的預約，Demo 把預約改成 cancelled 就釋放額度，可用同一個受害者 Email 反覆預約使確認信無限次寄出。建議改為「過去 24 小時內建立的預約，不分狀態」。改寫公開預約入口、影響真實顧客，需使用者先決定修法（A 滾動視窗／B 確認信節流／C 禁止 Demo 取消未來預約／D 接受殘留）並核准。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-114"
+  ],
+  "order": 120,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-120.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-120.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-114.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "由 TASK-114 安全審查的未關閉殘留風險建立，使用者指示另開卡處理。草稿：須先由使用者決定修法並核准，才可把 human_approval_recorded 打勾並推進；TASK-114 驗收前不得進入 ready。"
+    }
+  ]
+}

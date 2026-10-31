@@ -8,10 +8,10 @@
 - 上層 User Story：濫用防護與緊急開關
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：完成（人工驗收通過，2026-10-31）
 - 風險等級：高
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（zoewang7512），2026-10-31 指示開始
 
 ## 目標
 
@@ -34,8 +34,10 @@
   - 在 `security definer`、`search_path = ''` 的觸發器函式內，`auth.jwt()` 是否讀得到發動該次 UPDATE 的請求 JWT（理論上可行，需以拋棄式帳號實測）。
   - 如何在整合測試中確認「webhook 沒有被送出」（`net` 請求佇列或回應表的查法；以既有 `test:notifications` 的做法為準）。
 - 允許變更的檔案：
-  - `supabase/migrations/00NN_demo_suppress_update_mail.sql` 與 `_down.sql`（新增；編號以動工當時的最大編號為準，檔頭加依賴檢查）
+  - `supabase/migrations/0026_demo_suppress_update_mail.sql` 與 `_down.sql`（新增；檔頭加依賴檢查）
   - `tests/demo-mail-suppress.integration.test.ts`、`vitest.demo-mail-suppress.config.ts`（新增）
+  - `tests/lib/demo-mail-suppress-migration.test.ts`（**實作時補登記**：逐字比對 0026／_down 與 0012，不連資料庫）
+  - `ai/artifacts/Demo 體驗帳戶/verification/TASK-114-verify.sql`（**實作時補登記**：SQL Editor 內以 rollback 收尾的驗證腳本，直接數 pg_net 佇列，不寄信）
   - `package.json`（新增 `test:demo-mail-suppress`）
   - `ai/context/decisions.md`
 - 不得觸碰：

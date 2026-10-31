@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-31",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-121",
+  "title": "Demo 動過的預約不再觸發提醒信（TASK-114 審查 R2）",
+  "content": "Demo 正常改期會把 reminder_sent_at 設回 null，隔天提醒排程對任意 Email 寄提醒信。建議新增 BEFORE UPDATE 觸發器：Demo JWT 的更新強制把提醒標記視為已提醒。注意：新增觸發器必須同步更新 0024 還原函式的觸發器白名單，否則每日還原會失敗。需使用者先決定修法並核准。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-114"
+  ],
+  "order": 121,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-121.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-121.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-114.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "由 TASK-114 安全審查的未關閉殘留風險建立，使用者指示另開卡處理。草稿：須先由使用者決定修法並核准，才可把 human_approval_recorded 打勾並推進；TASK-114 驗收前不得進入 ready。"
+    }
+  ]
+}
