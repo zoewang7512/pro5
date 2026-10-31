@@ -51,9 +51,44 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 // 避免使用者未改欄位就按儲存，把純顯示用的回退文字寫成真實 display_name（architect
 // TASK-038 審查發現）。儲存成功後呼叫 context 的 refresh()，讓 Sidebar 立即反映新值，
 // 不需要整頁重新整理（同樣是 TASK-038 architect 審查要求補上的更新通道）。
+//
+// Demo 體驗帳號（TASK-101，mockup 變體 A）：isDemo 時密碼／登入 Email／雙重驗證三張卡片
+// 保留原版面，但欄位與按鈕全部停用並加上「🔒 體驗帳號不開放」標籤；個人資料卡片不受影響。
+// 這只是第一層提示，不是安全邊界——真正的鎖在資料庫（TASK-100 的 auth 觸發器），isDemo
+// 讀不到時預設為 false，行為與一般管理員完全一致。
+
+const DEMO_LOCK_LABEL = "🔒 體驗帳號不開放";
+const DEMO_LOCK_NOTE_PASSWORD = "體驗帳號不開放修改密碼。";
+const DEMO_LOCK_NOTE_EMAIL = "體驗帳號的 Email 固定，不能修改。";
+const DEMO_LOCK_NOTE_MFA = "體驗帳號不能啟用雙重驗證。";
+
+// 密碼／登入 Email 兩張卡片共用的標題。lockedNote 有值（Demo）時在標題旁加鎖定標籤、
+// 下方加說明文字；沒有值時與原本的單純標題完全相同。
+function AccountCardTitle({ title, lockedNote }: { title: string; lockedNote?: string }) {
+  if (!lockedNote) {
+    return (
+      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+        {title}
+      </Typography>
+    );
+  }
+  return (
+    <>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1, mb: 1 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+        <Chip size="small" label={DEMO_LOCK_LABEL} />
+      </Stack>
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 2 }}>
+        {lockedNote}
+      </Typography>
+    </>
+  );
+}
 
 export function AccountSettingsView() {
-  const { displayName, avatarUrl, email, pendingEmail, refresh } = useAdminProfile();
+  const { displayName, avatarUrl, email, pendingEmail, isDemo, refresh } = useAdminProfile();
   const { showToast } = useToast();
   const supabase = React.useMemo(() => createClient(), []);
 
@@ -156,6 +191,7 @@ export function AccountSettingsView() {
 
   async function handleUpdatePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isDemo) return;
     setPasswordSubmitAttempted(true);
     setCurrentPasswordError(null);
     setPasswordFormError(null);
@@ -260,6 +296,7 @@ export function AccountSettingsView() {
 
   async function handleUpdateEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isDemo) return;
     setEmailSubmitAttempted(true);
     setEmailCurrentPasswordError(null);
     setEmailFormError(null);
@@ -314,7 +351,8 @@ export function AccountSettingsView() {
   // MFA 卡片：mfaFactorId 有值代表已有一個 verified 的 totp factor（「已啟用」）。
   // mfaEnrollment 是註冊流程進行中的暫存狀態（QR Code／密鑰／使用者輸入的驗證碼），與
   // 「已啟用」狀態互斥——同一時間只會顯示其中一種卡片內容。
-  const [mfaLoading, setMfaLoading] = React.useState(true);
+  // Demo 不讀 factor 清單（固定顯示「未啟用」），所以不進入載入狀態、也不發請求。
+  const [mfaLoading, setMfaLoading] = React.useState(!isDemo);
   const [mfaLoadError, setMfaLoadError] = React.useState(false);
   const [mfaFactorId, setMfaFactorId] = React.useState<string | null>(null);
   const [mfaEnrollStarting, setMfaEnrollStarting] = React.useState(false);
@@ -366,6 +404,7 @@ export function AccountSettingsView() {
   );
 
   React.useEffect(() => {
+    if (isDemo) return;
     let cancelled = false;
     (async () => {
       const result = await listMfaFactors(supabase);
@@ -381,7 +420,7 @@ export function AccountSettingsView() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, [supabase, isDemo]);
 
   function handleRetryLoadMfa() {
     setMfaLoading(true);
@@ -390,6 +429,7 @@ export function AccountSettingsView() {
   }
 
   async function handleStartMfaEnrollment() {
+    if (isDemo) return;
     setMfaEnrollStarting(true);
     try {
       const result = await enrollMfa(supabase);
@@ -570,9 +610,7 @@ export function AccountSettingsView() {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 3, width: "100%" }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-            密碼
-          </Typography>
+          <AccountCardTitle title="密碼" lockedNote={isDemo ? DEMO_LOCK_NOTE_PASSWORD : undefined} />
           {passwordFormError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {passwordFormError}
@@ -592,7 +630,7 @@ export function AccountSettingsView() {
                 error={Boolean(currentPasswordError)}
                 helperText={currentPasswordError ?? " "}
                 slotProps={{ formHelperText: { role: "alert", "aria-live": "polite" } }}
-                disabled={savingPassword}
+                disabled={savingPassword || isDemo}
                 autoComplete="current-password"
                 fullWidth
                 size="small"
@@ -603,7 +641,7 @@ export function AccountSettingsView() {
                   type="password"
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
-                  disabled={savingPassword}
+                  disabled={savingPassword || isDemo}
                   autoComplete="new-password"
                   fullWidth
                   size="small"
@@ -619,14 +657,14 @@ export function AccountSettingsView() {
                 error={Boolean(showConfirmPasswordError)}
                 helperText={showConfirmPasswordError ?? " "}
                 slotProps={{ formHelperText: { role: "alert", "aria-live": "polite" } }}
-                disabled={savingPassword}
+                disabled={savingPassword || isDemo}
                 autoComplete="new-password"
                 fullWidth
                 size="small"
               />
             </Stack>
             <Stack direction="row" sx={{ justifyContent: "flex-end", mt: 2 }}>
-              <Button type="submit" size="small" variant="contained" loading={savingPassword}>
+              <Button type="submit" size="small" variant="contained" loading={savingPassword} disabled={isDemo}>
                 更新密碼
               </Button>
             </Stack>
@@ -634,9 +672,7 @@ export function AccountSettingsView() {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 3, width: "100%" }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-            登入 Email
-          </Typography>
+          <AccountCardTitle title="登入 Email" lockedNote={isDemo ? DEMO_LOCK_NOTE_EMAIL : undefined} />
           {pendingEmail && (
             <Alert severity="success" sx={{ mb: 2 }}>
               已寄出確認信至 {pendingEmail}，請點擊信中連結完成變更；完成前登入 email 維持原值。
@@ -658,7 +694,7 @@ export function AccountSettingsView() {
                 error={Boolean(showEmailError)}
                 helperText={showEmailError ?? " "}
                 slotProps={{ formHelperText: { role: "alert", "aria-live": "polite" } }}
-                disabled={savingEmail}
+                disabled={savingEmail || isDemo}
                 fullWidth
                 size="small"
               />
@@ -674,14 +710,14 @@ export function AccountSettingsView() {
                 error={Boolean(emailCurrentPasswordError)}
                 helperText={emailCurrentPasswordError ?? " "}
                 slotProps={{ formHelperText: { role: "alert", "aria-live": "polite" } }}
-                disabled={savingEmail}
+                disabled={savingEmail || isDemo}
                 autoComplete="current-password"
                 fullWidth
                 size="small"
               />
             </Stack>
             <Stack direction="row" sx={{ justifyContent: "flex-end", mt: 2 }}>
-              <Button type="submit" size="small" variant="contained" loading={savingEmail} disabled={!hasEmailChanges}>
+              <Button type="submit" size="small" variant="contained" loading={savingEmail} disabled={!hasEmailChanges || isDemo}>
                 更新 Email
               </Button>
             </Stack>
@@ -694,6 +730,7 @@ export function AccountSettingsView() {
               雙重驗證（MFA）
             </Typography>
             <Chip size="small" label={mfaFactorId ? "已啟用" : "未啟用"} color={mfaFactorId ? "primary" : "default"} />
+            {isDemo && <Chip size="small" label={DEMO_LOCK_LABEL} />}
           </Stack>
 
           {mfaEnrollment ? (
@@ -762,7 +799,7 @@ export function AccountSettingsView() {
           ) : (
             <>
               <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 2 }}>
-                啟用後登入時將額外要求輸入 Authenticator App 的驗證碼
+                {isDemo ? DEMO_LOCK_NOTE_MFA : "啟用後登入時將額外要求輸入 Authenticator App 的驗證碼"}
               </Typography>
               {mfaFactorId ? (
                 <Button size="small" variant="outlined" color="error" onClick={openMfaUnenrollDialog}>
@@ -774,7 +811,7 @@ export function AccountSettingsView() {
                   variant="contained"
                   onClick={handleStartMfaEnrollment}
                   loading={mfaEnrollStarting}
-                  disabled={mfaLoading}
+                  disabled={mfaLoading || isDemo}
                 >
                   啟用雙重驗證
                 </Button>

@@ -767,3 +767,104 @@ describe("AccountSettingsView - 未儲存變更回報（TASK-082）", () => {
     expect(screen.getByLabelText("顯示名稱")).toHaveValue("Alex");
   });
 });
+
+// Demo 體驗帳號（TASK-101）：密碼／登入 Email／MFA 三張卡片鎖定，個人資料維持可用。
+// 畫面停用只是第一層提示，真正的鎖在資料庫（TASK-100），所以這裡只驗證前端呈現。
+function renderDemoView() {
+  return render(
+    <AdminProfileProvider
+      initialDisplayName="Demo帳號"
+      initialAvatarUrl={null}
+      email="hair_demo@example.com"
+      initialPendingEmail={null}
+      isDemo
+    >
+      <ToastProvider>
+        <AccountSettingsView />
+      </ToastProvider>
+    </AdminProfileProvider>,
+  );
+}
+
+describe("AccountSettingsView - Demo 體驗帳號鎖定（TASK-101）", () => {
+  it("三張卡片各顯示「🔒 體驗帳號不開放」標籤與對應說明文字", () => {
+    renderDemoView();
+
+    expect(screen.getAllByText("🔒 體驗帳號不開放")).toHaveLength(3);
+    expect(screen.getByText("體驗帳號不開放修改密碼。")).toBeInTheDocument();
+    expect(screen.getByText("體驗帳號的 Email 固定，不能修改。")).toBeInTheDocument();
+    expect(screen.getByText("體驗帳號不能啟用雙重驗證。")).toBeInTheDocument();
+  });
+
+  it("密碼卡片：三個輸入欄位與「更新密碼」皆停用", () => {
+    renderDemoView();
+
+    expect(getPasswordCardCurrentPasswordField()).toBeDisabled();
+    expect(screen.getByLabelText("新密碼", { exact: true })).toBeDisabled();
+    expect(screen.getByLabelText("確認新密碼", { exact: false })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "更新密碼" })).toBeDisabled();
+  });
+
+  it("登入 Email 卡片：欄位與「更新 Email」皆停用", () => {
+    renderDemoView();
+
+    expect(screen.getByLabelText("目前 Email")).toBeDisabled();
+    expect(getEmailCardCurrentPasswordField()).toBeDisabled();
+    expect(screen.getByRole("button", { name: "更新 Email" })).toBeDisabled();
+  });
+
+  it("MFA 卡片：固定顯示「未啟用」與停用的「啟用雙重驗證」，且不呼叫 listMfaFactors", async () => {
+    renderDemoView();
+
+    expect(screen.getByText("未啟用")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "啟用雙重驗證" })).toBeDisabled();
+    // 等一個 tick，確認沒有延遲觸發的讀取請求。
+    await waitFor(() => expect(listMfaFactorsMock).not.toHaveBeenCalled());
+    expect(screen.queryByText("無法讀取雙重驗證狀態，請重試。")).not.toBeInTheDocument();
+  });
+
+  it("鎖定的表單即使被直接送出也不會呼叫密碼／Email／MFA 的更新函式", async () => {
+    renderDemoView();
+
+    fireEvent.submit(getPasswordCardCurrentPasswordField().closest("form")!);
+    fireEvent.submit(screen.getByLabelText("目前 Email").closest("form")!);
+
+    expect(updateAdminPasswordMock).not.toHaveBeenCalled();
+    expect(updateAdminEmailMock).not.toHaveBeenCalled();
+    expect(enrollMfaMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("請輸入目前密碼。")).not.toBeInTheDocument();
+  });
+
+  it("個人資料卡片維持可用：可編輯顯示名稱並儲存", async () => {
+    rpcMock.mockImplementation(async (fn: string) =>
+      fn === "update_admin_profile"
+        ? { data: true, error: null }
+        : { data: [{ display_name: "體驗者", avatar_url: null }], error: null },
+    );
+    const user = userEvent.setup({ delay: null });
+    renderDemoView();
+
+    const nameField = screen.getByLabelText("顯示名稱");
+    expect(nameField).toBeEnabled();
+    expect(screen.getByRole("button", { name: "更換頭像" })).toBeEnabled();
+
+    await user.clear(nameField);
+    await user.type(nameField, "體驗者");
+    const saveButton = screen.getAllByRole("button", { name: "儲存" })[0];
+    expect(saveButton).toBeEnabled();
+    await user.click(saveButton);
+
+    await waitFor(() => expect(rpcMock).toHaveBeenCalledWith("update_admin_profile", expect.anything()));
+  });
+
+  it("一般管理員：沒有任何鎖定標籤，欄位與按鈕可操作，且照常讀取 MFA 狀態", async () => {
+    renderView();
+
+    expect(screen.queryByText("🔒 體驗帳號不開放")).not.toBeInTheDocument();
+    expect(screen.queryByText("體驗帳號不開放修改密碼。")).not.toBeInTheDocument();
+    expect(getPasswordCardCurrentPasswordField()).toBeEnabled();
+    expect(screen.getByLabelText("目前 Email")).toBeEnabled();
+    await waitFor(() => expect(listMfaFactorsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: "啟用雙重驗證" })).toBeEnabled());
+  });
+});

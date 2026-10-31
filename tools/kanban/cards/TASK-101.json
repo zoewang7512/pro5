@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,20 +11,30 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
-    "ui": false,
+    "ui": true,
     "architecture": false,
     "security": false,
-    "test": false,
+    "test": true,
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/components/account-settings-view.test.tsx → 50 項通過（既有 43 未改斷言＋新增 7 項 Demo 案例）",
+      "npx tsc --noEmit → 0 錯誤",
+      "npm run lint → 0 error",
+      "npm run build → 通過",
+      "npx vitest run --maxWorkers=2 → 91 檔 1648 項全過（--maxWorkers=3 兩次各有 5 秒逾時失敗，單獨重跑通過）",
+      "暫時預覽頁截圖與 DOM 檢查：桌面亮色／手機 375 無橫向捲動／桌面暗色／一般管理員（預覽頁已刪除）"
+    ],
+    "findings": [
+      "規劃缺口（繞過前端時的統一提示文案無卡負責）已另立 TASK-118 處理；更正：繞過 disabled 後目前是靜默無反應，不是通用失敗文案",
+      "全套測試在 --maxWorkers=3 下偶發 5 秒逾時，為既有並行不穩定，非本卡造成"
+    ],
+    "residual": "畫面停用只是第一層提示，真正的鎖在 TASK-100 資料庫觸發器；真實 Demo 帳戶端到端畫面待 TASK-103／TASK-112 驗證。"
   },
   "id": "TASK-101",
   "title": "帳號設定頁 Demo 鎖定狀態（前端）",
@@ -53,6 +63,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者於對話中指示「開始做 TASK-101」，視為核准動工（低風險卡，一般程式碼審查）。推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "實作與驗證完成，放入 Verify 等待人工驗收；UI 與測試審查關卡待人工勾選，agent 自我驗證不等同核准。另有一項規劃缺口（繞過前端時的統一錯誤文案無人負責）待使用者決定。報表：verification/TASK-101.md"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者人工驗收通過，轉 Done（UI、驗證關卡由人工勾選）。規劃缺口另立 TASK-118 處理。"
     }
   ]
 }
