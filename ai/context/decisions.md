@@ -836,3 +836,25 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 情境：TASK-109 三個子代理審查（架構、安全、測試）；對正式庫只做唯讀實地驗證（真實 Storage 清單比對 45/45 相同）。詳見 verification/TASK-109.md。
 考慮過的替代方案：覆寫改用「下載後 upsert 上傳」（原子，但偏離任務卡，未採用）；origin 預設為專案網址常數（會與環境不一致，改為必須取得）。
 ```
+
+## TASK-113（Demo 體驗帳戶）：Storage 擁有者限制與 Demo 上傳上限 migration 0025
+
+```text
+日期：2026-10-31
+決策：
+  1. 不改任何既有 policy、bucket 或物件；只新增 3 條 RESTRICTIVE policy 與 1 個 BEFORE INSERT 觸發器。尾端自我檢查比對既有 PERMISSIVE policy 的內容指紋（md5），確認套用前後相同。
+  2. admin-assets 的 update／delete 另加 owner_id = auth.uid()::text。目的：Demo（也是 is_admin()）不能刪或換 designer001 的頭像。
+     owner_id 為 null 的物件（service role 上傳，例如還原複製進來的 seed）連一般管理員也動不了，這是預期行為。
+  3. Demo 完全不能 update（RESTRICTIVE，JWT app_metadata.is_demo）。實測 storage-api 的 move 可把物件從 store-assets 搬進 admin-assets，繞過上限；
+     專案的上傳流程只用 insert（新 uuid 路徑、不帶 upsert），不需要 update。
+  4. Demo 物件數上限（每個公開 bucket 30）用 BEFORE INSERT 觸發器，不用 RLS policy：實測 RLS 只在 storage-api 寫入前的預檢生效，
+     簽名上傳網址（物件數為 0 時簽出 35 個網址，35 個全成功）與並行上傳（40 個成功 34 個）都能超過上限；storage-api 的實際寫入走的不是使用者連線，
+     所以觸發器以資料列的 owner_id 查 auth.users 的 app_metadata.is_demo 判斷 Demo（不讀 JWT claim），並以 pg_advisory_xact_lock 讓同一帳戶寫入排隊再計數，成為硬上限。
+     錯誤碼 42501，storage-api 回「違反資料列安全政策」。service role 上傳的物件 owner_id 為 null，不受影響。
+  5. 觸發器函式 SECURITY DEFINER、search_path 為空、API 角色不可執行；自我檢查驗擁有者可繞過 RLS（否則計數永遠是 0）。緊急停用：drop trigger if exists demo_storage_cap_guard on storage.objects;
+  6. 不處理資料庫列數上限（TASK-116 另案）；designer-assets／store-assets 的跨使用者 update／delete 不加限制（接受，每日還原補回）；insert 不綁定 owner_id（storage-api 一律取 JWT 的 sub）。
+  7. 調整上限：改 demo_storage_cap_guard() 內的 30 後整份重跑；TASK-116 設計時再決定是否集中管理上限常數。
+情境：TASK-113 高風險卡。初版用 RLS 預檢做上限，安全審查指出可繞過，實測屬實後改用觸發器；三方子代理審查的處置見 verification/TASK-113.md。
+考慮過的替代方案：RLS policy 內計數（擋不住簽名網址與並行）；用 sequence 當不會回滾的票數（失敗嘗試也耗額度，且每日還原要多重置一步）；接受現況並改寫殘留風險（可在一天內灌爆免費方案配額）。
+為何選這個：觸發器在資料列真正寫入時執行，涵蓋 storage-api 所有寫入路徑，回滾只需 drop trigger 與 policy；託管 Supabase 已證實允許在 storage.objects 建立觸發器。
+```

@@ -62,6 +62,11 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "TASK-117 帶來的手冊事項：(1) 寫明何時可以刪除 backups/ 的備份（由使用者決定；建議條件見備份資料夾 README.md）；(2) 備份指令 npm run demo:backup -- --yes，含顧客個資、只放本機、有 .partial 後綴的資料夾不算有效備份；(3) 備份的還原只能走 restore.sql（SQL Editor、postgres 角色），不能用 Demo 還原流程；(4) 真實還原前須重跑備份取得最新快照。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "TASK-113 帶來的手冊事項：(1) Demo 的 Storage 上傳額度（每個公開 bucket 30 個）是所有訪客共用，用完後當天無法再上傳、前端只顯示通用錯誤；每日還原清孤兒後重置，若孤兒清理被跳過則不會重置，手冊寫手動以 service role 清掉 Demo 擁有的物件；(2) 若 Storage 上傳全面失敗，第一步只貼 drop trigger if exists demo_storage_cap_guard on storage.objects;，不要用 _down.sql；(3) 0025 _down 是安全降級，DEMO_ENABLED=true 時須先 demo:disable；(4) 測試期間會暫時多一個 is_demo 帳戶，開啟排程還原後請避開台北 03:00–04:00 跑 test:*；(5) 0023 檔頭的驗證查詢寫 11 列，現為 14 列（含 3 條 RESTRICTIVE）。"
     }
   ]
 }

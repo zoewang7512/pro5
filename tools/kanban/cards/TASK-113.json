@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "三方子代理審查（architect／security-reviewer／test-engineer）；安全審查 H1 以拋棄式 Demo 帳號實測確認：簽名網址 35/35、並行 40 中 34、跨 bucket move 5/5 皆繞過初版上限",
+      "改為 BEFORE INSERT 觸發器＋Demo 不可 update；初版 + 新測試 → 19 項中 4 項失敗（重現缺口）",
+      "使用者套用新版 0025（pg_policies 3 條 RESTRICTIVE、pg_trigger demo_storage_cap_guard = O）→ npm run test:storage-owner 19/19",
+      "回歸：test:demo-enter 22、test:mfa-rls 20、test:demo-seed-bucket 14、test:account 17、test:designers 122、test:store-settings 11 全過",
+      "使用者套用 _down → STORAGE_OWNER_EXPECT=off → 19/19；重新套用 0025 並查詢確認 → test:storage-owner 19、demo-enter 22、account 17",
+      "npx tsc --noEmit → 0 errors；npm run lint → 0 errors；npm run build → success；npx vitest run tests/lib → 全過（demo-reset-test-scan 6/6）"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "Demo 額度全體共用；只限物件數不限容量；被拒絕的上傳是否在 Storage 後端留下孤兒未實測；designer-assets／store-assets 跨使用者刪除未擋（每日還原補回）；insert 未綁定 owner_id。詳見 verification/TASK-113.md。"
   },
   "id": "TASK-113",
   "title": "Storage 擁有者限制與 Demo 上傳上限（migration，RESTRICTIVE policy）",
@@ -53,6 +60,26 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做 TASK-113（高風險）。前置 097 為 Done。已記錄核准並推進到 implementing。已先確認 storage.objects.owner_id 存在且有值：2026-10-31 備份 manifest 中 50 個物件全部有 owner_id（admin-assets 3 個頭像皆為 designer001 上傳），所以擁有者限制可行，現有頭像不會變成刪不掉。做法：只新增 RESTRICTIVE policy（admin-assets update／delete 限擁有者；Demo 在三個公開 bucket 的 insert 物件數上限 30，以 SECURITY DEFINER 計數函式避免 policy 內子查詢的 RLS 遞迴），migration 編號 0025，由使用者在 SQL Editor 套用後才跑整合測試。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與驗證完成，推進到 verify。0025 由使用者在 SQL Editor 套用，並完成 _down 回滾驗證與重新套用（pg_policies 確認 3 條 RESTRICTIVE）。第一次重新套用貼錯檔導致 7 項失敗（PGRST202），已排除。未啟動子代理審查；gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "補跑三方子代理審查（agent 意見，不等於核准）。安全審查指出初版上限擋不住簽名上傳網址與並行上傳，且 move 可跨 bucket 繞過；以拋棄式 Demo 帳號實測全部屬實，經使用者同意改用 storage.objects BEFORE INSERT 觸發器並新增 Demo 不可 update 的 RESTRICTIVE policy，同時擴大範圍反轉 test:demo-enter 的過期案例與更新 TASK-103-admin-surface.md。新版 19/19、回歸全過、_down 回滾驗證與重新套用完成。已在 TASK-111、TASK-112 留言後續事項。待使用者人工驗收；gates 勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。0025 已在正式庫生效（3 條 RESTRICTIVE policy＋demo_storage_cap_guard 觸發器）。後續事項已留言於 TASK-111（手冊）、TASK-112（串接與 Storage 用量觀察）。"
     }
   ]
 }

@@ -17,7 +17,7 @@
 | 能否呼叫限流／還原函式？ | **不能** | `demo_entry_check`、`demo_revoke_sessions` 只授權 `service_role`；實測 `42501`；`demo_entry_attempts` 表同樣被擋 |
 | 能否讀取／竄改顧客憑證？ | **不能** | `appointments.access_token` 不給讀（`42501`）；`customers` 整表不給 authenticated |
 | 能否建立 bucket、或**新增**檔案到白名單以外的 Storage 路徑？ | **不能** | 實測 `createBucket` 失敗；上傳到錯誤路徑、錯誤副檔名、不存在的 bucket 皆被擋 |
-| 能否**刪除或覆寫** Storage 內既有物件（含 `designer001` 上傳的）？ | **能（整個 bucket，無路徑限制）** | update／delete／list 的 policy 只檢查 `bucket_id` 與 `is_admin()`（0006、0007、0017）；實測 Demo 能列出並刪除他人物件 → **§3-H** |
+| 能否**刪除或覆寫** Storage 內既有物件（含 `designer001` 上傳的）？ | **`admin-assets` 已封住（0025，2026-10-31）；`store-assets`、`designer-assets` 仍能刪（接受的殘留）** | 原本 update／delete／list 的 policy 只檢查 `bucket_id` 與 `is_admin()`（0006、0007、0017），實測 Demo 能列出並刪除他人物件 → **§3-H**。0025 新增 RESTRICTIVE policy：`admin-assets` 的 update／delete 限物件擁有者，Demo 完全不能 update；其餘兩個 bucket 的跨使用者刪除由每日還原（整表還原加圖片同步）補回，最長約 24 小時 |
 
 > **本結論的前提**：正式庫目前沒有真實顧客的預約與個資。一旦店家開始接真實預約，Demo 就能**取消或改期真實顧客的預約**，並讀取全部顧客的姓名、電話、Email（見 §3-I）。
 
@@ -88,7 +88,7 @@
 | D | **網址欄位可填任意外部網址**：`store_settings.logo_url`／`cover_image_url`、`designers.avatar_url`、`admins.avatar_url` 在資料庫只有長度限制（`designer_portfolio_images.image_url` 則綁定儲存路徑尾端），沒有 origin 白名單；`lib/admin/account.ts` 的白名單是前端／伺服器端程式的防線，**直接打 REST 可繞過**。公開前台會把這些網址當圖片載入 → 可用作追蹤像素或內容注入，直到下次還原 | **新發現，未列在架構筆記** | 建議併入 C 一起請使用者確認接受；若不接受，需新 migration 加 `check`（限定 `NEXT_PUBLIC_SUPABASE_URL` 的 storage 路徑），屬既有資料表的變更，須另開高風險卡 |
 | E | 面試官輸入的顧客資料會被下一位看到（Demo 可讀全部 `appointments` 的姓名／電話／Email） | 使用者已接受（第 8 節第 4 項） | — |
 | F | Demo 讀得到 `designer001` 的 `audit_log` | 已知（僅 actor UUID、服務名、設計師名） | 可接受 |
-| H | **跨帳號刪除／覆寫 Storage 物件**：Demo 可列出並刪除三個 bucket 內任何既有物件，包含 `designer001` 上傳的 `admin-assets` 頭像與 `designer-assets` 作品集；每日還原**刻意不動 `designer001` 的頭像**，所以這是**永久性**損害，不是還原就會恢復（架構筆記 D11 已知，本表先前只當配額問題，已更正） | **上線前必須處理** | TASK-113（Storage 擁有者與上傳上限）。**在 TASK-113 完成前，正式環境不得把 `DEMO_ENABLED` 設為 `true`**（TASK-112 的 dependsOn 已含 113）。整合測試已加特徵化案例記錄現況；TASK-113 完成後該案例應反轉為「被擋」 |
+| H | **跨帳號刪除／覆寫 Storage 物件**：Demo 可列出並刪除三個 bucket 內任何既有物件，包含 `designer001` 上傳的 `admin-assets` 頭像與 `designer-assets` 作品集；每日還原**刻意不動 `designer001` 的頭像**，所以這是**永久性**損害，不是還原就會恢復（架構筆記 D11 已知，本表先前只當配額問題，已更正） | **上線前必須處理** | TASK-113（Storage 擁有者與上傳上限）。**在 TASK-113 完成前，正式環境不得把 `DEMO_ENABLED` 設為 `true`**（TASK-112 的 dependsOn 已含 113）。**2026-10-31 TASK-113 已處理 `admin-assets`（頭像永久損害）**，整合測試的特徵化案例已反轉為「被擋」；`store-assets`／`designer-assets` 的跨使用者刪除列為接受的殘留（每日還原補回） |
 | I | **竄改真實顧客預約**：Demo 可取消或改期任一筆預約（含真實顧客的）；TASK-114 上線後 Demo 發動的取消／改期**不寄信**，顧客本人不會知情 | 目前前提是「正式庫沒有真實預約」（見 §1）；**使用者尚未明確接受這點**（第 8 節第 4 項接受的是「讀得到」） | 請使用者明確接受，或在店家開始接真實預約前先關閉 Demo／另開卡處理 |
 | J | **Auth 額度與替代登入**：`reauthenticate` 可消耗 Auth 寄信額度；passkey 若啟用可能成為不受還原影響的後門 | 新發現 | 請你到 Supabase Dashboard 確認 passkey 未啟用；寄信額度併入 TASK-111 營運手冊的監控項 |
 | K | **測試中斷會卡住緊急處置**：整合測試期間正式庫會同時有 3 個 `is_demo` 帳號（拋棄式），`demo_revoke_sessions()` 與還原要求「剛好 1 個」；若測試中途被中斷而沒清掉，`demo:disable` 會失敗 | 新發現 | 測試檔頭已寫清除步驟；TASK-111 手冊加一句「異常時先確認沒有殘留的 `demoenter` 測試帳號」。測試只在非還原期間手動跑 |
@@ -96,6 +96,6 @@
 
 ## 4. 實測紀錄
 
-`npm run test:demo-enter`（2026-10-31，正式 Supabase 專案，拋棄式帳號，結束後已刪除並驗證無殘留）：22 項全過，含 `is_admin() 寫入面` 區塊 12 項（含 §3-H 的特徵化案例）。被擋的操作沒有留下任何資料（Storage 上傳另有「萬一寫進去就立刻清除」的保險）；特徵化案例只動自己用 service role 上傳的測試物件。
+`npm run test:demo-enter`（2026-10-31，正式 Supabase 專案，拋棄式帳號，結束後已刪除並驗證無殘留）：22 項全過，含 `is_admin() 寫入面` 區塊 12 項（含 §3-H 的特徵化案例；**TASK-113 套用 0025 後該案例已反轉為「Demo 不能刪除不是自己上傳的 admin-assets 物件」**）。被擋的操作沒有留下任何資料（Storage 上傳另有「萬一寫進去就立刻清除」的保險）；特徵化案例只動自己用 service role 上傳的測試物件。
 
 未以實測涵蓋、僅依 migration 判讀的部分（誠實揭露）：各表「允許」操作的邊界（例如 `services` 可改哪些欄位、`designers` 欄位白名單的每個欄位），因為「允許的寫入」會改動正式資料，整合測試刻意不執行；這些以 GRANT 與 policy 原文為準。

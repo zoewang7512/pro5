@@ -8,10 +8,10 @@
 - 上層 User Story：濫用防護與緊急開關
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：人工驗收通過，Done（2026-10-31）
 - 風險等級：高
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（2026-10-31 指示開始動工）
 
 ## 目標
 
@@ -37,6 +37,7 @@
   - `tests/storage-owner.integration.test.ts`、`vitest.storage-owner.config.ts`（新增）
   - `package.json`（新增 `test:storage-owner`）
   - `ai/context/decisions.md`
+  - 實作時補登記（含經使用者同意的範圍擴大）：migration 編號為 0025；`tests/demo-enter.integration.test.ts`（反轉過期的特徵化案例）、`verification/TASK-103-admin-surface.md`（§3-H 更新）；`ai/artifacts/Demo 體驗帳戶/verification/TASK-113.md`、`task-cards/TASK-113.md`、`tools/kanban/cards/TASK-113.json`
 - 不得觸碰：
   - 既有 migration 與既有 policy
   - `designer001` 真實帳號與其頭像物件（測試只用拋棄式帳號與拋棄式物件）
@@ -78,9 +79,8 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 變更的檔案：`supabase/migrations/0025_storage_owner_and_demo_caps.sql`／`_down.sql`、`tests/storage-owner.integration.test.ts`、`vitest.storage-owner.config.ts`、`tests/demo-enter.integration.test.ts`、`package.json`（`test:storage-owner`）、`ai/context/decisions.md`、`verification/TASK-103-admin-surface.md`
+- 執行過的指令、測試輸出：見 [`verification/TASK-113.md`](../verification/TASK-113.md)（整合 19 項於舊版對照／新版生效／回滾後；回歸 demo-enter 22、mfa-rls 20、demo-seed-bucket 14、account 17、designers 122、store-settings 11；tsc、lint、build）
+- 螢幕截圖：不適用
+- 已知限制：Demo 額度全體共用；只限物件數不限容量；被拒絕的上傳是否留下 Storage 後端孤兒未實測；designer-assets／store-assets 的跨使用者刪除未擋；insert 未綁定 owner_id
+- 後續任務：TASK-111 手冊（共用額度與手動清理、緊急 drop trigger、`_down` 安全降級警告、避開 03:00–04:00 跑 test:*）；TASK-112（跑全套 test:* 含 demo-enter、觀察 Storage 用量、確認 API Exposed schemas 不含 storage）；TASK-116（上限常數是否集中）

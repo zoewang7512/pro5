@@ -557,10 +557,10 @@ describe("is_admin() 寫入面：Demo 管理員無法提權、無法新增 admin
     for (const [bucket, path] of written) await admin.storage.from(bucket).remove([path]);
   });
 
-  // 特徵化測試（記錄已知的寬鬆面，不是期望的安全行為）：update／delete／list 的 policy 只看 bucket_id 與 is_admin()，
-  // 沒有路徑限制，所以 Demo 可以列出並刪除 bucket 內「任何」既有物件，包含 designer001 上傳的。見盤點報告 §3-H。
+  // TASK-113（0025）之後：admin-assets 的 update／delete 限物件擁有者（RESTRICTIVE policy），Demo 仍可「列出」（select 不受限），
+  // 但不能刪除別人或擁有者為 null（service role 上傳）的物件。見盤點報告 §3-H。原本這裡是記錄已知寬鬆面的特徵化案例，已反轉。
   // 這裡只動自己用 service role 上傳的測試物件，不碰任何真實檔案。
-  it("Storage（已知寬鬆面）：Demo 能列出並刪除 admin-assets 內既有物件，不限於自己上傳的", async () => {
+  it("Storage（TASK-113 後）：Demo 能列出 admin-assets 內既有物件，但不能刪除不是自己上傳的", async () => {
     const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
     const name = `__TEST__demoenter-${randomUUID().slice(0, 8)}.png`;
     const path = `avatar/${name}`;
@@ -571,10 +571,11 @@ describe("is_admin() 寫入面：Demo 管理員無法提權、無法新增 admin
       expect(listed.error).toBeNull();
       expect((listed.data ?? []).map((o) => o.name)).toContain(name);
 
+      // RLS 擋下 remove 時 Storage 不回錯誤，只回空陣列；以「物件是否還在」為準。
       const removed = await demoClient.storage.from("admin-assets").remove([path]);
-      expect(removed.error).toBeNull();
+      expect(removed.data ?? []).toHaveLength(0);
       const after = await admin.storage.from("admin-assets").list("avatar", { search: name });
-      expect((after.data ?? []).map((o) => o.name)).not.toContain(name);
+      expect((after.data ?? []).map((o) => o.name), "Demo 不應能刪除別人上傳的 admin-assets 物件").toContain(name);
     } finally {
       await admin.storage.from("admin-assets").remove([path]);
     }

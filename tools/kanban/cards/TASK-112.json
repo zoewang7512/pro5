@@ -72,6 +72,11 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "TASK-113 帶來的串接事項：(1) 回歸須含 test:storage-owner 與 test:demo-enter（反轉後的案例）；(2) 第一次真實還原後，admin-assets 內 service role 複製進來的 seed 物件 owner_id 為 null，Demo 與設計師動不了它們，屬預期；(3) 觀察 Storage 用量（被觸發器拒絕的上傳是否在後端留下孤兒、TUS／S3 分段上傳未實測）；(4) 唯讀確認 Dashboard 的 API Exposed schemas 不含 storage（insert 未綁定 owner_id 的前提）；(5) lib/demo/reset.ts 的 copy／remove 在 admin-assets 對 Demo 擁有或 null 擁有者物件的實跑證據。"
     }
   ]
 }
