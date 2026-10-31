@@ -761,3 +761,27 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 考慮過的替代方案：每 IP 再加每小時 bucket（多一個常數與一次 RPC，單一 IP 仍需 3 個 IP 才能擋入口，未採用）；
   全站已滿時改用唯讀預檢以避免繼續寫入 IP 列（複雜度高，列為殘留風險）。
 ```
+
+## TASK-103（Demo 體驗帳戶）：一鍵進入端點 POST /api/demo/enter（人工驗收通過）
+
+```text
+日期：2026-10-31
+決策：
+  1. Supabase 寫出的 cookie 先暫存（自訂 cookie adapter），is_demo === true 且不需要 aal2 兩項都通過才寫進回應；
+     暫存區同時是 Supabase client 的 cookie 儲存，getAll 只回暫存內容、不讀請求帶來的 cookie。失敗路徑天生不帶 session cookie，
+     不依賴 signOut（signOut({ scope: "local" }) 只是盡力而為的額外清理，丟例外也吞掉）。
+  2. 所有失敗回同一個 403 { ok: false }、同樣的標頭與 Set-Cookie（名稱＝請求帶來的 sb-* ＋固定預設清單 base、.0～.4、-code-verifier，排序）。
+     刻意不把「暫存區出現過的名稱」併入過期清單：session 分成幾塊會讓 Set-Cookie 不同，洩漏「帳密正確但不是 Demo」（架構審查）。
+  3. 成功前再確認暫存區有非空的 sb-* cookie；aal 讀不到（含 currentLevel 為 null）一律失敗（fail-closed，比照 lib/auth/aal.ts）。
+  4. log 只記失敗類別（config_missing、cross_origin、rate_limited、sign_in_failed、not_demo、aal2，另加 aal_error、error），
+     可附一個固定字串 detail：限流原因（ip_limit／global_limit／error）或例外類別名稱；絕不記 Email、密碼、token、IP、訊息。
+  5. 單元測試在模組層 mock @supabase/ssr 與限流模組，再呼叫 Route Handler；整合測試直接匯入 Route Handler 對真實 Supabase
+     （拋棄式帳號、限流 mock 成放行以免消耗正式 global 額度、server-only 以 vi.mock 取代，沿用既有慣例）。
+  6. 與任務卡的差異（使用者 2026-10-31 決定）：跨站失敗（cross_origin）不寫任何 cookie，其餘失敗照規格一律讓 sb-* 過期。
+     原因：任務卡的「失敗一律過期」會讓惡意網站自動送出跨站 POST，使店長或面試官在本機被登出（登出式 CSRF）。
+     因此同源檢查改放在最前面（早於 DEMO_ENABLED 檢查），跨站請求在任何情況都只會得到 cross_origin。
+     代價：非瀏覽器端能分辨「是否通過同源檢查」（它本來就知道自己送了什麼 Origin；瀏覽器端因 CORS 讀不到回應）。
+情境：TASK-103 三個子代理審查（架構、安全、測試）；is_admin() 寫入面盤點與實測見 verification/TASK-103-admin-surface.md。
+考慮過的替代方案：先寫 cookie 再撤銷（signOut 失敗時管理員 session 會外流，已否決）；同源檢查在 Vercel 上只認 NEXT_PUBLIC_SITE_URL
+  （preview 部署網址會被擋，且對 CSRF 無實質增益，未採用）；把 TOTP 判斷抽成共用函式（lib/auth/aal.ts 不在本卡範圍，列為建議）。
+```

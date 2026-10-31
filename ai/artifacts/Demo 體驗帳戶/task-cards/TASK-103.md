@@ -8,10 +8,10 @@
 - 上層 User Story：登入頁體驗入口
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097, TASK-099, TASK-102
-- 狀態：草稿（待人工核准）
+- 狀態：Done（使用者 2026-10-31 驗收通過）
 - 風險等級：高
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（2026-10-30 指示開始做 TASK-103）
 
 ## 目標
 
@@ -90,9 +90,9 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 變更的檔案：`app/api/demo/enter/route.ts`、`lib/demo/enter.ts`、`tests/api/demo-enter.test.ts`、`tests/demo-enter.integration.test.ts`、`vitest.demo-enter.config.ts`、`package.json`、`verification/TASK-103-admin-surface.md`、`ai/context/decisions.md`
+- 執行過的指令：`npx vitest run tests/api/demo-enter.test.ts`、`npm run test:demo-enter`、`npx tsc --noEmit`、`npm run lint`、`npm run build`
+- 測試輸出：單元 64 passed；整合 22 passed；tsc、lint 0 錯誤；build 成功。詳見 `verification/TASK-103.md`
+- 螢幕截圖：不適用
+- 已知限制：盤點報告 §3-H（Storage 可刪／覆寫他人物件）、§3-I（可竄改真實預約）、§3-D、§3-J 待處理或接受；完整單元套件在本機負載高時有 React 元件測試逾時（與本卡無關）
+- 後續任務：TASK-104（登入頁呼叫端點）、TASK-111（手冊）、TASK-112（串接與開啟前提：113、114 完成）、TASK-113（Storage）

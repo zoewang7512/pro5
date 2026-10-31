@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,15 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx vitest run tests/api/demo-enter.test.ts → 64 passed",
+      "npm run test:demo-enter → 22 passed（對正式 Supabase，拋棄式帳號已清除）",
+      "npx tsc --noEmit → 0 errors",
+      "npm run lint → 0 errors",
+      "npm run build → success"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "盤點報告 §3-H（Demo 可刪／覆寫 Storage 內他人物件，TASK-113 前不得開 DEMO_ENABLED）、§3-I（可竄改真實預約）、§3-D（網址欄位無來源限制）、§3-J（確認 passkey 未啟用）。詳見 verification/TASK-103.md。"
   },
   "id": "TASK-103",
   "title": "一鍵進入端點 POST /api/demo/enter",
@@ -55,6 +61,26 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "使用者指示開始做 TASK-103。前置 097／099／102 皆為 Done。已記錄核准並推進到 implementing；實作前先做 is_admin() 寫入面盤點。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與驗證完成，推進到 verify。架構／安全／測試三個子代理審查已執行並處理（agent 意見，不等於核准）。待使用者人工驗收；另有 5 項需使用者決定或確認（見 verification/TASK-103.md「未處理，需使用者決定」）。gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "依使用者決定：跨站失敗（cross_origin）不寫任何 cookie，其餘失敗照規格過期；同源檢查改放在最前面。單元 64、整合 22 通過，tsc／lint／build 通過。仍待使用者人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }
