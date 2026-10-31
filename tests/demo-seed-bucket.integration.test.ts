@@ -47,6 +47,9 @@ const TINY_PNG = Buffer.from(
 
 let authUser: { id: string; email: string; password: string } | null = null;
 let authenticated: SupabaseClient | null = null;
+// 暫時登記進 admins 的拋棄式帳號（is_admin() 為真，模擬 Demo 帳戶的身分）。
+let adminUser: { id: string; email: string; password: string } | null = null;
+let adminClient: SupabaseClient | null = null;
 let tmpDir: string | null = null;
 const uploaded: string[] = [];
 
@@ -120,6 +123,23 @@ beforeAll(async () => {
   authenticated = createClient(url, anonKey, clientOptions);
   const signIn = await authenticated.auth.signInWithPassword({ email, password });
   if (signIn.error) throw new Error(`拋棄式帳號登入失敗：${signIn.error.message}`);
+
+  const adminEmail = `delivered+demoseedbucket-admin-${randomUUID().slice(0, 8)}@resend.dev`;
+  const adminPassword = `${randomUUID()}${randomUUID().slice(0, 8)}aA1!`;
+  const created = await admin.auth.admin.createUser({
+    email: adminEmail,
+    password: adminPassword,
+    email_confirm: true,
+    app_metadata: { demoseedbucket_test: true },
+    user_metadata: { name: "__TEST__demoseedbucket-admin" },
+  });
+  if (created.error || !created.data.user) throw new Error(`建立管理員拋棄式帳號失敗：${created.error?.message ?? "沒有回傳使用者"}`);
+  adminUser = { id: created.data.user.id, email: adminEmail, password: adminPassword };
+  const registered = await admin.from("admins").insert({ user_id: adminUser.id, display_name: "__TEST__demoseedbucket" });
+  if (registered.error) throw new Error(`登記 admins 失敗：${registered.error.message}`);
+  adminClient = createClient(url, anonKey, clientOptions);
+  const adminSignIn = await adminClient.auth.signInWithPassword({ email: adminEmail, password: adminPassword });
+  if (adminSignIn.error) throw new Error(`管理員拋棄式帳號登入失敗：${adminSignIn.error.message}`);
 }, 60000);
 
 afterAll(async () => {
@@ -128,6 +148,17 @@ afterAll(async () => {
     await authenticated?.auth.signOut({ scope: "local" });
   } catch (e) {
     failures.push(`登出：${(e as Error).message}`);
+  }
+  try {
+    await adminClient?.auth.signOut({ scope: "local" });
+  } catch (e) {
+    failures.push(`管理員帳號登出：${(e as Error).message}`);
+  }
+  if (adminUser) {
+    const removed = await admin.from("admins").delete().eq("user_id", adminUser.id);
+    if (removed.error) failures.push(`移除 admins 列 ${adminUser.id}：${removed.error.message}`);
+    const { error } = await admin.auth.admin.deleteUser(adminUser.id);
+    if (error) failures.push(`刪除管理員拋棄式帳號 ${adminUser.id}：${error.message}`);
   }
   if (authUser) {
     const { error } = await admin.auth.admin.deleteUser(authUser.id);
@@ -194,6 +225,23 @@ describe("私有性：只有 service role 能存取", () => {
     expect((await admin.storage.from(BUCKET).download(objectPath)).error).toBeNull();
   });
 
+  it("is_admin() 為真的帳號（Demo 帳戶的身分）：對 demo-seed 下載、列出、簽名網址、上傳、刪除都被拒絕，對 store-assets 則可列出", async () => {
+    const client = adminClient!;
+    const control = await client.storage.from("store-assets").list("logo");
+    expect(control.error).toBeNull();
+    expect((control.data ?? []).length).toBeGreaterThan(0);
+
+    expect((await client.storage.from(BUCKET).download(objectPath)).error).not.toBeNull();
+    const listed = await client.storage.from(BUCKET).list(TEST_PREFIX);
+    expect(listed.error !== null || (listed.data ?? []).length === 0).toBe(true);
+    expect((await client.storage.from(BUCKET).createSignedUrl(objectPath, 60)).error).not.toBeNull();
+    const upload = await client.storage.from(BUCKET).upload(`${TEST_PREFIX}/${randomUUID()}.png`, TINY_PNG, { contentType: "image/png" });
+    expect(upload.error).not.toBeNull();
+    const removal = await client.storage.from(BUCKET).remove([objectPath]);
+    expect(removal.data ?? []).toHaveLength(0);
+    expect((await admin.storage.from(BUCKET).download(objectPath)).error).toBeNull();
+  });
+
   it("MIME 白名單：service role 上傳 SVG 被拒絕", async () => {
     const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
     const upload = await admin.storage.from(BUCKET).upload(`${TEST_PREFIX}/${randomUUID()}.svg`, svg, { contentType: "image/svg+xml" });
@@ -235,11 +283,22 @@ describe("scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，
     const own = writeBase("own.json", {
       store_settings: { logo_url: `${url}/storage/v1/object/public/demo-seed/x.jpg`, cover_image_url: null },
     });
-    expect(runScript(["--from-public", "--base", own]).status).toBe(1);
+    const ownResult = runScript(["--from-public", "--base", own]);
+    expect(ownResult.status).toBe(1);
+    expect(ownResult.output).toContain("不在允許範圍");
     const traversal = writeBase("traversal.json", {
       store_settings: { logo_url: `${url}/storage/v1/object/public/store-assets/logo/../../x.jpg`, cover_image_url: null },
     });
-    expect(runScript(["--from-public", "--base", traversal]).status).toBe(1);
+    const traversalResult = runScript(["--from-public", "--base", traversal]);
+    expect(traversalResult.status).toBe(1);
+    expect(traversalResult.output).toContain("不在允許範圍");
+    // 編碼斜線：先 split 再 decode 時 `..` 會藏在同一段裡。
+    const encoded = writeBase("encoded.json", {
+      store_settings: { logo_url: `${url}/storage/v1/object/public/store-assets/logo%2F..%2F..%2Fadmin-assets%2Fx.jpg`, cover_image_url: null },
+    });
+    const encodedResult = runScript(["--from-public", "--base", encoded]);
+    expect(encodedResult.status).toBe(1);
+    expect(encodedResult.output).toContain("不在允許範圍");
   });
 
   it("--dry-run 對真實 seed-base 只報告計畫，demo-seed 沒有任何變動", async () => {

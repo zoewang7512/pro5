@@ -51,7 +51,20 @@
 
 ## 審查處理
 
-安全性子代理審查在使用者驗收時尚未回報；結果回報後補記於此，如有需修正的項目另行追加修正。
+安全性子代理（security-reviewer）在使用者驗收後回報，意見是 agent 意見、不等於核准。處置如下：
+
+| 項目 | 處置 |
+|---|---|
+| 私有性（逐條檢查 repo 內 11 條 storage.objects policy，皆限定 bucket_id 且為 AND） | 無問題，私有性就 repo 內容成立 |
+| M1 測試沒涵蓋 is_admin() 身分 | **已修正**：新增 admins 登記的拋棄式帳號測試，對 demo-seed 下載／列出／簽名網址／上傳／刪除皆被拒絕，並以 store-assets 可列出證明該帳號確為管理員（整合測試現為 12 項全過） |
+| L1 編碼斜線 `%2F` 繞過路徑穿越檢查 | **已修正**：解碼後拒絕含 `/`、`\`、控制字元的段落；測試補 `%2F` 案例 |
+| L3 事後核對只比大小、`--overwrite` 半套提示 | **已修正**：事後核對加 eTag 比對，失敗訊息提示可能已從 demo-seed 刪除、請重跑；重跑冪等已複驗（45 相同） |
+| L5 防呆案例只看結束碼 | **已修正**：斷言輸出含「不在允許範圍」 |
+| L2 公開 bucket 前後比對未自動化 | 已以前後物件數與位元組比對記錄在本報告（手動），不另做自動化 |
+| I1 `--base` 的 JSON 錯誤可能帶出檔案開頭字元 | 接受（只能本機操作者觸發） |
+| **M2** migration 自我檢查只抓字面提到 demo-seed 的 policy，抓不到沒限定 bucket 的 policy | **待使用者決定**：改自我檢查需重新套用 0023；建議改為「列出所有 permissive storage.objects policy，凡 qual／with_check 不含固定 bucket 限定即 raise」，並請使用者在 SQL Editor 貼出 `pg_policies` 輸出核對。M1 的實測已覆蓋此威脅（is_admin 帳號被拒絕） |
+| **M3** Demo 上線後，來源公開 bucket 可能已被 Demo 竄改，此時重跑 `--from-public --overwrite` 會把竄改過的圖當原圖 | **待使用者決定**：建議腳本在 `DEMO_ENABLED=true` 或 Demo 的 admins 列存在時拒絕執行（需旗標才可略過），並在手冊註明 `--overwrite` 只能在 Demo 停用期間執行 |
+| L4 清空 demo-seed 可能無法復原 | 接受；併入 TASK-117 備份流程，down 檔頭已建議先備份 |
 
 ## 殘留風險與已知限制
 
