@@ -8,10 +8,10 @@
 - 上層 User Story：整庫還原
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：人工驗收通過，Done（2026-10-31）
 - 風險等級：中
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（2026-10-31 指示開始動工）
 
 ## 目標
 
@@ -37,6 +37,7 @@ Supabase Free Plan 沒有專案備份。在第一次真實還原（會整表覆�
   - `package.json`（新增 `demo:backup`）
   - `.gitignore`（加入 `backups/`）
   - `tests/lib/backup-demo-tables.test.ts`（新增：匯出順序、SQL 產生與跳脫的純函式測試）
+  - 實作時補登記：`ai/artifacts/Demo 體驗帳戶/verification/TASK-117.md`、`task-cards/TASK-117.md`（文件）、`tools/kanban/cards/TASK-117.json` 與 `TASK-111.json`（看板留言）
 - 不得觸碰：
   - 資料庫與 Storage 的任何寫入
   - 既有腳本
@@ -79,9 +80,8 @@ Supabase Free Plan 沒有專案備份。在第一次真實還原（會整表覆�
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 變更的檔案：`scripts/backup-demo-tables.mjs`、`package.json`（`demo:backup`）、`.gitignore`（`backups/`）、`tests/lib/backup-demo-tables.test.ts`
+- 執行過的指令、測試輸出：見 [`verification/TASK-117.md`](../verification/TASK-117.md)（單元測試 51 項、tsc、lint、build、正式庫唯讀實跑與獨立比對、PGlite 還原實測）
+- 螢幕截圖：不適用
+- 已知限制：PGlite 無 Supabase 角色權限（`disable trigger user` 需擁有者，TASK-112 前先在 SQL Editor 做無副作用檢查）；備份是快照，真實還原前須重跑；圖片還原為手動
+- 後續任務：TASK-111 手冊寫明「何時可刪備份」（已留言）；TASK-112 真實還原前重跑備份並取得使用者確認

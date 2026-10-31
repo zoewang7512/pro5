@@ -32,6 +32,7 @@
     "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
     "seed:demo-account": "node --env-file=.env.local scripts/seed-demo-account.mjs",
     "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs",
+    "demo:backup": "node --env-file=.env.local scripts/backup-demo-tables.mjs",
     "demo:export-base": "node --env-file=.env.local scripts/export-demo-base.mjs",
     "demo:reset": "node --env-file=.env.local scripts/reset-demo.mjs",
     "demo:upload-images": "node --env-file=.env.local scripts/upload-demo-images.mjs",

@@ -57,6 +57,11 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "TASK-117 帶來的手冊事項：(1) 寫明何時可以刪除 backups/ 的備份（由使用者決定；建議條件見備份資料夾 README.md）；(2) 備份指令 npm run demo:backup -- --yes，含顧客個資、只放本機、有 .partial 後綴的資料夾不算有效備份；(3) 備份的還原只能走 restore.sql（SQL Editor、postgres 角色），不能用 Demo 還原流程；(4) 真實還原前須重跑備份取得最新快照。"
     }
   ]
 }

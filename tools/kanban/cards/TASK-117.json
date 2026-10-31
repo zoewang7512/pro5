@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx vitest run tests/lib/backup-demo-tables.test.ts tests/lib/demo-reset-test-scan.test.ts → 2 檔 57 項全過",
+      "npx tsc --noEmit → 0 errors；npm run lint → 0 errors；npm run build → success",
+      "npm run demo:backup -- --yes（對正式庫唯讀實跑，使用者同意）→ backups/20261031T073758Z：13 張表（共 135 筆）＋50 個圖片物件，讀回驗證通過",
+      "獨立查詢比對（逐表 count、逐 bucket 唯讀 RPC）→ ALL MATCH；腳本內建前後筆數比對也相同 → 零寫入",
+      "git check-ignore -v → .gitignore:31:backups/；git status 看不到備份檔",
+      "PGlite（暫存目錄，拋棄式資料）restore.sql 實測 4 項全過：成功還原、冪等、外鍵失敗回滾、筆數不符回滾；觸發器還原期間零觸發、還原後恢復"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "PGlite 不含 Supabase 角色權限：alter table … disable trigger user 需資料表擁有者，TASK-112 前請在 SQL Editor 跑報告內的無副作用檢查（結尾 rollback）；備份只是 2026-10-31 的快照，真實還原前須重跑；圖片還原為手動；全套元件測試本機偶發逾時（與本卡無關）。詳見 verification/TASK-117.md。"
   },
   "id": "TASK-117",
   "title": "還原前備份腳本 backup-demo-tables（含 restore.sql，備份不進 git）",
@@ -53,6 +60,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做 TASK-117。前置 097 為 Done。已記錄核准並推進到 implementing。做法：腳本只做 select／唯讀 RPC／下載；restore.sql 以 jsonb_populate_recordset 灌資料、用 alter table … disable trigger user 暫停寄信等觸發器（不依賴 session_replication_role）。對正式庫的實跑（讀取顧客個資到本機 backups/）會先徵求使用者同意。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與驗證完成，推進到 verify。使用者同意後已對正式庫唯讀實跑一次（backups/20261031T073758Z，筆數與圖片經獨立查詢核對一致、零寫入），並以 PGlite 在拋棄式資料上實測 restore.sql。未啟動子代理審查；gates 與驗收勾選由使用者決定。TASK-112 前請：(1) 在 SQL Editor 跑報告內無副作用的 disable trigger 檢查；(2) 重跑備份取得最新快照。已在 TASK-111 留言提醒手冊要寫「何時可刪備份」。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者人工驗收通過，轉 Done。使用者已在 Supabase SQL Editor 執行無副作用的 disable／enable trigger user 檢查（結尾 rollback），回傳 Success. No rows returned，確認 postgres 角色可暫停觸發器。TASK-112 真實還原前仍須重跑備份取得最新快照。"
     }
   ]
 }

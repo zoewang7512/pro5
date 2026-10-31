@@ -26,3 +26,6 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# 還原前備份（含顧客個資，絕不進 git；TASK-117）
+backups/
