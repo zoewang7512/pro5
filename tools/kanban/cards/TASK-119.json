@@ -1,0 +1,61 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-31",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-119",
+  "title": "忘記密碼流程對體驗帳號的提示（前端）",
+  "content": "補上 TASK-104 驗收發現的缺口：訪客在忘記密碼輸入體驗帳號信箱，因資料庫觸發器擋下而只看到「發生未預期的錯誤」。前端不得出現 Demo Email，故建議方案 A：demoEnabled 為真且送出失敗時，加一行引導與「回登入頁」按鈕；方案 B／C／D 與取捨見任務卡，核准前須使用者選定。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "鎖定帳號安全三項",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-100",
+    "TASK-104"
+  ],
+  "order": 119,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "ai/artifacts/Demo 體驗帳戶/screen-spec-登入頁體驗入口.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-119.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-119.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-104.md",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-098.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "TASK-104 驗收時發現畫面規格的「忘記密碼」前端攔截沒有任何卡負責，使用者指示另立一張卡。任務卡列出 A／B／C／D 四個方案（建議 A），等待使用者選定方案並核准後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}

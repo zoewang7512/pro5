@@ -1,0 +1,61 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-10-30",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-118",
+  "title": "帳號設定頁 Demo 鎖定操作的統一提示文案（前端）",
+  "content": "補上 TASK-101 驗收發現的缺口：Demo 在帳號設定頁觸發被鎖的操作（密碼、Email、啟用 MFA）時，顯示「體驗帳號不開放這項操作。」而非靜默無反應。前端無法辨識資料庫鎖定錯誤（TASK-098 (f)），故由 isDemo 判斷，不做錯誤對應；一般管理員不變。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "鎖定帳號安全三項",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-097",
+    "TASK-101"
+  ],
+  "order": 118,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "ai/artifacts/Demo 體驗帳戶/screen-spec-帳號設定頁鎖定狀態.md",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-118.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-118.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/architecture-notes.md",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-101.md",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-098.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-10-30",
+      "text": "TASK-101 驗收時發現畫面規格的「錯誤」狀態沒有任何卡負責，使用者指示另立一張卡處理。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    }
+  ]
+}
