@@ -8,10 +8,10 @@
 - 上層 User Story：Demo seed 資料
 - 分軌：後端
 - 前置任務（dependsOn）：TASK-097
-- 狀態：草稿（待人工核准）
+- 狀態：完成（使用者已審閱並核准 seed-base.json，2026-10-31）
 - 風險等級：中
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者（2026-10-31 指示開始）
 
 ## 目標
 
@@ -84,9 +84,6 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 變更的檔案：`lib/demo/seed-types.ts`、`seed-data.ts`、`seed-base.json`、`scripts/export-demo-base.mjs`、`tests/lib/demo-seed-data.test.ts`（含 snapshot）、`package.json`
+- 執行過的指令、測試輸出、已知限制、後續任務：見 [`verification/TASK-106.md`](../verification/TASK-106.md)
+- 螢幕截圖：不適用。

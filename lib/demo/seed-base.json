@@ -1,0 +1,577 @@
+{
+  "store_settings": {
+    "name": "普洛午理髮廳",
+    "address": "台北市大安區忠孝東路四段1號",
+    "phone": "02-0000-0000",
+    "description": "我們相信，好的髮型不僅是外在的點綴，更是內在能量的釋放。",
+    "logo_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/logo/1df676dd-8f7c-4d0d-b600-3e76e6fbfaf8.jpg",
+    "cover_image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/cover/414d45f8-a55a-4bfe-addd-a58a0647fbfc.jpg"
+  },
+  "booking_policy": {
+    "min_lead_time_hours": 1,
+    "cancel_window_hours": null
+  },
+  "business_hours": [
+    {
+      "weekday": 0,
+      "open_time": null,
+      "close_time": null,
+      "is_closed": true
+    },
+    {
+      "weekday": 1,
+      "open_time": "10:00",
+      "close_time": "19:00",
+      "is_closed": false
+    },
+    {
+      "weekday": 2,
+      "open_time": "10:00",
+      "close_time": "19:00",
+      "is_closed": false
+    },
+    {
+      "weekday": 3,
+      "open_time": "10:00",
+      "close_time": "19:00",
+      "is_closed": false
+    },
+    {
+      "weekday": 4,
+      "open_time": "10:00",
+      "close_time": "19:00",
+      "is_closed": false
+    },
+    {
+      "weekday": 5,
+      "open_time": "10:00",
+      "close_time": "19:00",
+      "is_closed": false
+    },
+    {
+      "weekday": 6,
+      "open_time": "10:00",
+      "close_time": "19:00",
+      "is_closed": false
+    }
+  ],
+  "services": [
+    {
+      "id": "11ef9b47-9075-4a12-8714-54e86c48c413",
+      "name": "京喚羽",
+      "description": "源自日本的頂級沙龍系統修護療程，主打專利「INKARAMI」凝聚結合技術。它能將小分子角蛋白滲透進髮芯，在內部結合變大並鎖住，恢復頭髮140%的強度與彈性。",
+      "price": 5000,
+      "duration_minutes": 80,
+      "buffer_minutes": 10,
+      "is_active": true,
+      "sort_order": 0
+    },
+    {
+      "id": "8227455f-2a92-4960-9d24-81f721c57dd7",
+      "name": "剪髮造型",
+      "description": null,
+      "price": 800,
+      "duration_minutes": 45,
+      "buffer_minutes": 0,
+      "is_active": true,
+      "sort_order": 1
+    },
+    {
+      "id": "b2c9b6e4-fdfc-4721-9de0-94a890f31ead",
+      "name": "染髮設計",
+      "description": null,
+      "price": 2400,
+      "duration_minutes": 120,
+      "buffer_minutes": 0,
+      "is_active": true,
+      "sort_order": 2
+    },
+    {
+      "id": "5e616a04-00f3-47f9-9ba4-df4a39f76d81",
+      "name": "頭皮護理",
+      "description": null,
+      "price": 1200,
+      "duration_minutes": 60,
+      "buffer_minutes": 0,
+      "is_active": true,
+      "sort_order": 3
+    }
+  ],
+  "designers": [
+    {
+      "id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "name": "店長",
+      "bio": null,
+      "specialties": [],
+      "instagram_handle": null,
+      "avatar_url": null,
+      "is_active": true,
+      "sort_order": 0,
+      "created_at": "2026-10-21T14:33:18.522743+00:00"
+    },
+    {
+      "id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "name": "傑克Jack",
+      "bio": "打造專屬你的完美造型",
+      "specialties": [
+        "男性理髮",
+        "韓系",
+        "微捲紋理燙",
+        "逗號劉海"
+      ],
+      "instagram_handle": "jack_hairdesign",
+      "avatar_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/avatar/24830892-e51e-491b-b0ae-85084d4ac68b/365a26e8-d235-42f7-ab0c-fd874e8965b7.webp",
+      "is_active": true,
+      "sort_order": 2,
+      "created_at": "2026-10-22T04:11:23.25113+00:00"
+    },
+    {
+      "id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "name": "艾莉絲Alice",
+      "bio": "讓你的頭髮像精品一樣值得被珍藏",
+      "specialties": [
+        "女性剪髮",
+        "復古捲",
+        "深層護髮",
+        "日系氛圍",
+        "層次剪"
+      ],
+      "instagram_handle": "alice.style",
+      "avatar_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/avatar/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/be02d305-6406-4c70-8a68-613f6c870953.webp",
+      "is_active": true,
+      "sort_order": 1,
+      "created_at": "2026-10-22T09:12:35.386701+00:00"
+    },
+    {
+      "id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "name": "肯尼Kenny",
+      "bio": "專注剪髮與頭皮紓壓養護",
+      "specialties": [
+        "造型吹整",
+        "女性剪髮",
+        "頭皮護理",
+        "紓壓洗頭"
+      ],
+      "instagram_handle": "kenny_barber",
+      "avatar_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/avatar/866bbd7d-3bd7-4822-8f0b-853fad51d433/8f44dd16-4ade-4c61-80c4-9220d1a3540d.webp",
+      "is_active": true,
+      "sort_order": 3,
+      "created_at": "2026-10-22T09:14:04.683053+00:00"
+    }
+  ],
+  "designer_services": [
+    {
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "service_id": "5e616a04-00f3-47f9-9ba4-df4a39f76d81"
+    },
+    {
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "service_id": "8227455f-2a92-4960-9d24-81f721c57dd7"
+    },
+    {
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "service_id": "b2c9b6e4-fdfc-4721-9de0-94a890f31ead"
+    },
+    {
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "service_id": "11ef9b47-9075-4a12-8714-54e86c48c413"
+    },
+    {
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "service_id": "5e616a04-00f3-47f9-9ba4-df4a39f76d81"
+    },
+    {
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "service_id": "8227455f-2a92-4960-9d24-81f721c57dd7"
+    },
+    {
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "service_id": "b2c9b6e4-fdfc-4721-9de0-94a890f31ead"
+    },
+    {
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "service_id": "11ef9b47-9075-4a12-8714-54e86c48c413"
+    },
+    {
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "service_id": "5e616a04-00f3-47f9-9ba4-df4a39f76d81"
+    },
+    {
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "service_id": "8227455f-2a92-4960-9d24-81f721c57dd7"
+    },
+    {
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "service_id": "11ef9b47-9075-4a12-8714-54e86c48c413"
+    },
+    {
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "service_id": "5e616a04-00f3-47f9-9ba4-df4a39f76d81"
+    },
+    {
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "service_id": "8227455f-2a92-4960-9d24-81f721c57dd7"
+    },
+    {
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "service_id": "b2c9b6e4-fdfc-4721-9de0-94a890f31ead"
+    }
+  ],
+  "portfolio_images": [
+    {
+      "id": "c446d3c7-3ae1-4de3-862c-f3efef045edb",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/6fb3a4a3-02ba-409b-9001-fd7bbcc0d811.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/6fb3a4a3-02ba-409b-9001-fd7bbcc0d811.webp",
+      "created_at": "2026-10-23T06:26:47.243062+00:00"
+    },
+    {
+      "id": "90ab11cb-02a8-4ed2-8cb7-f6b35c60f3ec",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/3fcbcc96-7398-4a73-b67f-3a883e56f39d.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/3fcbcc96-7398-4a73-b67f-3a883e56f39d.webp",
+      "created_at": "2026-10-23T06:26:52.496575+00:00"
+    },
+    {
+      "id": "571faa04-cb20-47c2-8526-b62254fe9ad9",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/eb5e23f4-44d7-4648-a15a-5d890db4b5a6.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/eb5e23f4-44d7-4648-a15a-5d890db4b5a6.webp",
+      "created_at": "2026-10-23T06:26:57.743851+00:00"
+    },
+    {
+      "id": "ab8e1394-a836-4852-9ef2-c83a9e51c522",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/e28dbf25-b56f-49c8-8c85-c57248d2bc21.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/e28dbf25-b56f-49c8-8c85-c57248d2bc21.webp",
+      "created_at": "2026-10-23T06:27:03.240043+00:00"
+    },
+    {
+      "id": "c1a92211-3d20-4a4e-89b1-b55752fa580c",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/ff56ff07-cb3b-4d52-9ae3-7173e85bc6f3.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/ff56ff07-cb3b-4d52-9ae3-7173e85bc6f3.webp",
+      "created_at": "2026-10-23T06:27:10.764716+00:00"
+    },
+    {
+      "id": "fca85b3a-e374-4bcd-96bf-64d1dfa70e37",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/70c65132-565d-40ad-85f6-699ed9cfa48c.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/70c65132-565d-40ad-85f6-699ed9cfa48c.webp",
+      "created_at": "2026-10-23T06:27:19.725439+00:00"
+    },
+    {
+      "id": "f7985086-a4f3-4021-94fc-f089c63c7977",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/95a495f1-266a-49ed-9f8c-f467bb2d7bac.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/95a495f1-266a-49ed-9f8c-f467bb2d7bac.webp",
+      "created_at": "2026-10-23T07:19:10.103612+00:00"
+    },
+    {
+      "id": "1c18bdb1-11b3-41bb-8f81-844e78d55318",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/b14c4d80-d9a8-4dae-b393-26c680b195bd.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/b14c4d80-d9a8-4dae-b393-26c680b195bd.webp",
+      "created_at": "2026-10-23T07:19:16.448509+00:00"
+    },
+    {
+      "id": "f6b151b5-f50a-4cdb-b787-b8f883ebcc61",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/5749b6b9-4541-4e1f-96b0-b26aa7eb88b3.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/5749b6b9-4541-4e1f-96b0-b26aa7eb88b3.webp",
+      "created_at": "2026-10-23T07:19:22.82413+00:00"
+    },
+    {
+      "id": "fdf00e6e-1512-4a2b-90f5-7f659fcb252f",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/e6984144-7033-4a75-bb3f-cce262a477e7.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/e6984144-7033-4a75-bb3f-cce262a477e7.webp",
+      "created_at": "2026-10-23T07:19:29.971456+00:00"
+    },
+    {
+      "id": "a7c8cf70-ee74-4bea-b5df-fbd578af8c24",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/c133ac3c-6084-45dc-967c-82f36f826cb2.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/c133ac3c-6084-45dc-967c-82f36f826cb2.webp",
+      "created_at": "2026-10-23T07:19:39.198535+00:00"
+    },
+    {
+      "id": "b4df17bb-8276-4568-b341-cd18e2ed1831",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/ba1a6e86-550f-4a6d-8f5d-b0cb9f224898.webp",
+      "storage_path": "portfolio/24830892-e51e-491b-b0ae-85084d4ac68b/ba1a6e86-550f-4a6d-8f5d-b0cb9f224898.webp",
+      "created_at": "2026-10-23T07:20:02.496657+00:00"
+    },
+    {
+      "id": "def7d9fa-49a4-4f78-97c3-75e014a775fb",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/471f42de-487f-46b7-8869-a98b00479160.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/471f42de-487f-46b7-8869-a98b00479160.webp",
+      "created_at": "2026-10-30T10:31:37.570051+00:00"
+    },
+    {
+      "id": "d8cbf796-5056-454d-84d2-1818c77831b3",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/3feb96d6-3d7c-4374-ab67-3888d63eb952.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/3feb96d6-3d7c-4374-ab67-3888d63eb952.webp",
+      "created_at": "2026-10-30T10:31:41.439144+00:00"
+    },
+    {
+      "id": "9718e8cd-4a47-4118-ae07-1824f718a279",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/e244b475-f734-4e89-beaa-90176f27381f.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/e244b475-f734-4e89-beaa-90176f27381f.webp",
+      "created_at": "2026-10-30T10:31:52.82742+00:00"
+    },
+    {
+      "id": "76fc2476-e00e-4ab4-b9e1-45d369207444",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/bf96cfbf-757f-4332-8593-8068095c257d.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/bf96cfbf-757f-4332-8593-8068095c257d.webp",
+      "created_at": "2026-10-30T10:31:57.173266+00:00"
+    },
+    {
+      "id": "e8100157-ce94-46d4-b95a-52813f8c03df",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/43471262-cbaf-47ed-af9e-ee0e96aa2f11.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/43471262-cbaf-47ed-af9e-ee0e96aa2f11.webp",
+      "created_at": "2026-10-30T10:32:03.626335+00:00"
+    },
+    {
+      "id": "a31f3b86-9c0b-4b50-abce-a815a38ca59e",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/fb9415e3-0488-475e-a617-f376f2fcde33.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/fb9415e3-0488-475e-a617-f376f2fcde33.webp",
+      "created_at": "2026-10-30T10:32:14.80729+00:00"
+    },
+    {
+      "id": "c81eba3f-5f93-47bd-8766-a71b7f3c54e6",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/39203e22-c629-498b-bda9-8619d316691e.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/39203e22-c629-498b-bda9-8619d316691e.webp",
+      "created_at": "2026-10-30T10:32:19.515028+00:00"
+    },
+    {
+      "id": "ea056c5b-85ab-4d6d-8a80-70029952380c",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/596e25e7-d876-4b81-982b-3ade9867f6c5.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/596e25e7-d876-4b81-982b-3ade9867f6c5.webp",
+      "created_at": "2026-10-30T10:32:26.496518+00:00"
+    },
+    {
+      "id": "fd6d40f7-8ddf-43a1-8ef3-fb7e1ba0f6da",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/d55242a6-7cea-4a6c-837d-e8673f92f749.webp",
+      "storage_path": "portfolio/78f95c5c-1343-4c10-af0e-cb6f8d165cc8/d55242a6-7cea-4a6c-837d-e8673f92f749.webp",
+      "created_at": "2026-10-30T10:32:34.097195+00:00"
+    },
+    {
+      "id": "911e6029-db76-4b4b-b80c-8f17a5573f8a",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/d3c82f42-2ea7-464f-bfa5-b04a4ffee222.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/d3c82f42-2ea7-464f-bfa5-b04a4ffee222.webp",
+      "created_at": "2026-10-30T10:33:15.547585+00:00"
+    },
+    {
+      "id": "32db868c-80de-4dcb-9b8d-b99064ecd8bd",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/c2838855-b879-4f9f-a7d0-c4663a0f1910.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/c2838855-b879-4f9f-a7d0-c4663a0f1910.webp",
+      "created_at": "2026-10-30T10:33:21.501929+00:00"
+    },
+    {
+      "id": "bd8cc693-75fc-47bb-853e-44c2385e08d9",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/52412246-da98-410c-90c9-e9a5340d318f.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/52412246-da98-410c-90c9-e9a5340d318f.webp",
+      "created_at": "2026-10-30T10:33:27.609431+00:00"
+    },
+    {
+      "id": "e7b41be8-b6f3-44fd-bb7d-690b0d323395",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/b0776c4f-c18c-407c-8ba0-9ce0429c2e2e.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/b0776c4f-c18c-407c-8ba0-9ce0429c2e2e.webp",
+      "created_at": "2026-10-30T10:33:32.312091+00:00"
+    },
+    {
+      "id": "08f3809c-a0cf-4167-9d11-846b073d8baa",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/e7a29195-8ea5-4f21-b60e-dd92e88b07a6.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/e7a29195-8ea5-4f21-b60e-dd92e88b07a6.webp",
+      "created_at": "2026-10-30T10:33:37.437013+00:00"
+    },
+    {
+      "id": "ef9a0b2a-4b86-49cf-8fac-7717614184d1",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/1c8f4436-61aa-4a36-9feb-d979775a2785.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/1c8f4436-61aa-4a36-9feb-d979775a2785.webp",
+      "created_at": "2026-10-30T10:33:42.701514+00:00"
+    },
+    {
+      "id": "5e688d6a-8959-482b-a3dd-bdaec8712ce3",
+      "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/9a11afda-3b16-43da-84eb-38fdf46f79f4.webp",
+      "storage_path": "portfolio/866bbd7d-3bd7-4822-8f0b-853fad51d433/9a11afda-3b16-43da-84eb-38fdf46f79f4.webp",
+      "created_at": "2026-10-30T10:33:46.313183+00:00"
+    },
+    {
+      "id": "bcba76c0-db7b-43f9-b875-e38fe0f719ab",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/d464f040-342c-49c1-a457-9f3b42ba6b28.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/d464f040-342c-49c1-a457-9f3b42ba6b28.webp",
+      "created_at": "2026-10-30T09:55:38.72283+00:00"
+    },
+    {
+      "id": "9042786a-18f7-40b2-8e27-7f799ffb5455",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/de6e8c8f-8b05-469d-a82d-220542f0eeed.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/de6e8c8f-8b05-469d-a82d-220542f0eeed.webp",
+      "created_at": "2026-10-30T09:55:43.515826+00:00"
+    },
+    {
+      "id": "003e0502-9cf9-4838-8e73-e849d4eb0a0a",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/f2fba2cb-a40f-476b-bd28-5e4063462b5a.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/f2fba2cb-a40f-476b-bd28-5e4063462b5a.webp",
+      "created_at": "2026-10-30T09:55:49.049142+00:00"
+    },
+    {
+      "id": "d05f0131-f975-4225-aeba-ad38bb8f3bd0",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/8a198099-4cf8-4046-8663-1c5c2c8b47f6.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/8a198099-4cf8-4046-8663-1c5c2c8b47f6.webp",
+      "created_at": "2026-10-30T09:55:54.520107+00:00"
+    },
+    {
+      "id": "98ac7960-205f-4db9-8f0f-e08b4c8581b0",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/69c61975-6ba0-44bc-b0a3-63f58b999adb.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/69c61975-6ba0-44bc-b0a3-63f58b999adb.webp",
+      "created_at": "2026-10-30T09:56:00.181955+00:00"
+    },
+    {
+      "id": "40ab3225-4017-44dd-a7d4-99fa37505994",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/3cfb2724-0630-4b5c-857c-29ae1061c8b4.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/3cfb2724-0630-4b5c-857c-29ae1061c8b4.webp",
+      "created_at": "2026-10-30T09:56:06.747937+00:00"
+    },
+    {
+      "id": "33c279b3-cc6b-4159-bcf6-355ec3c03a55",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/9e95a674-6152-4852-a9b5-ea225a33cea6.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/9e95a674-6152-4852-a9b5-ea225a33cea6.webp",
+      "created_at": "2026-10-30T09:56:13.254487+00:00"
+    },
+    {
+      "id": "13b7ac94-9961-462d-a5fc-aba5f874e5d6",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/306fdd12-6ee5-4397-99f3-ca215296ef7e.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/306fdd12-6ee5-4397-99f3-ca215296ef7e.webp",
+      "created_at": "2026-10-30T09:56:19.974313+00:00"
+    },
+    {
+      "id": "3bf1b5d0-db03-4ac4-a8fe-d9c7bd728988",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/baccaff0-fd0e-4040-bdf5-c758026ec133.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/baccaff0-fd0e-4040-bdf5-c758026ec133.webp",
+      "created_at": "2026-10-30T09:56:25.141983+00:00"
+    },
+    {
+      "id": "259898f2-05c5-4a37-b51b-9e9a58b05551",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/fe0c1358-2fdd-42fd-b865-71392b1d19ea.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/fe0c1358-2fdd-42fd-b865-71392b1d19ea.webp",
+      "created_at": "2026-10-30T09:56:30.066248+00:00"
+    },
+    {
+      "id": "eebdee3a-10a5-4a92-ab01-48d9655fbb0a",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/c3736f66-e3b1-4b23-b2eb-c47494f2c629.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/c3736f66-e3b1-4b23-b2eb-c47494f2c629.webp",
+      "created_at": "2026-10-30T09:56:35.973286+00:00"
+    },
+    {
+      "id": "c8133cc5-8460-4346-a244-a38be486b298",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "image_url": "https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/designer-assets/portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/a7723d0a-9c6d-468f-9334-31ac556d358a.webp",
+      "storage_path": "portfolio/c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf/a7723d0a-9c6d-468f-9334-31ac556d358a.webp",
+      "created_at": "2026-10-30T09:56:43.165748+00:00"
+    }
+  ],
+  "closed_date_offsets": [
+    9
+  ],
+  "designer_leave_offsets": [
+    {
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "day_offset": 4
+    },
+    {
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+      "day_offset": 12
+    }
+  ],
+  "demo_admin_profile": {
+    "display_name": "Demo帳號",
+    "avatar_url": null
+  },
+  "schedule": {
+    "history_days": 42,
+    "future_days": 21,
+    "min_per_designer_per_day": 1,
+    "max_per_designer_per_day": 3,
+    "cancelled_per_hundred": 10,
+    "pending_per_hundred_of_future": 30
+  },
+  "customer_pool": [
+    {
+      "name": "陳小美",
+      "phone": "0900-000-001"
+    },
+    {
+      "name": "林大偉",
+      "phone": "0900-000-002"
+    },
+    {
+      "name": "張雅婷",
+      "phone": "0900-000-003"
+    },
+    {
+      "name": "王建宏",
+      "phone": "0900-000-004"
+    },
+    {
+      "name": "李佳穎",
+      "phone": "0900-000-005"
+    },
+    {
+      "name": "黃志明",
+      "phone": "0900-000-006"
+    },
+    {
+      "name": "吳欣怡",
+      "phone": "0900-000-007"
+    },
+    {
+      "name": "劉冠廷",
+      "phone": "0900-000-008"
+    },
+    {
+      "name": "蔡宜庭",
+      "phone": "0900-000-009"
+    },
+    {
+      "name": "鄭博文",
+      "phone": "0900-000-010"
+    },
+    {
+      "name": "許芷寧",
+      "phone": "0900-000-011"
+    },
+    {
+      "name": "楊承翰",
+      "phone": "0900-000-012"
+    }
+  ]
+}

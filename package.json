@@ -30,6 +30,7 @@
     "seed:designer": "node --env-file=.env.local scripts/seed-designer-account.mjs",
     "seed:demo-account": "node --env-file=.env.local scripts/seed-demo-account.mjs",
     "seed:booking": "node --env-file=.env.local scripts/seed-booking-data.mjs",
+    "demo:export-base": "node --env-file=.env.local scripts/export-demo-base.mjs",
     "sweep:audit-test-rows": "node --env-file=.env.local scripts/sweep-audit-test-rows.mjs"
   },
   "dependencies": {

@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,15 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "npx vitest run tests/lib/demo-seed-data.test.ts → 10 passed",
+      "npm run demo:export-base -- --yes（正式庫唯讀實跑；前後各表筆數完全一致）",
+      "npx tsc --noEmit → 0 errors",
+      "npm run lint → 0 errors",
+      "npm run build → success"
+    ],
     "findings": [],
-    "residual": ""
+    "residual": "seed-base.json 為草稿，待使用者審閱（店家資訊、服務、設計師、人工維護區塊）；payload 與資料庫 constraint 的實際相容性要到 TASK-108 dry-run 才能證明；TASK-116 上限建議表待核准。詳見 verification/TASK-106.md。"
   },
   "id": "TASK-106",
   "title": "Demo seed 資料定義（純函式）與現況匯出工具",
@@ -53,6 +59,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者指示開始做 TASK-106。前置 097 為 Done。已記錄核准並推進到 implementing；基底資料來源採建議的 B（匯出工具從目前正式資料產生草稿，再交使用者審閱）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "實作與驗證完成，推進到 verify。單元 10 項通過、匯出工具對正式庫唯讀實跑前後筆數一致。待使用者審閱 seed-base.json 並人工驗收；核准前不得推進 TASK-107／108／116。gates 與驗收勾選由使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-10-31",
+      "text": "使用者已審閱並核准 seed-base.json，人工驗收通過，轉 Done。TASK-116 上限依使用者決定：services 10、designers 5、customers 24、appointments 640。"
     }
   ]
 }

@@ -1,0 +1,108 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildDemoSeed > 對固定 now 與基底產生可重現的 payload（snapshot） 1`] = `
+{
+  "closed_dates": [
+    {
+      "date": "2026-11-09",
+    },
+  ],
+  "counts": {
+    "appointments": 425,
+    "business_hours": 7,
+    "closed_dates": 1,
+    "customers": 12,
+    "designer_leaves": 2,
+    "designer_services": 14,
+    "designers": 4,
+    "portfolio_images": 40,
+    "services": 4,
+  },
+  "customers": [
+    {
+      "email": null,
+      "id": "141e145a-ecd7-56a4-bc39-d3cfda7e533f",
+      "name": "陳小美",
+      "notes": null,
+      "phone": "0900-000-001",
+    },
+    {
+      "email": null,
+      "id": "5bd9d979-98c8-5a58-9620-004bb71c2b54",
+      "name": "林大偉",
+      "notes": null,
+      "phone": "0900-000-002",
+    },
+  ],
+  "designer_leaves": [
+    {
+      "date": "2026-11-04",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+    },
+    {
+      "date": "2026-11-12",
+      "designer_id": "c9ea53e6-f833-42ea-a8bc-c4d7a26eedaf",
+    },
+  ],
+  "first_appointments": [
+    {
+      "created_at": "2026-09-17T02:00:00.000Z",
+      "customer_email": null,
+      "customer_id": "974c550e-8006-5c97-be01-2eb1a70308df",
+      "customer_name": "張雅婷",
+      "customer_phone": "0900-000-003",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "end_at": "2026-09-19T03:20:00.000Z",
+      "id": "bf41b605-f11f-53ef-ba6e-d3b6e6991e93",
+      "service_id": "11ef9b47-9075-4a12-8714-54e86c48c413",
+      "start_at": "2026-09-19T02:00:00.000Z",
+      "status": "completed",
+    },
+    {
+      "created_at": "2026-09-17T03:30:00.000Z",
+      "customer_email": null,
+      "customer_id": "9052599f-659d-5b9f-bca5-b86c537587a0",
+      "customer_name": "黃志明",
+      "customer_phone": "0900-000-006",
+      "designer_id": "78f95c5c-1343-4c10-af0e-cb6f8d165cc8",
+      "end_at": "2026-09-19T04:15:00.000Z",
+      "id": "790a5a43-0f6a-5a11-9fe2-b3dd0225962a",
+      "service_id": "8227455f-2a92-4960-9d24-81f721c57dd7",
+      "start_at": "2026-09-19T03:30:00.000Z",
+      "status": "completed",
+    },
+    {
+      "created_at": "2026-09-17T03:30:00.000Z",
+      "customer_email": null,
+      "customer_id": "974c550e-8006-5c97-be01-2eb1a70308df",
+      "customer_name": "張雅婷",
+      "customer_phone": "0900-000-003",
+      "designer_id": "24830892-e51e-491b-b0ae-85084d4ac68b",
+      "end_at": "2026-09-19T04:15:00.000Z",
+      "id": "5c90ea61-9623-5e72-b53d-adbc85c9be61",
+      "service_id": "8227455f-2a92-4960-9d24-81f721c57dd7",
+      "start_at": "2026-09-19T03:30:00.000Z",
+      "status": "completed",
+    },
+  ],
+  "last_appointment": {
+    "created_at": "2026-10-31T05:00:00.000Z",
+    "customer_email": null,
+    "customer_id": "9052599f-659d-5b9f-bca5-b86c537587a0",
+    "customer_name": "黃志明",
+    "customer_phone": "0900-000-006",
+    "designer_id": "866bbd7d-3bd7-4822-8f0b-853fad51d433",
+    "end_at": "2026-11-21T05:00:00.000Z",
+    "id": "042fcedf-a7d3-5b13-a3ea-4035af9c4656",
+    "service_id": "5e616a04-00f3-47f9-9ba4-df4a39f76d81",
+    "start_at": "2026-11-21T04:00:00.000Z",
+    "status": "pending",
+  },
+  "status_counts": {
+    "cancelled": 36,
+    "completed": 262,
+    "confirmed": 87,
+    "pending": 40,
+  },
+}
+`;
