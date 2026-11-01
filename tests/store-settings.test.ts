@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   removeStoreImage,
   resolveStoreDisplay,
+  STORE_ADDRESS_MAX_LENGTH,
+  STORE_NAME_MAX_LENGTH,
   uploadStoreImage,
+  validateStoreAddress,
   validateStoreDescription,
   validateStoreImageFile,
   validateStoreName,
@@ -110,6 +113,39 @@ describe("validateStoreName", () => {
 
   it("只有空白字元視為未填", () => {
     expect(validateStoreName("   ")).toBe("店名為必填");
+  });
+
+  // TASK-123：對齊 0029 的 store_settings_name_length（200，char_length 計碼點、儲存的是 trim 後的值）。
+  it("上限 200：剛好 200 字通過、201 字回傳長度錯誤", () => {
+    expect(STORE_NAME_MAX_LENGTH).toBe(200);
+    expect(validateStoreName("店".repeat(200))).toBeNull();
+    expect(validateStoreName("店".repeat(201))).toBe("店名長度須在 200 字以內");
+  });
+
+  it("以 trim 後的碼點數計算", () => {
+    expect(validateStoreName(`  ${"a".repeat(200)}  `)).toBeNull();
+    expect(validateStoreName("😀".repeat(200))).toBeNull();
+    expect(validateStoreName("😀".repeat(201))).toBe("店名長度須在 200 字以內");
+  });
+});
+
+describe("validateStoreAddress", () => {
+  it("空字串（選填未填）與一般地址通過驗證", () => {
+    expect(validateStoreAddress("")).toBeNull();
+    expect(validateStoreAddress("台北市信義區信義路五段 7 號")).toBeNull();
+  });
+
+  // TASK-123：對齊 0029 的 store_settings_address_length（200）。
+  it("上限 200：剛好 200 字通過、201 字回傳長度錯誤", () => {
+    expect(STORE_ADDRESS_MAX_LENGTH).toBe(200);
+    expect(validateStoreAddress("址".repeat(200))).toBeNull();
+    expect(validateStoreAddress("址".repeat(201))).toBe("地址長度須在 200 字以內");
+  });
+
+  it("以 trim 後的碼點數計算", () => {
+    expect(validateStoreAddress(`  ${"a".repeat(200)}  `)).toBeNull();
+    expect(validateStoreAddress("😀".repeat(200))).toBeNull();
+    expect(validateStoreAddress("😀".repeat(201))).toBe("地址長度須在 200 字以內");
   });
 });
 

@@ -14,6 +14,7 @@ import {
   createService,
   updateService,
   validateServiceBuffer,
+  validateServiceDescription,
   validateServiceDuration,
   validateServiceName,
   validateServicePrice,
@@ -108,10 +109,11 @@ export function ServiceFormDialog({
   const priceError = validateServicePrice(priceNumber);
   const durationError = validateServiceDuration(durationNumber);
   const bufferError = validateServiceBuffer(form.bufferMinutes);
+  const descriptionError = validateServiceDescription(form.description);
 
   async function handleSubmit() {
     setSubmitAttempted(true);
-    if (nameError || priceError || durationError || bufferError) return;
+    if (nameError || priceError || durationError || bufferError || descriptionError) return;
 
     setSubmitting(true);
     const input = {
@@ -193,6 +195,8 @@ export function ServiceFormDialog({
             label="描述"
             value={form.description}
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+            error={submitAttempted && Boolean(descriptionError)}
+            helperText={submitAttempted ? descriptionError : undefined}
             disabled={submitting}
             multiline
             minRows={2}

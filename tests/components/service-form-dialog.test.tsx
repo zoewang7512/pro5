@@ -96,6 +96,67 @@ describe("ServiceFormDialog 成功提示（TASK-070）", () => {
   });
 });
 
+// TASK-123：名稱／描述長度對齊資料庫 CHECK（60／500），超過時送出被擋、不呼叫寫入，邊界值可正常送出。
+describe("ServiceFormDialog 長度驗證（TASK-123）", () => {
+  afterEach(() => {
+    cleanup();
+    vi.resetAllMocks();
+  });
+
+  async function submitCreate() {
+    const user = userEvent.setup({ delay: null });
+    await user.click(screen.getByRole("button", { name: "新增" }));
+  }
+
+  it("名稱 61 字：送出被擋，顯示長度錯誤，不呼叫 createService", async () => {
+    render(<ServiceFormDialog mode="create" service={null} onClose={vi.fn()} onSuccess={vi.fn()} />);
+    fillCreateForm();
+    fireEvent.change(screen.getByLabelText("名稱"), { target: { value: "剪".repeat(61) } });
+
+    await submitCreate();
+
+    expect(await screen.findByText("名稱長度須在 60 字以內")).toBeInTheDocument();
+    expect(createService).not.toHaveBeenCalled();
+  });
+
+  it("描述 501 字：送出被擋，顯示長度錯誤，不呼叫 createService", async () => {
+    render(<ServiceFormDialog mode="create" service={null} onClose={vi.fn()} onSuccess={vi.fn()} />);
+    fillCreateForm();
+    fireEvent.change(screen.getByLabelText("描述"), { target: { value: "字".repeat(501) } });
+
+    await submitCreate();
+
+    expect(await screen.findByText("描述長度須在 500 字以內")).toBeInTheDocument();
+    expect(createService).not.toHaveBeenCalled();
+  });
+
+  it("編輯模式同樣擋下超長描述，不呼叫 updateService", async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<ServiceFormDialog mode="edit" service={EXISTING} onClose={vi.fn()} onSuccess={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("描述"), { target: { value: "字".repeat(501) } });
+
+    await user.click(screen.getByRole("button", { name: "儲存" }));
+
+    expect(await screen.findByText("描述長度須在 500 字以內")).toBeInTheDocument();
+    expect(updateService).not.toHaveBeenCalled();
+  });
+
+  it("名稱 60 字、描述 500 字（邊界值）：正常送出", async () => {
+    vi.mocked(createService).mockResolvedValue({ ok: true, data: undefined });
+    const onSuccess = vi.fn();
+    render(<ServiceFormDialog mode="create" service={null} onClose={vi.fn()} onSuccess={onSuccess} />);
+    fillCreateForm();
+    fireEvent.change(screen.getByLabelText("名稱"), { target: { value: "剪".repeat(60) } });
+    fireEvent.change(screen.getByLabelText("描述"), { target: { value: "字".repeat(500) } });
+
+    await submitCreate();
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(createService).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/長度須在/)).toBeNull();
+  });
+});
+
 // TASK-083：key service-form 的 dirty 判定與關閉攔截。
 describe("ServiceFormDialog 未儲存變更（TASK-083，key: service-form）", () => {
   function Probe() {

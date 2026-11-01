@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TestThemeWrapper } from "../test-utils";
 import { StoreSettingsForm } from "@/app/admin/_components/StoreSettingsForm";
@@ -160,5 +160,50 @@ describe("StoreSettingsForm 未儲存變更回報（TASK-082，key: store-basic-
   it("沒有 Provider 時照常運作（既有行為不變）", async () => {
     render(<StoreSettingsForm />);
     expect(await screen.findByLabelText("店名")).toHaveValue("Studio");
+  });
+
+  // TASK-123：店名／地址長度對齊資料庫 CHECK（各 200），超過時送出被擋、不呼叫寫入，邊界值可正常送出。
+  describe("長度驗證（TASK-123）", () => {
+    it("店名 201 字：送出被擋，顯示長度錯誤，不呼叫 updateStoreSettingsBasicInfo", async () => {
+      const { user, name } = await renderLoaded();
+      fireEvent.change(name, { target: { value: "店".repeat(201) } });
+
+      await user.click(screen.getByRole("button", { name: "儲存" }));
+
+      expect(await screen.findByText("店名長度須在 200 字以內")).toBeInTheDocument();
+      expect(updateStoreSettingsBasicInfo).not.toHaveBeenCalled();
+    });
+
+    it("地址 201 字：送出被擋，顯示長度錯誤，不呼叫 updateStoreSettingsBasicInfo", async () => {
+      const { user, address } = await renderLoaded();
+      fireEvent.change(address, { target: { value: "址".repeat(201) } });
+
+      await user.click(screen.getByRole("button", { name: "儲存" }));
+
+      expect(await screen.findByText("地址長度須在 200 字以內")).toBeInTheDocument();
+      expect(updateStoreSettingsBasicInfo).not.toHaveBeenCalled();
+    });
+
+    it("離開地址欄位（blur）就顯示長度錯誤，與店名、電話、簡介一致", async () => {
+      const { address } = await renderLoaded();
+      fireEvent.change(address, { target: { value: "址".repeat(201) } });
+      expect(screen.queryByText("地址長度須在 200 字以內")).toBeNull();
+
+      fireEvent.blur(address);
+
+      expect(await screen.findByText("地址長度須在 200 字以內")).toBeInTheDocument();
+    });
+
+    it("店名 200 字、地址 200 字（邊界值）：正常送出", async () => {
+      vi.mocked(updateStoreSettingsBasicInfo).mockResolvedValue({ ok: true, data: undefined });
+      const { user, name, address } = await renderLoaded();
+      fireEvent.change(name, { target: { value: "店".repeat(200) } });
+      fireEvent.change(address, { target: { value: "址".repeat(200) } });
+
+      await user.click(screen.getByRole("button", { name: "儲存" }));
+
+      await waitFor(() => expect(updateStoreSettingsBasicInfo).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText(/長度須在/)).toBeNull();
+    });
   });
 });

@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   getStoreSettings,
   updateStoreSettingsBasicInfo,
+  validateStoreAddress,
   validateStoreDescription,
   validateStoreName,
   validateStorePhone,
@@ -59,6 +60,7 @@ function BasicInfoCard({ initial, supabase }: { initial: StoreSettings; supabase
   const errors = React.useMemo(
     () => ({
       name: validateStoreName(fields.name),
+      address: validateStoreAddress(fields.address),
       phone: validateStorePhone(fields.phone),
       description: validateStoreDescription(fields.description),
     }),
@@ -78,13 +80,13 @@ function BasicInfoCard({ initial, supabase }: { initial: StoreSettings; supabase
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
   }
 
-  function showError(field: "name" | "phone" | "description"): string | null {
+  function showError(field: "name" | "address" | "phone" | "description"): string | null {
     return touched.has(field) || submitAttempted ? errors[field] : null;
   }
 
   async function handleSubmit() {
     setSubmitAttempted(true);
-    if (errors.name || errors.phone || errors.description) {
+    if (errors.name || errors.address || errors.phone || errors.description) {
       nameRef.current?.focus();
       return;
     }
@@ -140,6 +142,9 @@ function BasicInfoCard({ initial, supabase }: { initial: StoreSettings; supabase
           value={fields.address}
           disabled={submitting}
           onChange={(event) => setFields((prev) => ({ ...prev, address: event.target.value }))}
+          onBlur={() => markTouched("address")}
+          error={Boolean(showError("address"))}
+          helperText={showError("address") ?? " "}
         />
         <TextField
           label="簡介"

@@ -194,6 +194,8 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 - **TASK-122 實作補記（2026-11-01）：** `audit_log` 的容量防護落地於 0028：觸發器 `demo_audit_log_cap`，**每帳戶**計數（不能用整張表總列數，designer001 的紀錄會無限成長），上限 500；審查後加上單筆大小（event_type／entity_type ≤ 64 位元組，0019 沒有長度限制，只限筆數守不住容量）與單一請求 ≤ 20 列（限制「寫入後再中止」的膨脹），並要求 actor_id 與 JWT 的 sub 一致、取鎖前設 lock_timeout 2s。`audit_log` 不在 `reset_demo_data` 覆寫的十一張表內，所以不需要改該函式。詳見 decisions.md「TASK-122」。
 
+- **TASK-123 實作補記（2026-11-01）：** 欄位長度用**資料庫 CHECK** 而不是觸發器（落地於 0029）：`services.name` 60／`description` 500、`store_settings.name` 200／`address` 200／`logo_url` 2048／`cover_image_url` 2048，以 `char_length` 計字元，**對所有角色生效**（不只 Demo；現有資料與 Demo 種子都遠低於上限）。因為不是觸發器，不需要動 `reset_demo_data` 的白名單；每日還原寫回的種子必須符合上限，由單元測試固定。詳見 decisions.md「TASK-123」。
+
 ### D15 備份策略（Free Plan 沒有專案備份，TASK-117）
 
 - 使用者確認：Free Plan 不含專案備份（Pro 才有最多 7 天排程備份）。因此**真實還原前必須先自建備份**。

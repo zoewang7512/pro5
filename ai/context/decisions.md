@@ -980,3 +980,29 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
   - 重建 Demo 帳戶（新的 uid）時，舊帳戶的稽核列不會被還原刪除，手冊 §7.3 有清理語句。
   - 其他有 insert 權限的表也有「寫入後再中止」的膨脹，屬一般性風險；本卡只處理 audit_log。
   - 範圍外觀察（安全審查 N6，未查證）：0021 刻意不鎖 raw_user_meta_data，Demo 可能可用 updateUser({ data }) 寫入很大的 user_metadata，使 JWT／cookie 與 auth.users 該列變大；建議另開卡評估。
+
+## TASK-123（Demo 體驗帳戶）：services／store_settings 文字欄位長度 CHECK migration 0029
+
+```text
+日期：2026-11-01
+決策：
+  1. 新增 migration 0029：六個長度 CHECK（char_length，字元數）——services.name 60、description 500；store_settings.name 200、address 200、logo_url 2048、cover_image_url 2048。
+     數字由使用者核准為卡片建議值。這是兩張表僅剩沒有長度限制的文字欄位（store_settings.description 500／phone 20 在 0006 就有；designers、designer_portfolio_images、admins、audit_log 已有）。
+  2. 用 CHECK 而不是觸發器，且對所有角色生效（不只 Demo）：這是資料完整性規則，正常值遠低於上限；REST 直接 PATCH 的任何人都受限。不需要動每日還原函式的觸發器白名單。
+  3. 只加上限，不加下限／非空白（store_settings.name 的 seed 列本來就是空字串；services.name 的必填維持由前端把關）。可為 null 的欄位用 char_length(coalesce(col, ''))，與 0006 同寫法。
+  4. 不使用 NOT VALID：套用前先檢查既有資料，超過就以明確訊息（列出欄位、上限、目前最長）中止整個交易；唯讀量測：services.name 最長 4、description 78；store_settings name 6、address 14、URL 124／125；seed-base.json 同樣遠低於上限。
+  5. 以字元（碼點）計：前端用 Array.from(trim 後).length（比照 lib/designers.ts），與資料庫儲存的 trim 後值、char_length 一致；表情符號兩邊都算 1。
+  6. 前端：validateServiceName／新增 validateServiceDescription、validateStoreName／新增 validateStoreAddress，常數匯出為單一來源；表單送出前擋下並用既有錯誤樣式顯示。商店設定的地址欄補上與其他欄位一致的 blur 驗證與保留一行錯誤空間。
+     logo_url／cover_image_url 只由上傳流程產生（約 125 字元），沒有輸入欄位，只需資料庫上限。
+  7. 每日還原寫回的 seed-base.json 必須符合上限（否則還原失敗）：單元測試固定這件事，之後改種子超過上限會在測試先失敗。
+  8. 驗證：單元測試（檔案內容、SQL 與前端常數一致、種子符合上限）；PGlite 演練（套用、重複套用、邊界、碼點、超限中止、_down、重新套用）；真實庫整合測試 on／off 兩種模式（service role；store_settings 快照並還原）。
+     沒有另寫 SQL Editor 回滾式驗證腳本：CHECK 沒有角色／JWT 相依，PGlite 與真實庫整合測試已涵蓋；migration 尾端自我檢查會確認六個 constraint 已驗證。
+情境：TASK-123 高風險卡（TASK-116 安全審查 M2，Demo 入口前置條件）；migration 由使用者在 SQL Editor 套用。
+考慮過的替代方案：只對 Demo 生效的觸發器（多一層 JWT 判斷與維護成本，且一般管理員本來就不該寫入超大字串）；NOT VALID 後再 VALIDATE（資料只有個位數列，沒有必要）；以位元組計長度（全形字會被誤擋，與 designers 慣例不一致）；
+  在前端對 URL 欄位加驗證（沒有輸入欄位）。
+影響與殘留風險：
+  - 沒有人手動輸入超過上限的值就不會有任何可見變化；若真的超過，後台會在送出前擋下並顯示白話文案；繞過前端直接打 REST 的人（含 Demo）得到 23514。
+  - 本卡只涵蓋 services 與 store_settings。**安全審查更正：** 其餘缺口並不「歸 TASK-120／121」（那兩張卡只處理寄信計數視窗與提醒信）。仍開放的：(M1) designers.name 的 CHECK 只限制 btrim 後長度，Demo 可直接 PATCH 填充空白；
+    (M2) customers.name／appointments.customer_name 只檢查 trim 後長度、appointments.customer_email 無長度限制，匿名就能做；(S1) auth.users.raw_user_meta_data 未鎖（也會進 JWT）。皆需另開卡並列為入口前置條件，待使用者決定。
+  - 緊急放行單一欄位：drop constraint if exists <名稱>（手冊 §8「文字欄位長度上限」），不要用 _down（一次拿掉六個）。
+```

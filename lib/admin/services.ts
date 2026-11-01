@@ -33,8 +33,24 @@ export async function listServices(supabase: SupabaseClient): Promise<Result<Adm
 // 比照 lib/store-settings.ts validateStoreName 的既有教訓，應用層需額外擋下純空白）；
 // 價格與時長對齊 0001_core_schema.sql 的 check constraint（price >= 0／duration_minutes > 0），
 // 這裡的驗證是體驗優化，資料庫仍是最終防線。
+//
+// 長度上限對齊 0029_text_length_checks.sql 的 services_name_length／services_description_length
+// （TASK-123）。資料庫以 char_length 計碼點、儲存的是 trim 後的值，所以這裡同樣以 trim 後的碼點數
+// 計算（Array.from，比照 lib/designers.ts），表情符號之類的字元兩邊都算 1。
+export const SERVICE_NAME_MAX_LENGTH = 60;
+export const SERVICE_DESCRIPTION_MAX_LENGTH = 500;
+
 export function validateServiceName(name: string): string | null {
-  return name.trim().length > 0 ? null : "名稱為必填";
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return "名稱為必填";
+  if (Array.from(trimmed).length > SERVICE_NAME_MAX_LENGTH) return `名稱長度須在 ${SERVICE_NAME_MAX_LENGTH} 字以內`;
+  return null;
+}
+
+export function validateServiceDescription(description: string): string | null {
+  return Array.from(description.trim()).length <= SERVICE_DESCRIPTION_MAX_LENGTH
+    ? null
+    : `描述長度須在 ${SERVICE_DESCRIPTION_MAX_LENGTH} 字以內`;
 }
 
 export function validateServicePrice(price: number): string | null {

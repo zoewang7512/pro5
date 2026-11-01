@@ -50,7 +50,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 只有一個 Supabase 專案，git 分支隔離不了資料庫；而且 `vercel.json` 只有 `master` 會部署、Cron 只在 production 執行。所以採**暗啟動**：先讓所有程式與資料庫物件上線，但入口與排程都保持關閉，驗證完才依序開。
 
-1. **套用 migration**（`supabase/migrations/0021`～`0028`，每支整份貼到 SQL Editor 執行；順序與回滾說明見各檔檔頭）。
+1. **套用 migration**（`supabase/migrations/0021`～`0029`，每支整份貼到 SQL Editor 執行；順序與回滾說明見各檔檔頭）。
 2. **合併到 `master` 並部署**，此時 `DEMO_ENABLED`、`DEMO_RESET_ENABLED` 皆為 `false`（入口不顯示，登入頁與沒有這個功能時一致）。
 3. **建立 Demo 帳戶**（✅ `test:seed-demo-account` 14 項）：在 `.env.local` 填好 `DEMO_EMAIL`、`DEMO_PASSWORD` 後執行
 
@@ -300,6 +300,7 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 |---|---|
 | Storage 上傳**全面**失敗 | `drop trigger if exists demo_storage_cap_guard on storage.objects;`（**不要**用 `0025_down`） |
 | Demo 的稽核紀錄（audit_log）被上限擋住而需要放行 | `drop trigger if exists demo_audit_log_cap on public.audit_log;`（0028；不要用 `0028_down`，雖然它與其他 migration 互不依賴） |
+| 正常儲存服務或店家設定被長度上限擋住而需要放行（0029） | `alter table public.<表> drop constraint if exists <constraint 名稱>;`，名稱見下方「文字欄位長度上限」表（只放行那一個欄位；不要用 `0029_down`，它會一次拿掉六個）。**放行等於重新打開缺口**：放行期間先 `demo:disable` 或明確接受風險；若放行期間已寫入超長資料，之後重跑 0029 會被套用前檢查擋下而中止，需先還原資料（例如 `demo:reset -- --yes`）再重套；放行後務必回頭重套 0029 |
 | 某張表的新增被 Demo 上限擋住而需要放行 | `drop trigger if exists demo_row_cap_<表> on public.<表>;`（表：`services`、`designers`、`designer_services`、`designer_leaves`、`designer_portfolio_images`、`closed_dates`） |
 
 > `0025_down` 是安全降級，`DEMO_ENABLED=true` 時須先 `demo:disable`。`0027_down` 會把 `reset_demo_data` 寫死成 0024 的本文：0027 之後若有 migration 又重新定義過該函式，不得使用。
@@ -331,7 +332,24 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 ### 各表筆數上限（0027，只對 Demo 生效，數字為整張表總列數）
 `services` 10、`designers` 5、`designer_services` 50、`designer_leaves` 20、`designer_portfolio_images` 60、`closed_dates` 20。一般管理員與 service role（含還原）不受影響。調整上限：改 `demo_row_cap_guard()` 內的 case 數字後整份重跑，並同步 `tests/lib/demo-row-caps-migration.test.ts` 與 `TASK-116-verify.sql`。
 - 上限是整張表總列數，惡意的 Demo 使用者可以在每次還原後立刻填滿額度，讓當天其他面試官無法新增；共用帳號的設計限制。
-- **尚未有上限的容量**：文字欄位長度（TASK-123）、匿名顧客預約（`customers`／`appointments`，TASK-120／121）。開啟入口前請確認這些卡的狀態。
+- **尚未有上限的容量**（TASK-123 安全審查盤點）：(1) `customers`／`appointments` 的姓名（只檢查 trim 後長度，原值可用空白填充）與 `appointments.customer_email`（無長度限制）——匿名就能做；TASK-120／121 **沒有**處理這件事，需另開卡；(2) `designers.name`（CHECK 只限制 btrim 後長度，Demo 可直接 PATCH 填充空白）；(3) `auth.users.raw_user_meta_data`（0021 刻意未鎖）。開啟入口前請確認這些項目的處置。（services／store_settings 的文字欄位長度已由 0029 處理，見下節。）
+
+### 文字欄位長度上限（0029）
+列數上限擋不住「對既有列反覆 PATCH 塞大字串」，所以 `services` 與 `store_settings` 的文字欄位另有資料庫 CHECK（以字元數計，**對所有角色生效**，不只 Demo；一般使用的值遠低於上限）：
+
+| 欄位 | 上限 | constraint 名稱 |
+|---|---|---|
+| `services.name` | 60 | `services_name_length` |
+| `services.description` | 500 | `services_description_length` |
+| `store_settings.name` | 200 | `store_settings_name_length` |
+| `store_settings.address` | 200 | `store_settings_address_length` |
+| `store_settings.logo_url` | 2048 | `store_settings_logo_url_length` |
+| `store_settings.cover_image_url` | 2048 | `store_settings_cover_image_url_length` |
+
+- 後台服務表單（名稱／描述）與商店設定表單（店名／地址）會在送出前擋下並顯示「…長度須在 N 字以內」；Logo／封面圖網址只由上傳流程產生，沒有輸入欄位。直接打 REST 超過上限會得到 `23514`（check_violation）。
+- 每日還原把 `seed-base.json` 寫回這兩張表；種子超過上限會讓還原失敗，所以單元測試固定「種子符合上限」。改種子文字前請先跑 `npx vitest run tests/lib/text-length-checks-migration.test.ts`。
+- 調整上限：改 `0029` 內 add constraint 與套用前檢查的數字後整份重跑，並同步 `lib/admin/services.ts`、`lib/store-settings.ts` 的常數與 `tests/lib/text-length-checks-migration.test.ts`、`tests/text-length-checks.integration.test.ts`。
+- 驗證：`npm run test:text-length`（預設模式＝已套用；`TEXT_LENGTH_EXPECT=off` 為未套用／已回滾的基準線）。測試會暫時改動商店設定那一列並在結束時還原。
 
 ### Demo 的稽核紀錄上限（0028）
 Demo 帳戶在 `audit_log` 的列數最多 500 筆（**只算 Demo 自己的列**，designer001 的紀錄不受影響也不佔額度）；此外 Demo 的 `event_type`／`entity_type` 不得超過 64 位元組，單一請求最多寫 20 列。每筆最壞約 20 KB，500 筆最多約 10～12 MB。額度每日還原後重置（還原會刪掉 Demo 帳戶的稽核列）。

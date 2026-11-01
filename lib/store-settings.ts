@@ -105,8 +105,24 @@ const PHONE_MAX_LENGTH = 20;
 const DESCRIPTION_MAX_LENGTH = 500;
 const PHONE_PATTERN = /^[0-9+\-\s]*$/;
 
+// 店名、地址的上限對齊 0029_text_length_checks.sql 的 store_settings_name_length／
+// store_settings_address_length（TASK-123）。資料庫以 char_length 計碼點、儲存的是 trim 後的值，
+// 所以這兩個欄位以 trim 後的碼點數計算（Array.from，比照 lib/designers.ts）。logo_url／
+// cover_image_url 的 2048 上限只有資料庫端：值只由 uploadStoreImage 產生，沒有使用者輸入的欄位。
+export const STORE_NAME_MAX_LENGTH = 200;
+export const STORE_ADDRESS_MAX_LENGTH = 200;
+
 export function validateStoreName(name: string): string | null {
-  return name.trim().length > 0 ? null : "店名為必填";
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return "店名為必填";
+  if (Array.from(trimmed).length > STORE_NAME_MAX_LENGTH) return `店名長度須在 ${STORE_NAME_MAX_LENGTH} 字以內`;
+  return null;
+}
+
+export function validateStoreAddress(address: string): string | null {
+  return Array.from(address.trim()).length <= STORE_ADDRESS_MAX_LENGTH
+    ? null
+    : `地址長度須在 ${STORE_ADDRESS_MAX_LENGTH} 字以內`;
 }
 
 export function validateStorePhone(phone: string): string | null {

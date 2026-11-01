@@ -4,7 +4,10 @@ import {
   createService,
   setServiceActive,
   updateService,
+  SERVICE_DESCRIPTION_MAX_LENGTH,
+  SERVICE_NAME_MAX_LENGTH,
   validateServiceBuffer,
+  validateServiceDescription,
   validateServiceDuration,
   validateServiceName,
   validateServicePrice,
@@ -19,6 +22,41 @@ describe("validateServiceName", () => {
   });
   it("純空白字串回傳錯誤", () => {
     expect(validateServiceName("   ")).toBe("名稱為必填");
+  });
+
+  // TASK-123：對齊 0029 的 services_name_length（60，char_length 計碼點、儲存的是 trim 後的值）。
+  it("上限 60：剛好 60 字通過、61 字回傳長度錯誤", () => {
+    expect(SERVICE_NAME_MAX_LENGTH).toBe(60);
+    expect(validateServiceName("剪".repeat(60))).toBeNull();
+    expect(validateServiceName("剪".repeat(61))).toBe("名稱長度須在 60 字以內");
+  });
+  it("以 trim 後長度計算：前後空白不算", () => {
+    expect(validateServiceName(`  ${"a".repeat(60)}  `)).toBeNull();
+    expect(validateServiceName(`  ${"a".repeat(61)}  `)).toBe("名稱長度須在 60 字以內");
+  });
+  it("以碼點計算：表情符號算 1 個（與資料庫 char_length 一致）", () => {
+    expect("😀".repeat(60).length).toBe(120); // UTF-16 單位是 120，若用 .length 會被誤擋
+    expect(validateServiceName("😀".repeat(60))).toBeNull();
+    expect(validateServiceName("😀".repeat(61))).toBe("名稱長度須在 60 字以內");
+  });
+});
+
+describe("validateServiceDescription", () => {
+  it("空字串與一般描述通過", () => {
+    expect(validateServiceDescription("")).toBeNull();
+    expect(validateServiceDescription("含洗髮與造型")).toBeNull();
+  });
+  it("上限 500：剛好 500 字通過、501 字回傳長度錯誤", () => {
+    expect(SERVICE_DESCRIPTION_MAX_LENGTH).toBe(500);
+    expect(validateServiceDescription("字".repeat(500))).toBeNull();
+    expect(validateServiceDescription("字".repeat(501))).toBe("描述長度須在 500 字以內");
+  });
+  it("以 trim 後長度計算（寫入前會 trim）", () => {
+    expect(validateServiceDescription(`  ${"a".repeat(500)}  `)).toBeNull();
+  });
+  it("以碼點計算：表情符號算 1 個", () => {
+    expect(validateServiceDescription("😀".repeat(500))).toBeNull();
+    expect(validateServiceDescription("😀".repeat(501))).toBe("描述長度須在 500 字以內");
   });
 });
 
