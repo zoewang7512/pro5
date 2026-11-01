@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithTheme as render } from "../test-utils";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AdminProfileProvider } from "@/app/admin/_components/AdminProfileContext";
 import { AccountSettingsView } from "@/app/admin/_components/AccountSettingsView";
 import { UnsavedChangesProvider, useIsUnsavedDirty } from "@/app/admin/_components/UnsavedChangesProvider";
+import { DEMO_ACTION_BLOCKED_MESSAGE } from "@/lib/demo/notice-copy";
 
 afterEach(cleanup);
 
@@ -833,6 +834,63 @@ describe("AccountSettingsView - Demo 體驗帳號鎖定（TASK-101）", () => {
     expect(updateAdminEmailMock).not.toHaveBeenCalled();
     expect(enrollMfaMock).not.toHaveBeenCalled();
     expect(screen.queryByText("請輸入目前密碼。")).not.toBeInTheDocument();
+    // TASK-118：不再靜默無反應，改顯示統一提示。
+    expect(await screen.findByText(DEMO_ACTION_BLOCKED_MESSAGE)).toBeInTheDocument();
+  });
+
+  // Toast 一次只顯示佇列最前面一則，所以三個入口各自獨立一個案例（TASK-118）。
+  it("密碼表單被直接送出：顯示統一提示，不呼叫更新函式、不出現表單驗證錯誤", async () => {
+    renderDemoView();
+
+    fireEvent.submit(getPasswordCardCurrentPasswordField().closest("form")!);
+
+    expect(await screen.findByText("體驗帳號不開放這項操作。")).toBeInTheDocument();
+    expect(updateAdminPasswordMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("請輸入目前密碼。")).not.toBeInTheDocument();
+    expect(screen.queryByText("新密碼為必填。")).not.toBeInTheDocument();
+  });
+
+  it("Email 表單被直接送出：顯示統一提示，不呼叫更新函式、不出現表單驗證錯誤", async () => {
+    renderDemoView();
+
+    fireEvent.submit(screen.getByLabelText("目前 Email").closest("form")!);
+
+    expect(await screen.findByText("體驗帳號不開放這項操作。")).toBeInTheDocument();
+    expect(updateAdminEmailMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("請輸入目前密碼。")).not.toBeInTheDocument();
+  });
+
+  it("MFA 啟用入口被觸發：顯示統一提示，不呼叫 enrollMfa、不進入註冊畫面", async () => {
+    renderDemoView();
+
+    // 停用的 MUI Button 會在自己的 onClick 包裝裡擋掉點擊（React 也依 disabled prop 擋），
+    // 移除 DOM 的 disabled 屬性再 click 同樣到不了 handler，所以這個入口比表單更難被繞過。
+    // 這裡沿 React fiber 取出元件傳給 Button 的原始 onClick（handleStartMfaEnrollment），
+    // 直接驗證 handler 本身的 isDemo 防護。
+    const button = screen.getByRole("button", { name: "啟用雙重驗證" });
+    const fiberKey = Object.keys(button).find((key) => key.startsWith("__reactFiber"))!;
+    type Fiber = { return: Fiber | null; memoizedProps: { onClick?: () => void; variant?: string; size?: string } };
+    let fiber: Fiber | null = (button as unknown as Record<string, Fiber>)[fiberKey];
+    while (fiber && !(fiber.memoizedProps?.variant === "contained" && fiber.memoizedProps?.size === "small")) {
+      fiber = fiber.return;
+    }
+    const startEnrollment = fiber!.memoizedProps.onClick!;
+    act(() => {
+      startEnrollment();
+    });
+
+    expect(await screen.findByText("體驗帳號不開放這項操作。")).toBeInTheDocument();
+    expect(enrollMfaMock).not.toHaveBeenCalled();
+    expect(screen.queryByAltText("MFA 驗證 QR Code")).not.toBeInTheDocument();
+  });
+
+  it("提示不含資料庫或 Supabase 的原始錯誤文字", async () => {
+    renderDemoView();
+
+    fireEvent.submit(getPasswordCardCurrentPasswordField().closest("form")!);
+
+    const message = await screen.findByText("體驗帳號不開放這項操作。");
+    expect(message.closest('[role="alert"]')).toHaveTextContent(/^體驗帳號不開放這項操作。$/);
   });
 
   it("個人資料卡片維持可用：可編輯顯示名稱並儲存", async () => {
@@ -857,11 +915,21 @@ describe("AccountSettingsView - Demo 體驗帳號鎖定（TASK-101）", () => {
     await waitFor(() => expect(rpcMock).toHaveBeenCalledWith("update_admin_profile", expect.anything()));
   });
 
+  it("一般管理員送出空白密碼表單：走原本的驗證，不會出現 Demo 提示（TASK-118）", async () => {
+    renderView();
+
+    fireEvent.submit(getPasswordCardCurrentPasswordField().closest("form")!);
+
+    expect(await screen.findByText("請輸入目前密碼。")).toBeInTheDocument();
+    expect(screen.queryByText(DEMO_ACTION_BLOCKED_MESSAGE)).not.toBeInTheDocument();
+  });
+
   it("一般管理員：沒有任何鎖定標籤，欄位與按鈕可操作，且照常讀取 MFA 狀態", async () => {
     renderView();
 
     expect(screen.queryByText("🔒 體驗帳號不開放")).not.toBeInTheDocument();
     expect(screen.queryByText("體驗帳號不開放修改密碼。")).not.toBeInTheDocument();
+    expect(screen.queryByText(DEMO_ACTION_BLOCKED_MESSAGE)).not.toBeInTheDocument();
     expect(getPasswordCardCurrentPasswordField()).toBeEnabled();
     expect(screen.getByLabelText("目前 Email")).toBeEnabled();
     await waitFor(() => expect(listMfaFactorsMock).toHaveBeenCalledTimes(1));

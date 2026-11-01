@@ -27,6 +27,10 @@ export const DEMO_NOT_ALLOWED_ITEMS = ["修改密碼、登入 Email", "啟用／
 
 export const DEMO_NOTICE_CONFIRM_LABEL = "開始體驗";
 
+// 帳號設定頁被鎖的三項操作（密碼、Email、啟用 MFA）在 Demo 被繞過前端停用而觸發時的固定提示（TASK-118）。
+// 由 isDemo 判斷顯示，不辨識資料庫錯誤（TASK-098 (f)：前端認不出鎖定錯誤）；只是 UX，不是安全邊界。
+export const DEMO_ACTION_BLOCKED_MESSAGE = "體驗帳號不開放這項操作。";
+
 // 改期／取消最終確認後的寄信說明視窗（TASK-115）。只說明正式環境的行為，不宣稱「已寄出」；
 // 真正不寄信由資料庫守門保證（TASK-114），這個視窗不是安全邊界。
 export const DEMO_MAIL_NOTICE_NOTE = "正式環境會寄出這封信；體驗帳號不會真的寄出。";

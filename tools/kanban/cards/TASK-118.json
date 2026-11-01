@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,16 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/components/account-settings-view.test.tsx（單獨）→ 55 passed",
+      "變異檢查：三處 showToast 換成 no-op → 5 failed（測試有鑑別力），已還原",
+      "npx tsc --noEmit、npm run lint、npm run build 通過",
+      "tests/components tests/lib 與 build 並行時 35 項 5 秒逾時；account-settings-view 55/55、login-form 30/30 單獨重跑全過（負載造成）"
+    ],
+    "findings": [
+      "任務卡假設 MFA 可「移除 disabled 後點擊」覆蓋，實測不可行（React 與 MUI ButtonBase 皆擋）；改沿 React fiber 取 handler 測試，MFA 提示在真實瀏覽器屬縱深防禦"
+    ],
+    "residual": "console 直接呼叫 Supabase 無畫面可提示（資料庫仍擋）；MFA 測試依賴 React／MUI 內部結構；提示僅 UX，非安全邊界。"
   },
   "id": "TASK-118",
   "title": "帳號設定頁 Demo 鎖定操作的統一提示文案（前端）",
@@ -56,6 +63,21 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "TASK-101 驗收時發現畫面規格的「錯誤」狀態沒有任何卡負責，使用者指示另立一張卡處理。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者下令動工（開始做 TASK-118），視為核准任務卡範圍；前置 TASK-097／101 皆 Done。human_approval_recorded 打勾，推到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "實作完成（見 verification/TASK-118.md）：三個入口改為顯示「體驗帳號不開放這項操作。」，測試 55/55、tsc／lint／build 通過、變異檢查有效。發現 MFA 入口在真實瀏覽器移除 disabled 也點不到 handler（React＋MUI 雙重擋），已記錄於報告。推到 verify，不轉 Done（需人工驗收）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }

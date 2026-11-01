@@ -33,6 +33,7 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, passwordsMatch } from "@/lib/
 import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { OtpInput, OTP_LENGTH } from "@/components/ui/OtpInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DEMO_ACTION_BLOCKED_MESSAGE } from "@/lib/demo/notice-copy";
 
 // 架構基礎（TASK-038）：帳號設定頁骨架，比照已核准 mockup 變體 A 的卡片版型（個人資料／
 // 密碼／登入 Email／雙重驗證）。TASK-041 接上「個人資料」卡片；TASK-042 接上「密碼」與
@@ -55,7 +56,9 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 // Demo 體驗帳號（TASK-101，mockup 變體 A）：isDemo 時密碼／登入 Email／雙重驗證三張卡片
 // 保留原版面，但欄位與按鈕全部停用並加上「🔒 體驗帳號不開放」標籤；個人資料卡片不受影響。
 // 這只是第一層提示，不是安全邊界——真正的鎖在資料庫（TASK-100 的 auth 觸發器），isDemo
-// 讀不到時預設為 false，行為與一般管理員完全一致。
+// 讀不到時預設為 false，行為與一般管理員完全一致。TASK-118：停用被開發者工具移除而觸發這三項
+// 操作時，改為顯示固定提示（Toast），不呼叫任何更新函式；前端無法辨識資料庫的鎖定錯誤
+// （TASK-098 (f)），所以由 isDemo 判斷，不做錯誤對應。
 
 const DEMO_LOCK_LABEL = "🔒 體驗帳號不開放";
 const DEMO_LOCK_NOTE_PASSWORD = "體驗帳號不開放修改密碼。";
@@ -191,7 +194,10 @@ export function AccountSettingsView() {
 
   async function handleUpdatePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isDemo) return;
+    if (isDemo) {
+      showToast(DEMO_ACTION_BLOCKED_MESSAGE, "error");
+      return;
+    }
     setPasswordSubmitAttempted(true);
     setCurrentPasswordError(null);
     setPasswordFormError(null);
@@ -296,7 +302,10 @@ export function AccountSettingsView() {
 
   async function handleUpdateEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isDemo) return;
+    if (isDemo) {
+      showToast(DEMO_ACTION_BLOCKED_MESSAGE, "error");
+      return;
+    }
     setEmailSubmitAttempted(true);
     setEmailCurrentPasswordError(null);
     setEmailFormError(null);
@@ -429,7 +438,10 @@ export function AccountSettingsView() {
   }
 
   async function handleStartMfaEnrollment() {
-    if (isDemo) return;
+    if (isDemo) {
+      showToast(DEMO_ACTION_BLOCKED_MESSAGE, "error");
+      return;
+    }
     setMfaEnrollStarting(true);
     try {
       const result = await enrollMfa(supabase);
