@@ -340,6 +340,19 @@ export function LoginForm({ demoEnabled = false }: { demoEnabled?: boolean }) {
                   <Alert severity="success">若此 email 對應既有帳號，重設密碼信已寄出，請至信箱查收。</Alert>
                 )}
                 {forgotResult === "error" && <Alert severity="error">發生未預期的錯誤，請稍後再試。</Alert>}
+                {/* TASK-119：輸入體驗帳號信箱時資料庫觸發器（TASK-100）會擋下重設，前端只會收到
+                    通用錯誤，且無法也不該比對 Demo Email（不得出現在前端）。所以不辨識原因：Demo 入口
+                    開啟時，任何失敗都多給一行引導，畫面不隨輸入的信箱而不同。 */}
+                {forgotResult === "error" && demoEnabled && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: "text.secondary", display: "block", lineHeight: 1.5, mb: 1 }}>
+                      若您是要體驗，請回登入頁使用「進入體驗帳號」。
+                    </Typography>
+                    <Button type="button" variant="outlined" size="small" onClick={backToLogin}>
+                      回登入頁
+                    </Button>
+                  </Box>
+                )}
                 <TextField
                   label="Email"
                   type="email"

@@ -3,7 +3,7 @@
   "createdAt": "2026-10-31",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,17 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/components/login-form.test.tsx → 35 passed（新增 5 項，既有 30 項未改）",
+      "變異檢查：demoEnabled 條件換成 false → 3 failed（測試有鑑別力），已還原",
+      "npx tsc --noEmit、npm run lint、npm run build 通過",
+      "grep -rl hair_demo .next/static → 無命中",
+      "預覽頁（已刪除）：桌面亮色／暗色、375 手機無橫向捲動（scrollWidth 375）；fetch 改為拒絕，未對 Supabase 發請求"
+    ],
+    "findings": [
+      "方案 A 為已知取捨：Demo 入口開啟時任何忘記密碼失敗都會看到同一行引導，非精準攔截；畫面規格已同步修訂"
+    ],
+    "residual": "提示不精準（方案 A 取捨）；引導僅 UX，不寄信的保證在 TASK-100；端到端驗證串接於 TASK-112。"
   },
   "id": "TASK-119",
   "title": "忘記密碼流程對體驗帳號的提示（前端）",
@@ -56,6 +64,16 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "TASK-104 驗收時發現畫面規格的「忘記密碼」前端攔截沒有任何卡負責，使用者指示另立一張卡。任務卡列出 A／B／C／D 四個方案（建議 A），等待使用者選定方案並核准後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者下令動工並選定方案 A、文案用建議原句，視為核准；human_approval_recorded 打勾。實作完成（見 verification/TASK-119.md）：login-form 35/35、變異檢查有效、tsc／lint／build 通過、桌面與 375 手機已驗證。推到 verify，不轉 Done（需人工驗收）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }

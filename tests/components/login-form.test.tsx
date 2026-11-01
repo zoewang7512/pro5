@@ -536,6 +536,83 @@ describe("LoginForm - 體驗帳號入口（TASK-104）", () => {
     expect(screen.queryByText(failureText)).not.toBeInTheDocument();
   });
 
+  // TASK-119：忘記密碼失敗時對體驗帳號的引導。前端不比對 Demo Email，也不辨識錯誤原因。
+  const guidanceText = "若您是要體驗，請回登入頁使用「進入體驗帳號」。";
+
+  async function submitForgotPassword(user: ReturnType<typeof userEvent.setup>, address: string) {
+    await user.click(screen.getByRole("button", { name: "忘記密碼？" }));
+    await user.type(screen.getByLabelText("Email", { exact: false }), address);
+    await user.click(screen.getByRole("button", { name: "寄送重設信" }));
+  }
+
+  it("忘記密碼失敗且 demoEnabled 為真：保留通用錯誤，多出引導與「回登入頁」", async () => {
+    resetPasswordForEmailMock.mockResolvedValue({ error: { message: "trigger blocked" } });
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await submitForgotPassword(user, "someone@example.com");
+
+    expect(await screen.findByText("發生未預期的錯誤，請稍後再試。")).toBeInTheDocument();
+    expect(screen.getByText(guidanceText)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "回登入頁" })).toBeInTheDocument();
+  });
+
+  it("忘記密碼失敗且 demoEnabled 為假：失敗畫面與現況一致，沒有引導", async () => {
+    resetPasswordForEmailMock.mockResolvedValue({ error: { message: "rate limited" } });
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await submitForgotPassword(user, "someone@example.com");
+
+    expect(await screen.findByText("發生未預期的錯誤，請稍後再試。")).toBeInTheDocument();
+    expect(screen.queryByText(guidanceText)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "回登入頁" })).not.toBeInTheDocument();
+  });
+
+  it("忘記密碼成功時不顯示引導（demoEnabled 真／假皆然）", async () => {
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await submitForgotPassword(user, "someone@example.com");
+
+    expect(await screen.findByText(/重設密碼信已寄出/)).toBeInTheDocument();
+    expect(screen.queryByText(guidanceText)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "回登入頁" })).not.toBeInTheDocument();
+  });
+
+  it("失敗畫面不因輸入的信箱而不同（不洩漏是否為體驗帳號信箱）", async () => {
+    resetPasswordForEmailMock.mockResolvedValue({ error: { message: "any failure" } });
+    const user = userEvent.setup();
+    const first = render(<LoginForm demoEnabled />);
+    await submitForgotPassword(user, "a@example.com");
+    await screen.findByText(guidanceText);
+    const textForA = first.container.textContent;
+    first.unmount();
+
+    const second = render(<LoginForm demoEnabled />);
+    await submitForgotPassword(user, "hair_demo@example.com");
+    await screen.findByText(guidanceText);
+    const textForB = second.container.textContent;
+
+    // 比對可見文字：MUI 產生的 id／class 每次渲染不同，不適合直接比 HTML。
+    expect(textForB).toBe(textForA);
+  });
+
+  it("點「回登入頁」回到登入表單，「進入體驗帳號」入口可見，且不再顯示錯誤", async () => {
+    resetPasswordForEmailMock.mockResolvedValue({ error: { message: "trigger blocked" } });
+    const user = userEvent.setup();
+    render(<LoginForm demoEnabled />);
+
+    await submitForgotPassword(user, "someone@example.com");
+    await user.click(await screen.findByRole("button", { name: "回登入頁" }));
+
+    expect(screen.getByRole("heading", { name: "設計師登入" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enterButtonName })).toBeInTheDocument();
+    expect(screen.queryByText("發生未預期的錯誤，請稍後再試。")).not.toBeInTheDocument();
+    expect(screen.queryByText(guidanceText)).not.toBeInTheDocument();
+  });
+
   it("入口失敗不影響一般登入：失敗後仍可用 Email／密碼登入", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: false }, 403));
     signInWithPasswordMock.mockResolvedValue({ error: null });
