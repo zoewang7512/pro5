@@ -30,14 +30,15 @@
       "npm run test:notifications → 20/20；npm run test:demo-enter → 22/22",
       "npx vitest run tests/lib/demo-mail-suppress-migration.test.ts → 5/5；tsc、lint 0 錯誤",
       "改版後 TASK-114-verify.sql（使用者重跑）：has_guard=t、security_definer=t、proconfig=[search_path=\"\"]，11 個情境全符合預期，RESULT=ALL_OK（含 user_metadata／頂層／字串 false 的負向情境）",
-      "Dashboard 確認（使用者）：Auth Hooks 清單為空（無 Custom Access Token Hook）；Allow new users to sign up 為關閉"
+      "Dashboard 確認（使用者）：Auth Hooks 清單為空（無 Custom Access Token Hook）；Allow new users to sign up 為關閉",
+      "回滾實測（使用者）：套用 _down → verify.sql has_guard=f、Demo 情境 1（MISMATCH，符合預期）；重新套用 0026 → has_guard=t、RESULT=ALL_OK"
     ],
     "findings": [
       "整合測試首次執行因 pg_net 非同步而在預約被清掉後才抵達，信未寄出；已加 25 秒等待，重跑後信件送達。",
       "三方子代理審查（架構、安全、測試）皆有條件核准、無 MUST FIX；已處理：新增掃描測試防止日後 migration 洗掉守門、逐字測試補強、verify.sql 改版（使用者已重跑，ALL_OK）、報告補原始輸出與證據效力說明、修正 0024 機制描述。",
       "整合測試不是守門回歸測試（沒套用 0026 也會綠燈）；test:notifications 缺套用前基準，驗收標準未完全達成，已如實標註。"
     ],
-    "residual": "未關閉：R1 Demo 靜默取消可解除每 Email 3 筆上限，確認信可無限次寄給任意 Email；R2 Demo 正常改期會清 reminder_sent_at 使提醒排程對任意 Email 寄信（已另開 TASK-120、TASK-121 草稿，待使用者決定修法）。另：回滾未實際套用。"
+    "residual": "未關閉：R1 Demo 靜默取消可解除每 Email 3 筆上限，確認信可無限次寄給任意 Email；R2 Demo 正常改期會清 reminder_sent_at 使提醒排程對任意 Email 寄信（已另開 TASK-120、TASK-121 草稿，待使用者決定修法）。回滾已於 2026-11-01 實測可用。"
   },
   "id": "TASK-114",
   "title": "Demo 發動的改期／取消不寄信（改寫 notify_appointment_update，migration）",
@@ -96,6 +97,11 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "使用者人工驗收通過，轉 Done；三個審查關卡以子代理審查（有條件核准、無 MUST FIX、意見已處理）加人工驗收勾選。殘留：R1、R2 已另開 TASK-120、TASK-121（草稿，待使用者決定修法）；回滾未實際套用。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者實測回滾：_down 套用後 has_guard=f、Demo 情境回到 1；重新套用 0026 後 ALL_OK。「回滾未實際套用」限制已解除。"
     }
   ]
 }

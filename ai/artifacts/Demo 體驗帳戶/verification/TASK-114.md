@@ -70,8 +70,26 @@ VERIFY_RESULT（交易已 rollback，沒有改動任何資料、沒有寄出任�
 | service role 與顧客端取消行為不變 | 部分 | service role：verify.sql 以「無 Demo claim」模擬（舊版用空 claims，新版另含真實 `{"role":"service_role"}` 形狀）；**顧客端取消不適用**：目前沒有顧客自助取消路徑（需 access_token 的取消尚不存在） |
 | Demo 建立預約（確認信路徑）不受影響 | 僅靜態證據 | `notify_appointment_insert` 與觸發器未動（單元測試斷言）；**沒有**實測 Demo JWT 下建立預約仍寄確認信，建議 TASK-112 走查時補一次 |
 | 預約資料本身對 Demo 照常改期／取消成功 | 達成 | 整合測試 2 項（真實 Demo JWT 經 PostgREST） |
-| `_down.sql` 後函式與 0012 逐字一致 | 僅靜態證據 | 單元測試逐字比對；**沒有**實際套用 `_down` 做行為還原（避免重新打開缺口） |
+| `_down.sql` 後函式與 0012 逐字一致 | 達成 | 單元測試逐字比對；**並已實際套用 `_down` 與重新套用 0026（見下方「回滾實測」）**：回滾後 `has_guard=f`，Demo 情境變回 1；重新套用後恢復 ALL_OK |
 | 既有 `test:notifications` 在套用前後都通過 | **未完全達成** | 只有套用後 20/20；**沒有套用前基準**，也沒有 `_down` 後的結果 |
+
+## 回滾實測（2026-11-01，使用者於 Supabase SQL Editor 執行；當時 Demo 帳戶尚未建立、入口未公開）
+
+流程：整份貼上 `0026_demo_suppress_update_mail_down.sql` → 跑 `TASK-114-verify.sql` → 整份貼上 `0026_demo_suppress_update_mail.sql` → 再跑 `TASK-114-verify.sql`。
+
+**回滾後**（`_down` 回報 Success）：
+
+```
+VERIFY_RESULT（交易已 rollback，沒有改動任何資料、沒有寄出任何信件）：has_guard=f, security_definer=t, proconfig=[search_path=""], demo_reschedule=1(0), demo_cancel=1(0), demo_string_true=1(0), nondemo_reschedule=1(1), nondemo_cancel=1(1), service_real_claims=1(1), no_claims=1(1), is_demo_false=1(1), is_demo_string_false=1(1), user_metadata_demo=1(1), top_level_demo=1(1),  RESULT=MISMATCH
+```
+
+**重新套用 0026 後**：
+
+```
+VERIFY_RESULT（交易已 rollback，沒有改動任何資料、沒有寄出任何信件）：has_guard=t, security_definer=t, proconfig=[search_path=""], demo_reschedule=0(0), demo_cancel=0(0), demo_string_true=0(0), nondemo_reschedule=1(1), nondemo_cancel=1(1), service_real_claims=1(1), no_claims=1(1), is_demo_false=1(1), is_demo_string_false=1(1), user_metadata_demo=1(1), top_level_demo=1(1),  RESULT=ALL_OK
+```
+
+結論：`_down` 如預期移除守門（`has_guard=f`，三個 Demo 情境回到 1，其餘情境不變，`security definer` 與 `search_path` 設定維持），重新套用 0026 後完全恢復；回滾與重套都可重複執行、不留下半套。回滾期間 Demo 的改期與取消會寄信，這段時間正式庫沒有守門（當時沒有 Demo 帳戶、入口未公開）。
 
 ## 子代理審查結果與處置（2026-10-31）
 
@@ -101,7 +119,7 @@ VERIFY_RESULT（交易已 rollback，沒有改動任何資料、沒有寄出任�
 
 ## 其他已知限制
 
-1. 回滾（`_down`）未實際套用，只以逐字比對證明；回滾會重新打開寄信缺口。
+1. 回滾（`_down`）已實測可用（見「回滾實測」）；但回滾會重新打開寄信缺口，只應在 Demo 入口未公開或已關閉時執行。
 2. Demo 每日還原（0024）對預約是**先刪後插**，不發 UPDATE，不會觸發 `appointments_notify_update`；INSERT 路徑則由 0024 直接拒收帶 `customer_email` 的 seed（`0024:236-241`），不靠人工確認。
 3. 守門依賴「Demo 的寫入一定帶著 Demo JWT 經 PostgREST」。目前 service role client 只用在 webhook、cron、demo-reset、rate-limit；日後若新增「伺服器端以 service role 代 Demo 改預約」的功能，守門會靜默失效（已記入 decisions.md）。
 4. 整合測試會寄 1 封真實信件，需設定 `DEMO_MAIL_TEST_EMAIL`；不放進預設 `npm test`。中斷（Ctrl-C）時會殘留一個 `is_demo` 的拋棄式管理員帳號與測試服務，下次執行的 `beforeAll` 會清帳號；期間 Demo 還原函式會因「不是剛好 1 個 Demo 帳戶」拒絕執行。25 秒等待在冷啟動較慢時可能不足（超時會靜默：預約被刪、webhook 回 200 不寄信）。
