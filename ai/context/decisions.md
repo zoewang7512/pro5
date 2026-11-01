@@ -905,3 +905,52 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 考慮過的替代方案：每表各寫一個函式（上限分散）；用 trigger 參數傳上限（改上限要重建觸發器）；RLS policy 內計數（TASK-113 已證實擋不住並行）；在 reset_demo_data 用 like 'demo_row_cap_%' 放行（比明確名單寬，漏網風險）；用暫時降級白名單檢查的旗標（增加還原路徑的複雜度）。
 為何選這個：一個函式一個來源、與 0025 同一套硬上限做法、只動 reset_demo_data 的白名單且有逐字比對把關。
 ```
+
+## TASK-111（Demo 體驗帳戶）：Epic 總決策、緊急關閉指令與營運手冊
+
+```text
+日期：2026-11-01
+決策（本條目彙整整個 Epic 的定案決策，細節與審查過程見各 TASK 條目與 architecture-notes.md）：
+  1. 同庫全功能 Demo：Demo 是 admins 表裡的一般管理員（auth.users.raw_app_meta_data.is_demo = true，由 service role 設定，使用者本人無法改寫），
+     與 designer001 共用同一個 Supabase 專案。不採唯讀，因為本專案的賣點都是寫入流程（改期、時段衝突、請假、營業時間連動可預約時段）。
+     代價是 Demo 就等於 is_admin() 的全部寫入權限，防線靠下列各層，而不是靠限制 Demo 的角色。
+  2. 一鍵進入（推翻早先「只填入欄位、不自動送出」與「不做伺服器端一鍵登入」）：POST /api/demo/enter 由伺服器端代為登入，
+     Demo 密碼只存在伺服器環境變數，不顯示在畫面、README 或前端 bundle；cookie 暫存、驗證 is_demo 與 aal 之後才寫進回應（TASK-103）。
+  3. 鎖三層：(a) 前端停用與橫幅（提示用，不是防線）；(b) 資料庫觸發器 auth.users BEFORE UPDATE 與 auth.mfa_factors BEFORE INSERT（TASK-100）；
+     (c) 每日還原刪 MFA factor、撤銷 session、健康檢查（只回報不修復）。
+     觸發器鎖定欄位：encrypted_password、email、email_change、email_change_token_new、email_change_token_current、recovery_token、
+     reauthentication_token、phone、phone_change，另外 is_demo 標記本身不可改。寫法限制：函式必須 SECURITY INVOKER（DEFINER 會讓 current_user
+     變成擁有者、鎖等於沒做）、WHEN 只限定 is_demo 的列、不建任何設定表、錯誤訊息固定不含欄位名稱。
+     admin API 改 Demo 也會被擋（同樣經過 GoTrue），輪換密碼與修復帳戶只能走 SQL Editor 的 postgres 角色。
+  4. 還原範圍與順序：services／designers 與三張子表／business_hours／closed_dates／booking_policy／store_settings／appointments／customers 整表還原成 seed；
+     audit_log 只刪 Demo 帳戶的列；admins 只還原 Demo 那一列。順序固定：同步圖片（只新增與覆寫）→ 單一交易 reset_demo_data → 孤兒清理（白名單三個公開 bucket，
+     絕不碰 demo-seed）→ 刪 MFA 與撤銷 session → 健康檢查。資料庫提交之後的階段失敗不回滾也不阻止後面階段。
+     手動真實還原不受 DEMO_RESET_ENABLED 約束（旗標只管排程），需 CRON_SECRET 與 confirm=RESET_DEMO；排程模式不帶任何 query。
+  5. designer001 不動清單：登入密碼、Email、MFA、admins 個人資料與頭像、稽核紀錄、他上傳的 admin-assets 物件（TASK-113 讓 Demo 無法刪除或更新）。
+     原因：排程無人值守，若覆寫憑證而 seed 與實際密碼不同，作者會被鎖在後台外面。
+  6. 寄信：預約確認信照寄；Demo 發動的改期與取消不寄信（0026，判斷來源是請求 JWT 的 app_metadata，TASK-114），並在最終確認後以說明視窗示意正式環境會寄出的通知信
+     （TASK-115）。這推翻 TASK-080 原寫的「Demo 環境關閉寄信」，該卡的註記已同步更新。
+  7. 暗啟動順序：本 Epic 的 migration 全是加法 → 先套用 migration → 合併到 master（DEMO_ENABLED 與 DEMO_RESET_ENABLED 皆關閉）→ 部署 → 建立帳戶、匯入圖片 →
+     dry-run → （先備份、使用者同意）手動真實還原 → 驗證 → 開 DEMO_ENABLED 並 Redeploy → 最後開 DEMO_RESET_ENABLED 並 Redeploy。
+     理由：只有一個 Supabase，git 分支隔離不了資料庫；vercel.json 只有 master 會部署且 Cron 只在 production 執行，「先部署驗證再合併」做不到。
+  8. 備份：Supabase Free Plan 沒有專案備份，真實還原前必須自建備份（TASK-117）；備份的還原只走 restore.sql，不走 Demo 還原函式（它拒絕含 Email 的預約）。
+  9. 緊急開關（本卡）：scripts/disable-demo.mjs，npm run demo:disable／demo:enable。
+     - 關閉 DEMO_ENABLED 只擋新的進入，已發出的 session 與 refresh token 仍有效，所以另做指令：依序「刪 admins 列（is_admin() 立即失效）→ 封鎖帳戶（ban_duration）→ demo_revoke_sessions()」。
+       與架構筆記 D12 的順序不同：封鎖排在撤銷 session 之前，否則封鎖前的空檔訪客可重新登入拿到新 session，日後 demo:enable 重新登記 admins 後它又變回管理員
+       （TASK-100 審查已建議「先 ban 再撤銷」）。每一步獨立、一步失敗不阻止其他步驟，結束後重新讀取狀態檢查；可重複執行。
+     - 目標帳戶一律由「is_demo 且剛好 1 個」決定，不接受命令列指定帳號，所以不可能對 designer001 動手；有 DEMO_EMAIL 時 Email 必須相符；預設只預覽，--yes 才寫入。
+     - demo:enable 解除封鎖並重新登記 admins（顯示名稱「Demo帳號」，其餘個人資料由下次還原補回），不會自動開入口。
+  10. 營運手冊 docs/demo-account.md：不含任何帳密、金鑰、Email；每個指令與 SQL 標明驗證狀態（已實跑／agent 無法實跑），無法實跑者寫明第一次使用時如何確認。
+情境：TASK-111（文件與營運指令卡）；彙整 TASK-097～117 的決策。demo:disable／enable 對拋棄式 Demo 帳號實測，見 verification/TASK-111.md。
+考慮過的替代方案：只靠改 DEMO_ENABLED 並 Redeploy（擋不住已發出的 session）；封鎖放最後（見上，空檔風險）；讓指令接受 --user-id（多一條動到非 Demo 帳號的路徑，已否決）；
+  唯讀 Demo（與賣點衝突）；為每個環境另建 Supabase 專案（超出免費方案與作品集範圍）。
+影響與殘留風險：
+  - 顧客資料互相可見：Demo 能讀全部 appointments／customers，面試官輸入的資料會被下一位看到（使用者已接受；README 請訪客勿輸入真實個資）。
+  - 資料量與配額：Storage 每個公開 bucket 30 個物件（所有訪客共用，0025）、六張表的總列數上限（0027）；audit_log 上限（TASK-122）、欄位長度（TASK-123）、
+    匿名顧客預約的容量（TASK-120／121）尚未完成，是開啟入口前要確認的前置條件。
+  - 公開前台可被竄改最長約 24 小時（店名、Logo、作品集、價格），使用者已接受；立即止血用 demo:reset --yes 或 demo:disable。
+  - 觸發器依賴 Auth 平台目前的連線角色與寫入欄位，升級後可能失效或誤擋；對策是手冊 §7.4 的兩行 drop trigger（不要用 _down.sql）。
+  - Demo 使用者可從 console 呼叫 global signOut 踢出其他面試官（可再按一次進入）；DEMO_EMAIL 公開，必須是作者控制的信箱；
+    正式環境沒設 DESIGNER_EMAIL 時 Email 比對無作用，is_demo 驗證才是主要防線。
+  - test:demo-disable 只能在沒有真實 Demo 帳戶時執行（指令要求 is_demo 剛好 1 個）；之後的回歸靠假 client 的單元測試。
+  - 手冊中的 SQL Editor 語句（檢視、輪換密碼、稽核清理）agent 沒有存取權限，未實跑，已在手冊標明。

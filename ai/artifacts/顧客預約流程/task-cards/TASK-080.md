@@ -25,7 +25,9 @@
   假預約會被清除；既有「同電話最多 3 筆待服務預約」與資料庫 exclusion constraint 已避免雙重預約與資料錯亂。本卡要
   引入外部服務、新的伺服器端端點並收回 anon 直接呼叫，風險高、成本大於效益。
 - 較實際的風險是「用別人的 email 大量預約，借本站網域寄確認信」（耗用 Resend 額度、損害寄件網域信譽）。改用低成本
-  緩解：TASK-068 在 `create_appointment` 加上「同一個 email 最多 3 筆待服務預約」；Demo 環境關閉寄信（Demo 帳戶 Epic）；
+  緩解：TASK-068 在 `create_appointment` 加上「同一個 email 最多 3 筆待服務預約」；Demo 環境關閉寄信（Demo 帳戶 Epic）
+  （**2026-11-01 更新註記：已改為確認信開啟；Demo 發動的改期／取消不寄信，TASK-114，migration 0026**；
+  見 `ai/context/decisions.md` 的 TASK-111 條目）；
   Resend 本身的每日上限是最壞情況的天花板。
 - **重新啟動條件**（任一成立就回來做本卡）：有真實店家要上線使用；觀察到灌單或異常預約；Resend 寄信量異常或收到
   濫用回報。

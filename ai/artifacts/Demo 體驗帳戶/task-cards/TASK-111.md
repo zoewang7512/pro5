@@ -8,10 +8,10 @@
 - 上層 User Story：濫用防護與緊急開關
 - 分軌：不適用
 - 前置任務（dependsOn）：TASK-097, TASK-100, TASK-104, TASK-105, TASK-110
-- 狀態：草稿（待人工核准）
+- 狀態：人工驗收通過，已完成（2026-11-01）
 - 風險等級：中
 - Agent owner：Claude Code
-- 人工核准者：待使用者核准
+- 人工核准者：使用者
 
 ## 目標
 
@@ -81,9 +81,9 @@
 
 ## 完成證據
 
-- 變更的檔案：
-- 執行過的指令：
-- 測試輸出：
-- 螢幕截圖：
-- 已知限制：
-- 後續任務：
+- 變更的檔案：`scripts/disable-demo.mjs`、`package.json`、`tests/lib/demo-disable-script.test.ts`、`tests/demo-disable.integration.test.ts`、`vitest.demo-disable.config.ts`、`docs/demo-account.md`、`README.md`、`.env.example`（只改說明文字）、`ai/context/decisions.md`、`ai/context/project-map.md`、`ai/artifacts/顧客預約流程/task-cards/TASK-080.md`（只改註記）、`ai/artifacts/Demo 體驗帳戶/architecture-notes.md`（D12 一句順序註記）。
+- 執行過的指令：`npm run test:demo-disable`、`npx vitest run tests/lib`、`npx tsc --noEmit`、`npm run lint`、`npm run build`。
+- 測試輸出：整合 8 項通過、單元 22 項通過（`tests/lib` 全部 510 項）、tsc 0 錯誤、lint 0 錯誤 0 警告、build 成功。完整輸出與逐項驗收對照見 [`verification/TASK-111.md`](../verification/TASK-111.md)。
+- 螢幕截圖：不適用（README 截圖留給 TASK-112）。
+- 已知限制：手冊中的 SQL（Auth 不可用時刪 `admins`、檢視、輪換密碼、稽核清理、物件清單）agent 無法實跑，已在手冊標「⚠️ 未實跑」；`test:demo-disable` 只能在沒有真實 Demo 帳戶時執行；`demo:disable` 順序與 D12 不同（封鎖先於撤銷 session），理由見驗證報告。
+- 後續任務：TASK-112（建立真實 Demo 帳戶後演練手冊 §7.1／§7.2、補 README 截圖、可順手更正 `0023` 檔頭「11 列」為 14 列的註解）；TASK-122／123 仍是開啟入口前的前置條件。

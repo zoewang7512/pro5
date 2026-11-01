@@ -84,6 +84,11 @@
       "name": "Claude Code",
       "time": "2026-11-01",
       "text": "TASK-116 三方審查後，使用者決定新增 TASK-122（audit_log 上限）與 TASK-123（欄位長度 CHECK）為 Demo 入口前置條件，已加入 dependsOn。另建議把 TASK-120／121（匿名預約與提醒信缺口）也視為入口阻擋條件，待使用者決定。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "TASK-111 帶來的事項：(1) 建立真實 Demo 帳戶後，在 SQL Editor 實跑 docs/demo-account.md §7.1 檢視查詢（應剛好 1 列），並在開放入口前演練 §7.2 輪換密碼（agent 無法實跑這些 SQL）；(2) 建立真實 Demo 帳戶後 test:demo-disable 無法再執行（要求 is_demo 剛好 1 個），回歸改看 tests/lib/demo-disable-script.test.ts，真實帳戶用 npm run demo:disable 的預覽模式（無 --yes 不寫入）演練；(3) README 截圖在入口開放後補；(4) 可順手更正 0023 檔頭驗證查詢「11 列」為 14 列（純註解）。"
     }
   ]
 }

@@ -26,6 +26,17 @@
 
 **[pro5-nu.vercel.app](https://pro5-nu.vercel.app)**
 
+### 一鍵體驗店長後台
+
+不用註冊、不用密碼：開啟[登入頁](https://pro5-nu.vercel.app/login)，按「**進入體驗帳號**」就能以體驗帳號進入店長後台，預約管理、設計師、營業時間、服務項目、稽核紀錄、儀表板與報表都能實際操作。
+
+- **三項不開放**：修改密碼、修改登入 Email、啟用雙重驗證（MFA）。體驗帳號的這幾項在資料庫層就被鎖住，不只是畫面上停用。
+- **資料每日凌晨 3 點左右還原**成範例資料，所以你的操作隔天不會留下。
+- **所有體驗者共用同一份資料**：你可能看到上一位體驗者剛改過的內容，別人也看得到你的。**請勿輸入真實個資**（姓名、電話、Email）。
+- 在體驗帳號下改期或取消預約**不會寄信給顧客**（操作時會跳出說明視窗，示意正式環境會寄出的通知信）。
+- 體驗入口由作者視情況開啟；若登入頁沒有「進入體驗帳號」按鈕，代表目前暫時關閉。
+- 想了解它是怎麼做到安全共用的，見[營運手冊](docs/demo-account.md)。
+
 ## 畫面展示
 
 <!-- TODO：截圖存到 docs/screenshots/ 對應檔名後會自動顯示，尺寸不拘、PNG／JPG 皆可。 -->
@@ -212,6 +223,10 @@ npm run dev
 | `SUPABASE_WEBHOOK_SECRET`             | 驗證 Supabase Database Webhook 呼叫通知信 API 路由的共用密鑰      | 否               |
 | `CRON_SECRET`                         | 驗證 Vercel Cron 呼叫預約提醒信 API 路由的共用密鑰                | 否               |
 | `DESIGNER_EMAIL`／`DESIGNER_PASSWORD` | 本機 seed script／整合測試用的店長（管理員）帳號，非 app 執行期讀取的變數 | 否               |
+| `DEMO_ENABLED`                        | 體驗帳號入口總開關，只有 `true` 才啟用（預設關閉）；改動後需 Redeploy | 否               |
+| `DEMO_EMAIL`／`DEMO_PASSWORD`         | 體驗帳號的登入資料（Email 會顯示在帳號設定頁，須是作者自己的信箱；密碼至少 32 字元） | 否               |
+| `DEMO_RATE_LIMIT_SECRET`              | 一鍵進入限流用的 IP 雜湊金鑰（至少 32 字元）                      | 否               |
+| `DEMO_RESET_ENABLED`                  | 體驗資料每日排程還原的總開關，只有 `true` 才啟用（預設關閉）      | 否               |
 
 ## 可用指令
 
@@ -227,20 +242,22 @@ npm run dev
 | `npm run test:booking` 等 | 對真實 Supabase 專案執行的整合測試，完整清單見 `package.json` 的 `test:*` |
 | `npm run seed:booking`    | 種入服務項目／營業時間最小可行資料（冪等）                                |
 | `npm run kanban`          | 啟動本機治理看板（<http://127.0.0.1:4420>）                               |
+| `npm run demo:*`          | 體驗帳號的營運指令（建立、備份、還原、`demo:disable`／`demo:enable` 緊急關閉），用法見 [`docs/demo-account.md`](docs/demo-account.md) |
 
 ## 專案架構
 
 ```text
 app/                顧客前台與店長後台頁面（App Router）
   admin/               後台：預約管理、營業時間、服務項目、商店設定、帳號設定
-  api/                 Webhook（預約事件通知信）與 Cron（預約提醒信）端點
+  api/                 Webhook（預約事件通知信）、Cron（預約提醒信、體驗資料每日還原）與體驗帳號一鍵進入端點
   login/、reset-password/、auth/   登入、忘記密碼、Email 驗證回呼
 components/         共用 UI 元件庫
 lib/                資料存取封裝、業務邏輯（booking／admin／email 等，依領域分模組）
 supabase/
   migrations/          版本化 schema migration（up/down 成對，人工貼 SQL Editor 套用）
 tests/              對真實 Supabase 專案執行的整合測試 + 元件／流程單元測試
-scripts/            一次性維運腳本（種子資料、建立店長管理員帳號）
+scripts/            一次性維運腳本（種子資料、建立店長管理員帳號、體驗帳號的建立／備份／還原／緊急關閉）
+docs/               營運手冊（體驗帳號）與 README 用的截圖
 ai/                 產品規格書、畫面規格、任務卡等治理文件
 tools/kanban/       本機治理看板（視覺化 ai/ 底下的任務卡）
 ```

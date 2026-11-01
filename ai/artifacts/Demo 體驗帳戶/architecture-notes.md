@@ -172,7 +172,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 關閉 `DEMO_ENABLED` 只擋**新的進入**；已發出的 session 與 refresh token 仍有效，持有者仍能用 REST 與 Storage 行使 `is_admin()` 的全部權限。因此提供：
 
-- `demo:disable`：刪除 Demo 的 `admins` 列（`is_admin()` 每次請求重新判斷，**立即全面失效**）→ 呼叫 `demo_revoke_sessions()` 撤銷 session → 以 admin API 設定 `ban_duration`（`banned_until` 不在鎖定欄位內）。
+- `demo:disable`：刪除 Demo 的 `admins` 列（`is_admin()` 每次請求重新判斷，**立即全面失效**）→ 呼叫 `demo_revoke_sessions()` 撤銷 session → 以 admin API 設定 `ban_duration`（`banned_until` 不在鎖定欄位內）。**（TASK-111 實作時調整順序為 刪 `admins` → 封鎖 → 撤銷 session：先撤銷的話，封鎖前的空檔訪客可重新登入拿到新 session，日後 `demo:enable` 重新登記 `admins` 後它會變回管理員；TASK-100 審查已建議「先 ban 再撤銷」。每一步獨立執行，一步失敗不阻止其他步驟。）**
 - `demo:enable`：反向（重新登記 `admins`、解除封鎖）。
 - 手冊寫明兩種情境與完整步驟；每日還原也會撤銷 Demo 的 session，使單一濫用者最多持續 24 小時。
 

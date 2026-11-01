@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,19 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npm run test:demo-disable → 8 passed（正式庫，拋棄式帳號，結束後無殘留）",
+      "npx vitest run tests/lib/demo-disable-script.test.ts → 22 passed",
+      "npx vitest run tests/lib → 26 files / 510 passed",
+      "npx tsc --noEmit → 0 errors",
+      "npm run lint → 0 errors, 0 warnings",
+      "npm run build → success"
+    ],
+    "findings": [
+      "demo:disable 順序改為 刪 admins → 封鎖 → 撤銷 session（與 D12 不同，理由見驗證報告）",
+      "手冊 SQL 中 Auth 不可用時刪 admins、檢視、輪換密碼、稽核清理、物件清單 agent 無法實跑，已標 ⚠️"
+    ],
+    "residual": "手冊的 SQL Editor 語句未實跑，需使用者第一次使用時確認；test:demo-disable 在真實 Demo 帳戶建立後無法執行；README 說明在入口開放（TASK-112）後才成立；0023 檔頭「11 列」註解待更正。"
   },
   "id": "TASK-111",
   "title": "文件、營運指令（demo:disable／enable）與公開入口：README、決策紀錄、營運手冊",
@@ -67,6 +77,21 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "TASK-113 帶來的手冊事項：(1) Demo 的 Storage 上傳額度（每個公開 bucket 30 個）是所有訪客共用，用完後當天無法再上傳、前端只顯示通用錯誤；每日還原清孤兒後重置，若孤兒清理被跳過則不會重置，手冊寫手動以 service role 清掉 Demo 擁有的物件；(2) 若 Storage 上傳全面失敗，第一步只貼 drop trigger if exists demo_storage_cap_guard on storage.objects;，不要用 _down.sql；(3) 0025 _down 是安全降級，DEMO_ENABLED=true 時須先 demo:disable；(4) 測試期間會暫時多一個 is_demo 帳戶，開啟排程還原後請避開台北 03:00–04:00 跑 test:*；(5) 0023 檔頭的驗證查詢寫 11 列，現為 14 列（含 3 條 RESTRICTIVE）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者於對話中下達「開始做 TASK-111」，視為核准動工；依賴卡（097/100/104/105/110）皆為 done。推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "實作與自動化驗證完成，推進到 verify（等待使用者人工驗收，不自行轉 done）。驗證報告：ai/artifacts/Demo 體驗帳戶/verification/TASK-111.md。需使用者確認：(1) demo:disable 順序調整；(2) 手冊中未實跑的 SQL 是否接受；(3) 任務卡未列但新增的測試檔與 architecture-notes D12 一句註記。審查關卡未跑（任務卡寫一般程式碼審查即可），gates 全部維持未勾。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者人工驗收通過，轉 Done。手冊中未實跑的 SQL Editor 語句（檢視、輪換密碼、稽核清理、物件清單、Auth 不可用時刪 admins）已交由 TASK-112 建立真實 Demo 帳戶後演練（見 TASK-112 留言）。"
     }
   ]
 }
