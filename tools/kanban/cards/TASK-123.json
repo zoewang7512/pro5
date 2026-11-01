@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-11-01",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-123",
+  "title": "services／store_settings 文字欄位長度 CHECK（TASK-116 審查 M2，Demo 入口前置條件）",
+  "content": "migration：services.name／description、store_settings.name／address／logo_url／cover_image_url 加長度 CHECK（建議 60／500／200／200／2048／2048），避免用大欄位繞過列數上限；套用前需確認既有資料都符合，並同步前端驗證與錯誤文案。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-116"
+  ],
+  "order": 123,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-123.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-123.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-116.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "TASK-116 安全審查 M2 提出：列數有上限但欄位長度沒有，Demo 可對既有列反覆 PATCH 塞入大字串。使用者 2026-11-01 決定另開卡並列為 Demo 入口前置條件（TASK-112 依賴）。草稿，待使用者核准數字與動工。"
+    }
+  ]
+}

@@ -53,7 +53,9 @@
     "TASK-114",
     "TASK-115",
     "TASK-116",
-    "TASK-117"
+    "TASK-117",
+    "TASK-122",
+    "TASK-123"
   ],
   "order": 112,
   "links": {
@@ -77,6 +79,11 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "TASK-113 帶來的串接事項：(1) 回歸須含 test:storage-owner 與 test:demo-enter（反轉後的案例）；(2) 第一次真實還原後，admin-assets 內 service role 複製進來的 seed 物件 owner_id 為 null，Demo 與設計師動不了它們，屬預期；(3) 觀察 Storage 用量（被觸發器拒絕的上傳是否在後端留下孤兒、TUS／S3 分段上傳未實測）；(4) 唯讀確認 Dashboard 的 API Exposed schemas 不含 storage（insert 未綁定 owner_id 的前提）；(5) lib/demo/reset.ts 的 copy／remove 在 admin-assets 對 Demo 擁有或 null 擁有者物件的實跑證據。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "TASK-116 三方審查後，使用者決定新增 TASK-122（audit_log 上限）與 TASK-123（欄位長度 CHECK）為 Demo 入口前置條件，已加入 dependsOn。另建議把 TASK-120／121（匿名預約與提醒信缺口）也視為入口阻擋條件，待使用者決定。"
     }
   ]
 }

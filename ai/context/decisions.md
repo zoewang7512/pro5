@@ -878,3 +878,30 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
 情境：TASK-114 高風險卡（改寫既有函式）；對應 D13 使用者決定方案 A。migration 由使用者在 SQL Editor 套用。
 考慮過的替代方案：停用 Demo 的整個通知（改動面更大）；在應用程式層擋（webhook 由資料庫觸發，應用層擋不住 service role 以外的來源，且要改 route）；在 webhook 端點辨識 Demo（payload 不含發動者）。
 ```
+
+## TASK-116（Demo 體驗帳戶）：Demo 專屬資料筆數上限 migration 0027
+
+```text
+日期：2026-11-01
+決策：
+  1. 六張表各一個 BEFORE INSERT FOR EACH ROW 觸發器 demo_row_cap_<表>，共用 public.demo_row_cap_guard()。上限集中在函式內一個 case：
+     services 10、designers 5、designer_services 50、designer_leaves 20、designer_portfolio_images 60、closed_dates 20。
+     services／designers 是使用者 2026-10-31 指定，其餘 2026-11-01 核准 TASK-106 建議值。**customers 24／appointments 640 於 2026-11-01 三方審查後移除（使用者決定）**：Demo 只能經 create_appointment 寫入這兩張表，匿名訪客能呼叫同一個 RPC，上限擋不到灌資料的人，反而讓匿名流量刷 12 支新電話就能讓 Demo 當天無法預約；0027 會清掉初版建立的兩個觸發器，容量防護改靠 TASK-120／121。
+  2. 先以 current_setting('request.jwt.claims') 字串預篩（沒有 is_demo 就放行，不解析 JSON、不依賴 auth schema；審查後新增，失敗方向只擋疑似 Demo 的請求），疑似 Demo 才檢查簽章後的 app_metadata.is_demo = 'true'（與 0026 相同）；其餘（一般管理員、service role、還原、SQL Editor、匿名）第一個判斷就放行。
+     不讀 user_metadata 或頂層欄位（verify.sql 有偽造 claim 的負向案例）。
+  3. 計數是整張表總列數（不只 Demo 新增的）。為了不被 RLS 縮小，函式 SECURITY DEFINER、search_path 為空，尾端自我檢查擁有者可繞過 RLS；
+     與草稿任務卡的 security invoker 不同（理由見驗證報告）。API 角色（含 service_role）不可執行。
+  4. 硬上限：pg_advisory_xact_lock（每張表一把，只有 Demo 會取）讓寫入排隊再計數；達上限 raise P0001，訊息 DEMO_ROW_CAP: <表> (cap N)，hint 為白話文字。
+     與草稿的「軟上限」不同：0025 實測軟上限可被並行繞過，硬上限的成本只落在 Demo。
+  5. reset_demo_data 的守門區會拒絕白名單以外的觸發器（0024 決策 8），所以 0027 以 create or replace 重新定義 reset_demo_data，**除白名單新增八個名稱外逐字相同**；
+     _down 還原成 0024 本文。tests/lib/demo-row-caps-migration.test.ts 逐字比對，並檢查「所有 migration 在被覆寫的十一張表上建立的觸發器，都在編號最大的 reset_demo_data 白名單內」，日後漏補會失敗。
+  6. 上限集中管理：函式內單一 case（回答 TASK-113 留下的問題）。調整 = 改數字後整份重跑，並同步 tests/lib/demo-row-caps-migration.test.ts 的 APPROVED_CAPS 與 TASK-116-verify.sql 的 v_caps（獨立抄寫的雙重檢查）。
+     緊急停用單表：drop trigger if exists demo_row_cap_<表> on public.<表>;
+     _down 把 reset_demo_data 寫死成 0024 本文：0027 之後若有 migration 又重新定義該函式，不得使用 _down（會蓋掉那份修改）。
+  7. 已知行為：closed_dates／designer_leaves 的 upsert 在表已滿時，對已存在的日期也會被拒絕（BEFORE INSERT 先於 on conflict）；接受。
+  8. 不納入本卡：audit_log 每帳戶上限（TASK-122）、services／store_settings 欄位長度 CHECK（TASK-123）——兩者皆為 Demo 入口前置條件，已加入 TASK-112 依賴；前端白話錯誤訊息；匿名顧客預約（TASK-120／121）。
+  9. tests/lib/demo-reset-test-scan.test.ts 白名單新增 0027 與其單元測試（兩者出現 reset_demo_data 字樣但不呼叫）。
+情境：TASK-116 高風險卡；對應 D14。migration 由使用者在 SQL Editor 套用。
+考慮過的替代方案：每表各寫一個函式（上限分散）；用 trigger 參數傳上限（改上限要重建觸發器）；RLS policy 內計數（TASK-113 已證實擋不住並行）；在 reset_demo_data 用 like 'demo_row_cap_%' 放行（比明確名單寬，漏網風險）；用暫時降級白名單檢查的旗標（增加還原路徑的複雜度）。
+為何選這個：一個函式一個來源、與 0025 同一套硬上限做法、只動 reset_demo_data 的白名單且有逐字比對把關。
+```

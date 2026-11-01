@@ -18,6 +18,10 @@ const SKIP_DIRS = new Set(["node_modules", ".next", ".git", "backups", ".vercel"
 
 const ALLOWED = [
   /^supabase\/migrations\/0024_demo_reset(_down)?\.sql$/,
+  // TASK-116：0027 為了同步觸發器白名單而重新定義 reset_demo_data（除白名單外逐字相同）；
+  // 它的單元測試只讀檔案內容比對，兩者都不呼叫該函式。
+  /^supabase\/migrations\/0027_demo_row_caps(_down)?\.sql$/,
+  /^tests\/lib\/demo-row-caps-migration\.test\.ts$/,
   /^tests\/demo-reset\.integration\.test\.ts$/,
   /^tests\/lib\/demo-reset-test-scan\.test\.ts$/,
   /^vitest\.demo-reset\.config\.ts$/,

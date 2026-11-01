@@ -1,0 +1,58 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-11-01",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-122",
+  "title": "Demo 的 audit_log 每帳戶筆數上限（TASK-116 審查 M1，Demo 入口前置條件）",
+  "content": "migration：audit_log 的 BEFORE INSERT 觸發器，JWT is_demo 時以 actor_id（= auth.uid()）計數，達上限拒絕；不能用整張表總列數（designer001 的紀錄會無限成長）。數字待使用者核准（建議 500）。",
+  "risk": "high",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-116"
+  ],
+  "order": 122,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "ai/artifacts/Demo 體驗帳戶/task-cards/TASK-122.md",
+    "verificationReport": "ai/artifacts/Demo 體驗帳戶/verification/TASK-122.md",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-116.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "TASK-116 安全審查 M1、架構審查 S4 提出：Demo 可直接 REST 寫入 audit_log（每筆約 8 KB、無上限），與 TASK-116 同等級的容量缺口。使用者 2026-11-01 決定另開卡並列為 Demo 入口前置條件（TASK-112 依賴）。草稿，待使用者核准數字與動工。"
+    }
+  ]
+}

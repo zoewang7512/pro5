@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,20 +11,30 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "初版：使用者套用 0027 並跑 TASK-116-verify.sql，行為檢查全符合（唯一 MISMATCH 為腳本格式 bug，已修）；test:demo-row-caps 16/16、test:demo-reset 34/34、designers 122、services 17、business-hours 33、booking 23、admin-booking 16、demo-enter 22、build 成功",
+      "套用前基準線：off 模式 16/16、預設模式 10 失敗／6 通過",
+      "審查後修訂版：使用者套用後 TASK-116-verify.sql RESULT=ALL_OK；test:demo-row-caps 16/16（額度 closed_dates 19／services 6／designers 1）、test:demo-reset 34/34、designers 122、services 17、business-hours 33、booking 23、admin-booking 16、demo-enter 22、單元 22/22、tsc／lint／build 通過",
+      "回滾實測：使用者執行 _down 後 DEMO_ROW_CAPS_EXPECT=off test:demo-row-caps 16/16、test:demo-reset 34/34；重套 0027 後預設模式 16/16、test:demo-reset 34/34"
+    ],
+    "findings": [
+      "三方審查皆有條件核准、無 MUST FIX（見 verification/TASK-116.md 處置表）",
+      "移除 customers／appointments 上限（使用者決定）",
+      "守門改字串預篩（使用者決定）",
+      "TASK-122（audit_log）與 TASK-123（欄位長度）為 Demo 入口前置條件，已加入 TASK-112 依賴"
+    ],
+    "residual": "入口前置條件 TASK-122／123 與 TASK-120／121 建議；匿名預約可無限新增；Demo 看到通用錯誤訊息；待人工驗收。"
   },
   "id": "TASK-116",
   "title": "Demo 專屬資料筆數上限（設計師最多 5 位等，migration）",
@@ -54,6 +64,36 @@
       "name": "Claude Code",
       "time": "2026-10-30",
       "text": "依架構筆記建立。等待使用者核准計畫後，才把 human_approval_recorded 打勾並推進到 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者指示開始動工並核准其餘四張表的建議上限（designer_services 50、designer_leaves 20、portfolio 60、closed_dates 20）。已建任務卡，推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "migration 0027、單元測試、整合測試、verify.sql 完成，推進到 verify。等待使用者在 SQL Editor 套用 0027 並回報 verify.sql 結果；之後我跑套用後測試與回歸、三方審查。草稿的 security invoker／軟上限已改為 definer／硬上限（理由見驗證報告）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "三方審查完成（架構／安全／測試皆有條件核准、無 MUST FIX）。依使用者決定：移除 customers／appointments 觸發器、守門改字串預篩、另開 TASK-122／123 並加入 TASK-112 依賴。0027 已原地修訂，等待使用者重新套用與重跑 verify.sql；審查關卡由子代理完成，仍待人工驗收，不轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者套用修訂版 0027，verify.sql RESULT=ALL_OK；整合測試、回歸、build 全過，證據已寫回驗證報告。待使用者人工驗收（建議先實測 _down 回滾）；不轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者實測回滾完成（_down → off 模式 16/16 → 重套 → 預設模式 16/16，test:demo-reset 兩次皆 34/34）。證據已寫回驗證報告。等待人工驗收，不轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者人工驗收通過，轉 Done；三個審查關卡以子代理審查（有條件核准、無 MUST FIX、意見已處理）加人工驗收勾選。後續：TASK-122／123 為 Demo 入口前置條件（已加入 TASK-112 依賴）；TASK-120／121 是否同列阻擋條件待使用者決定。"
     }
   ]
 }

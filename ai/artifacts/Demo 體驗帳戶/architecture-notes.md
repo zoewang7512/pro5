@@ -190,6 +190,7 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - 設計師最多 5 位（使用者指定）。其他表（服務、預約、顧客、公休日、作品集、請假）的上限在 TASK-106 產出 seed 後，依 seed 數量的約 2～3 倍列表給使用者核准，不先猜數字。
 - 做法：對各表加 `BEFORE INSERT` 觸發器，**只在 JWT 的 `is_demo` 為真時**檢查該表目前列數，達上限就 `raise exception`；一般管理員與 service role（含還原）不受影響。上限是軟上限（並行時可能略超），可接受。
 - 目的：避免單一 Demo session 以腳本灌爆免費方案的資料庫容量，拖垮整個正式專案。與 TASK-113（Storage 擁有者與上傳上限）互補。
+- **TASK-116 實作補記（2026-11-01）：** 上限已核准並落地於 0027（services 10、designers 5、designer_services 50、designer_leaves 20、designer_portfolio_images 60、closed_dates 20，皆為整張表總列數；**customers／appointments 經三方審查後移除**，因匿名可用同一個 create_appointment 繞過，見 decisions.md）。與上文差異：改為**硬上限**（advisory lock）、函式 SECURITY DEFINER、先以字串預篩 claims；為了通過 `reset_demo_data` 的觸發器白名單守門，0027 同時 `create or replace` 該函式（除白名單外逐字相同）。審查另發現 `audit_log` 無上限（TASK-122）與欄位長度無上限（TASK-123），兩者列為 Demo 入口前置條件。詳見 decisions.md「TASK-116」。
 
 ### D15 備份策略（Free Plan 沒有專案備份，TASK-117）
 
