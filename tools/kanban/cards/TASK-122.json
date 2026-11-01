@@ -3,7 +3,7 @@
   "createdAt": "2026-11-01",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,21 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npm run test:demo-audit-cap（on，套用 0028 後）→ 13 passed；audit_log 結尾 150 列、無殘留",
+      "DEMO_AUDIT_CAP_EXPECT=off npm run test:demo-audit-cap（套用前基準）→ 13 passed",
+      "npm run test:audit-log → 28 passed；test:demo-reset → 34 passed；test:demo-row-caps → 16 passed；test:demo-enter → 22 passed",
+      "npx vitest run tests/lib → 27 files / 530 passed；npx tsc --noEmit、npm run lint → 0 errors",
+      "PGlite 演練＋8 個變異全被 verify 腳本抓到",
+      "TASK-122-verify.sql（使用者在 SQL Editor 執行，真實庫）→ RESULT=ALL_OK，31 項全數吻合（含 pg_locks 鎖證明）",
+      "回滾實測（真實庫）：_down 後 off 模式 13 passed → 重新套用 0028 → on 模式 13 passed（第一次 _down 疑似貼錯檔而未生效，已重做並以唯讀查詢確認）"
+    ],
+    "findings": [
+      "安全審查 M1：event_type 無長度限制 → 函式內加 64 位元組上限（已採納）",
+      "架構審查 M1：全 repo 掃描測試需加白名單（已採納）",
+      "整合測試第一版洩漏 1 列到 audit_log（id 10797），已刪除並修正清理"
+    ],
+    "residual": "並行整合案例為機率性證明（鎖已由 pg_locks 檢查在真實庫決定性證明）；Demo 觸頂後稽核列表不再更新（預期內）；raw_user_meta_data 未鎖（範圍外，建議另開卡）。"
   },
   "id": "TASK-122",
   "title": "Demo 的 audit_log 每帳戶筆數上限（TASK-116 審查 M1，Demo 入口前置條件）",
@@ -53,6 +65,36 @@
       "name": "Claude Code",
       "time": "2026-11-01",
       "text": "TASK-116 安全審查 M1、架構審查 S4 提出：Demo 可直接 REST 寫入 audit_log（每筆約 8 KB、無上限），與 TASK-116 同等級的容量缺口。使用者 2026-11-01 決定另開卡並列為 Demo 入口前置條件（TASK-112 依賴）。草稿，待使用者核准數字與動工。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者下達「開始做 TASK-122」，視為核准動工；依賴 TASK-116 已 done。上限數字採卡片建議的 500（動工時標示為待確認，數字集中在函式內一處，改動成本低）。推進到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "三方審查已處理（見 verification/TASK-122.md）：安全審查 M1 採納——event_type 無長度限制使 500 筆上限守不住容量，函式內加 64 位元組上限；另加單一請求 20 列、actor 必須等於 JWT sub、lock_timeout 2s。測試審查：加 pg_locks 決定性鎖證明與多項整合案例。實作與拋棄式環境（PGlite）演練完成，尚未套用到正式庫。待使用者：(1) 確認上限 500；(2) 確認 audit_log 上沒有 Database Webhook；(3) 在 SQL Editor 套用 0028 並跑 TASK-122-verify.sql。完成後我跑 on 模式整合測試與回歸，才推進到 verify。另：整合測試第一版洩漏過 1 列到正式庫 audit_log（id 10797），已精確刪除並修正清理。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者確認上限 500 並已套用 0028。on 模式整合測試 13 項與回歸（audit-log、demo-reset、demo-row-caps、demo-enter）全過，推進到 verify（等待使用者人工驗收，不自行轉 done）。仍待使用者在 SQL Editor 執行 TASK-122-verify.sql，並建議做 _down 回滾實測。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者在 SQL Editor 執行 TASK-122-verify.sql，真實庫回傳 RESULT=ALL_OK（31 項全數吻合，含 pg_locks 鎖證明）。仍在 verify，等待使用者人工驗收；_down 回滾實測為可選。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "回滾實測完成：_down 後 off 模式 13 項、重新套用後 on 模式 13 項皆通過（第一次 _down 未生效，重做後確認）。等待使用者人工驗收，不自行轉 done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "使用者人工驗收通過，轉 Done。TASK-112 的前置條件 TASK-122 已完成（TASK-123 仍在 backlog）。後續：raw_user_meta_data 未鎖（安全審查 N6，建議另開卡評估）；audit_log 超過約 10 萬列時評估 (actor_id) 索引。"
     }
   ]
 }

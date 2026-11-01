@@ -954,3 +954,29 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     正式環境沒設 DESIGNER_EMAIL 時 Email 比對無作用，is_demo 驗證才是主要防線。
   - test:demo-disable 只能在沒有真實 Demo 帳戶時執行（指令要求 is_demo 剛好 1 個）；之後的回歸靠假 client 的單元測試。
   - 手冊中的 SQL Editor 語句（檢視、輪換密碼、稽核清理）agent 沒有存取權限，未實跑，已在手冊標明。
+
+## TASK-122（Demo 體驗帳戶）：Demo 的 audit_log 容量防護 migration 0028
+
+```text
+日期：2026-11-01
+決策：
+  1. 新增 migration 0028：audit_log 的 BEFORE INSERT 觸發器 demo_audit_log_cap，函式 demo_audit_log_cap_guard()（SECURITY DEFINER、search_path 為空、API 角色全部收回 execute）。
+     只對 Demo JWT（簽章後的 app_metadata.is_demo）生效；一般管理員、service role、匿名、SQL Editor 在第一個判斷就放行。
+  2. 每帳戶計數（以 JWT 的 sub，上限 500，數字待使用者確認）：不能用整張表總列數，designer001 的紀錄會無限成長、遲早讓 Demo 永遠被擋。
+     硬上限用 pg_advisory_xact_lock（key 帶 actor）讓同一帳戶的寫入排隊再計數，依賴 READ COMMITTED。
+  3. 三項限制（安全審查後）：(a) 單筆大小：event_type／entity_type ≤ 64 位元組（0019 只有格式檢查沒有長度限制，只限筆數守不住容量，每筆最壞約 20 KB、500 筆最多約 10～12 MB）；
+     (b) 單一請求最多 20 列（交易內計數器 demo.audit_rows，set_config 的 is_local = true；限制「寫入後再中止」造成的 dead tuple 膨脹；recordAdminAction 每次只寫 1 列）；
+     (c) actor_id 必須等於 JWT 的 sub，沒有 sub 也拒絕（日後若有 SECURITY DEFINER RPC 代為寫入自訂 actor_id 也不會悄悄繞過）。
+  4. 預篩與解析用同一份 claims 字串（coalesce(claims, claim)），不再另外呼叫 auth.jwt()（審查 N1：兩者可能讀到不同來源）。與 0026／0027 不同，因此本函式不依賴 auth schema。
+  5. 取鎖前 set_config('lock_timeout', '2s', true)：攻擊者佔住鎖時，排隊的 Demo 請求最多等 2 秒，不長時間佔住 PostgREST 連線而拖累前台預約。極端排隊時 Demo 會多出 55P03 失敗，不影響不超過上限。
+  6. 不改 reset_demo_data：audit_log 不在它覆寫的十一張表內（還原只 delete … where actor_id = Demo），白名單只檢查那十一張表，所以 0027_down 的警告不受影響；單元測試檢查「最新一份 reset_demo_data 的檢查範圍不含 audit_log」與「只有 0028 在 audit_log 上建立觸發器」，日後再加要重新評估。
+  7. 刻意不建 (actor_id) 索引：不改既有資料表；每筆 Demo 寫入都會在鎖內全表計數，audit_log 超過約 10 萬列時再開卡（還原的 delete 也會受益）。
+  8. 驗證：單元測試 20 項（檔案內容、順序、一致性）；SQL Editor 回滾式腳本 TASK-122-verify.sql（含 pg_locks 的決定性鎖證明）；整合測試 on／off 兩種模式（拋棄式帳號，含真實 JWT 的 user_metadata 偽造帳號）；
+     PGlite 演練與 8 個變異（整表計數、無 actor 檢查、上限 501、信任 user_metadata、無鎖、無列數限制、無大小限制、不比對 actor）全被驗證腳本抓到。並行整合案例（30 個同時請求搶 3 個額度）只是機率性證明，鎖的決定性證明在驗證腳本。
+情境：TASK-122 高風險卡（TASK-116 審查 M1，Demo 入口前置條件）；三方子代理審查（架構、安全、測試），處置見 verification/TASK-122.md。migration 由使用者在 SQL Editor 套用。
+考慮過的替代方案：整張表總列數上限（designer001 會把 Demo 擠掉）；對所有人加 event_type 長度 CHECK（觸碰既有資料表，超出本卡範圍，列為可選的縱深防禦）；為 actor_id 建索引（見 7）；用 sequence 當票數（失敗嘗試也耗額度，且每日還原要多重置）。
+影響與殘留風險：
+  - Demo 觸頂後後台操作照常，只是稽核列表不再新增 Demo 的紀錄，伺服器日誌每次多一行 P0001 警告（預期內，手冊已寫）。額度是所有訪客共用的。
+  - 重建 Demo 帳戶（新的 uid）時，舊帳戶的稽核列不會被還原刪除，手冊 §7.3 有清理語句。
+  - 其他有 insert 權限的表也有「寫入後再中止」的膨脹，屬一般性風險；本卡只處理 audit_log。
+  - 範圍外觀察（安全審查 N6，未查證）：0021 刻意不鎖 raw_user_meta_data，Demo 可能可用 updateUser({ data }) 寫入很大的 user_metadata，使 JWT／cookie 與 auth.users 該列變大；建議另開卡評估。

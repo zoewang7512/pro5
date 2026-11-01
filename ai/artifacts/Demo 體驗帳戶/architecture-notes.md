@@ -192,6 +192,8 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 - 目的：避免單一 Demo session 以腳本灌爆免費方案的資料庫容量，拖垮整個正式專案。與 TASK-113（Storage 擁有者與上傳上限）互補。
 - **TASK-116 實作補記（2026-11-01）：** 上限已核准並落地於 0027（services 10、designers 5、designer_services 50、designer_leaves 20、designer_portfolio_images 60、closed_dates 20，皆為整張表總列數；**customers／appointments 經三方審查後移除**，因匿名可用同一個 create_appointment 繞過，見 decisions.md）。與上文差異：改為**硬上限**（advisory lock）、函式 SECURITY DEFINER、先以字串預篩 claims；為了通過 `reset_demo_data` 的觸發器白名單守門，0027 同時 `create or replace` 該函式（除白名單外逐字相同）。審查另發現 `audit_log` 無上限（TASK-122）與欄位長度無上限（TASK-123），兩者列為 Demo 入口前置條件。詳見 decisions.md「TASK-116」。
 
+- **TASK-122 實作補記（2026-11-01）：** `audit_log` 的容量防護落地於 0028：觸發器 `demo_audit_log_cap`，**每帳戶**計數（不能用整張表總列數，designer001 的紀錄會無限成長），上限 500；審查後加上單筆大小（event_type／entity_type ≤ 64 位元組，0019 沒有長度限制，只限筆數守不住容量）與單一請求 ≤ 20 列（限制「寫入後再中止」的膨脹），並要求 actor_id 與 JWT 的 sub 一致、取鎖前設 lock_timeout 2s。`audit_log` 不在 `reset_demo_data` 覆寫的十一張表內，所以不需要改該函式。詳見 decisions.md「TASK-122」。
+
 ### D15 備份策略（Free Plan 沒有專案備份，TASK-117）
 
 - 使用者確認：Free Plan 不含專案備份（Pro 才有最多 7 天排程備份）。因此**真實還原前必須先自建備份**。

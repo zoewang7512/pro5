@@ -50,7 +50,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 只有一個 Supabase 專案，git 分支隔離不了資料庫；而且 `vercel.json` 只有 `master` 會部署、Cron 只在 production 執行。所以採**暗啟動**：先讓所有程式與資料庫物件上線，但入口與排程都保持關閉，驗證完才依序開。
 
-1. **套用 migration**（`supabase/migrations/0021`～`0027`，每支整份貼到 SQL Editor 執行；順序與回滾說明見各檔檔頭）。
+1. **套用 migration**（`supabase/migrations/0021`～`0028`，每支整份貼到 SQL Editor 執行；順序與回滾說明見各檔檔頭）。
 2. **合併到 `master` 並部署**，此時 `DEMO_ENABLED`、`DEMO_RESET_ENABLED` 皆為 `false`（入口不顯示，登入頁與沒有這個功能時一致）。
 3. **建立 Demo 帳戶**（✅ `test:seed-demo-account` 14 項）：在 `.env.local` 填好 `DEMO_EMAIL`、`DEMO_PASSWORD` 後執行
 
@@ -299,6 +299,7 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 | 現象 | 第一步 |
 |---|---|
 | Storage 上傳**全面**失敗 | `drop trigger if exists demo_storage_cap_guard on storage.objects;`（**不要**用 `0025_down`） |
+| Demo 的稽核紀錄（audit_log）被上限擋住而需要放行 | `drop trigger if exists demo_audit_log_cap on public.audit_log;`（0028；不要用 `0028_down`，雖然它與其他 migration 互不依賴） |
 | 某張表的新增被 Demo 上限擋住而需要放行 | `drop trigger if exists demo_row_cap_<表> on public.<表>;`（表：`services`、`designers`、`designer_services`、`designer_leaves`、`designer_portfolio_images`、`closed_dates`） |
 
 > `0025_down` 是安全降級，`DEMO_ENABLED=true` 時須先 `demo:disable`。`0027_down` 會把 `reset_demo_data` 寫死成 0024 的本文：0027 之後若有 migration 又重新定義過該函式，不得使用。
@@ -330,7 +331,14 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 ### 各表筆數上限（0027，只對 Demo 生效，數字為整張表總列數）
 `services` 10、`designers` 5、`designer_services` 50、`designer_leaves` 20、`designer_portfolio_images` 60、`closed_dates` 20。一般管理員與 service role（含還原）不受影響。調整上限：改 `demo_row_cap_guard()` 內的 case 數字後整份重跑，並同步 `tests/lib/demo-row-caps-migration.test.ts` 與 `TASK-116-verify.sql`。
 - 上限是整張表總列數，惡意的 Demo 使用者可以在每次還原後立刻填滿額度，讓當天其他面試官無法新增；共用帳號的設計限制。
-- **尚未有上限的容量**：`audit_log`（TASK-122）、文字欄位長度（TASK-123）、匿名顧客預約（`customers`／`appointments`，TASK-120／121）。開啟入口前請確認這些卡的狀態。
+- **尚未有上限的容量**：文字欄位長度（TASK-123）、匿名顧客預約（`customers`／`appointments`，TASK-120／121）。開啟入口前請確認這些卡的狀態。
+
+### Demo 的稽核紀錄上限（0028）
+Demo 帳戶在 `audit_log` 的列數最多 500 筆（**只算 Demo 自己的列**，designer001 的紀錄不受影響也不佔額度）；此外 Demo 的 `event_type`／`entity_type` 不得超過 64 位元組，單一請求最多寫 20 列。每筆最壞約 20 KB，500 筆最多約 10～12 MB。額度每日還原後重置（還原會刪掉 Demo 帳戶的稽核列）。
+- **觸頂時的現象是預期內的**：後台操作照常成功，但稽核列表不再新增 Demo 的紀錄，伺服器日誌每個操作多一行 `[audit-log] 寫入稽核紀錄失敗 P0001`（`recordAdminAction` 永不 throw）。不要把它當成 designer001 的稽核失敗；用 `P0001` 加上 Demo 登入時段辨認。
+- 額度是所有訪客共用的（只有一個 Demo 帳戶）：一個惡意訪客可以在還原後立刻用完，當天其他人的操作就不會出現在稽核列表。
+- 每日還原停用（`DEMO_RESET_ENABLED=false`）時額度不會重置；手動清理：`demo:reset -- --yes`（見 §4），或在 SQL Editor 執行 `delete from public.audit_log where actor_id = '<Demo 帳戶 id>';`（⚠️ 未實跑，語句與還原函式內刪除 Demo 稽核列相同）。
+- 效能：每筆 Demo 寫入都會對 `audit_log` 做一次依 `actor_id` 的計數（全表掃描）。`audit_log` 超過約 10 萬列時，考慮另開卡加 `(actor_id)` 索引。
 
 ### 一鍵進入限流
 每個 IP 每 10 分鐘 10 次；全站每 5 分鐘 14 次（必須低於 Supabase Dashboard 的 Auth 登入限額，目前是每 IP 每 5 分鐘 30 次，限額若調整，`lib/demo/rate-limit.ts` 的兩個常數要一起重算）。全站上限本身是阻斷服務的槓桿：攻擊者用少量 IP 就能讓所有面試官暫時進不來，已接受。

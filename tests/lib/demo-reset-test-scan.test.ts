@@ -22,6 +22,10 @@ const ALLOWED = [
   // 它的單元測試只讀檔案內容比對，兩者都不呼叫該函式。
   /^supabase\/migrations\/0027_demo_row_caps(_down)?\.sql$/,
   /^tests\/lib\/demo-row-caps-migration\.test\.ts$/,
+  // TASK-122：0028 的檔頭說明與它的單元測試只在註解／檔案內容比對中提到 reset_demo_data
+  // （證明 audit_log 不在還原覆寫範圍內、本檔沒有重新定義它），沒有任何呼叫。
+  /^supabase\/migrations\/0028_demo_audit_log_cap(_down)?\.sql$/,
+  /^tests\/lib\/demo-audit-log-cap-migration\.test\.ts$/,
   /^tests\/demo-reset\.integration\.test\.ts$/,
   /^tests\/lib\/demo-reset-test-scan\.test\.ts$/,
   /^vitest\.demo-reset\.config\.ts$/,
