@@ -41,11 +41,12 @@
       "【亮暗與手機】暗色（預設）與亮色（太陽圖示切換）皆走查；手機寬度 375x812 走查帳號設定頁；Demo 登出使用 signOut({scope:\"local\"})，按登出後回到登入頁、入口按鈕仍在",
       "【觀察，待使用者決定】(1) 稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試殘留的 __TEST__ 事件），Demo 與面試官看得到；(2) 手機 375px 後台側邊欄不收合（既有版面，非 Demo 專屬），帳號設定頁「🔒 體驗帳號不開放」徽章文字被截斷為「體驗帳號不…」、顯示名稱欄只顯示「Dem」",
       "【寄信行為驗證，2026-11-02，使用者信箱 zoework0401@gmail.com】(1) 前台（本機 next-dev-demo，連同一個正式庫）預約 11/6 14:00 剪髮造型、姓名「TASK112 驗證」、電話 0900000112、Email 為使用者信箱 → 預約成功畫面；資料庫 confirmation_sent_at=09:14:44；使用者確認收到 1 封確認信（確認信照寄）。(2) 以 Demo 帳號登入後台，把同一筆預約改期到 11/6 16:00（出現「顧客會收到這封改期通知信」示意視窗，按繼續後 start_at 變更）、再取消（示意視窗，status=cancelled）；使用者於約 3 分鐘後確認信箱沒有任何新信（Demo 改期與取消不寄信）。同一筆帶真實 Email 的預約，Demo 改期後 reminder_sent_at 被 0031 觸發器填成 09:16:19（非 null），所以隔天提醒排程不會對該 Email 寄信。(3) 對照組：DEMO_MAIL_TEST_EMAIL=zoework0401@gmail.com npm run test:demo-mail-suppress → 3/3 通過（Demo 改期、Demo 取消、非 Demo 管理員改期；後者寄出 1 封真實通知信）",
-      "【對照驗收標準與報告】verification/TASK-112.md（暗啟動時間線、還原後驗證、回歸、走查、寄信驗證、feature-spec 驗收對照、觀察與殘留）；截圖 verification/TASK-112-screenshots/（00～10）；前端產出密碼掃描 .next/static 267 檔與 .next/server/app 225 檔皆不含 DEMO_PASSWORD／DEMO_RATE_LIMIT_SECRET"
+      "【對照驗收標準與報告】verification/TASK-112.md（暗啟動時間線、還原後驗證、回歸、走查、寄信驗證、feature-spec 驗收對照、觀察與殘留）；截圖 verification/TASK-112-screenshots/（00～10）；前端產出密碼掃描 .next/static 267 檔與 .next/server/app 225 檔皆不含 DEMO_PASSWORD／DEMO_RATE_LIMIT_SECRET",
+      "【手機畫面修正，2026-11-02】app/admin/_components/AccountSettingsView.tsx（只改 sx，不改文案與行為）；npx tsc --noEmit、npm run lint 通過；npx vitest run tests/components/account-settings-view.test.tsx 55/55（連跑三次）；本機 next-dev-demo 以 Demo 帳號於 375px 與桌面寬度驗證，截圖 TASK-112-screenshots/11～13"
     ],
     "findings": [
       "稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試 __TEST__ 殘留）——使用者 2026-11-02 決定「先接受」（日後若要清除，備份 backups/20261102T084511Z 已含這些列）",
-      "手機 375px：帳號設定頁鎖定徽章文字被截斷、顯示名稱欄過窄；後台側邊欄不收合（既有版面）",
+      "手機 375px：已修（使用者決定只修 Demo 相關畫面）——AccountSettingsView 鎖定徽章換行不截斷、窄螢幕名稱欄改上下排列、按鈕列 gap 換行；tsc／lint 通過、account-settings-view 55/55×3；截圖 11～13；側邊欄不收合維持現狀（全後台議題，需另開卡）",
       "TASK-125：真實 Demo 存在時 test:demo-seed-bucket 1 個案例假設不成立（只改測試）",
       "已知殘留：R-A（Demo 可控信件文字＋匿名預約）、R1 別名繞過、_down 實測與真實還原失敗路徑未演練"
     ],
@@ -159,6 +160,11 @@
       "name": "Claude Code",
       "time": "2026-11-02",
       "text": "使用者決定：稽核紀錄頁顯示 designer001 紀錄一事「先接受」。仍待決定：手機 375px 畫面（徽章截斷）處置、開啟 DEMO_ENABLED／DEMO_RESET_ENABLED 的時機。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者決定只修 Demo 相關畫面；已修手機 375px 的帳號設定頁（見證據）。側邊欄不收合屬全後台版面，未動，需要時另開卡。仍待：開啟 DEMO_ENABLED／DEMO_RESET_ENABLED 與人工驗收。"
     }
   ]
 }

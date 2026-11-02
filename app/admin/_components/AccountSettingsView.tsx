@@ -65,6 +65,11 @@ const DEMO_LOCK_NOTE_PASSWORD = "體驗帳號不開放修改密碼。";
 const DEMO_LOCK_NOTE_EMAIL = "體驗帳號的 Email 固定，不能修改。";
 const DEMO_LOCK_NOTE_MFA = "體驗帳號不能啟用雙重驗證。";
 
+// 鎖定標籤：後台側邊欄固定 200px，手機（375px）內容區只剩約 175px，Chip 預設單行並以省略號截斷，
+// 會變成「體驗帳號不…」。允許標籤換行（高度跟著內容），寬螢幕仍是單行的小標籤。
+// keep-all：中文字之間不斷行，只在圖示後的空格換行，避免「放」字單獨掉到下一行。
+const DEMO_LOCK_CHIP_SX = { height: "auto", "& .MuiChip-label": { whiteSpace: "normal", wordBreak: "keep-all", py: 0.25 } } as const;
+
 // 密碼／登入 Email 兩張卡片共用的標題。lockedNote 有值（Demo）時在標題旁加鎖定標籤、
 // 下方加說明文字；沒有值時與原本的單純標題完全相同。
 function AccountCardTitle({ title, lockedNote }: { title: string; lockedNote?: string }) {
@@ -81,7 +86,7 @@ function AccountCardTitle({ title, lockedNote }: { title: string; lockedNote?: s
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           {title}
         </Typography>
-        <Chip size="small" label={DEMO_LOCK_LABEL} />
+        <Chip size="small" label={DEMO_LOCK_LABEL} sx={DEMO_LOCK_CHIP_SX} />
       </Stack>
       <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 2 }}>
         {lockedNote}
@@ -567,7 +572,8 @@ export function AccountSettingsView() {
           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
             個人資料
           </Typography>
-          <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+          {/* 手機內容區很窄（側邊欄固定 200px）：xs 時頭像在上、名稱欄在下，避免名稱欄被擠成只剩幾個字 */}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { xs: "flex-start", sm: "center" } }}>
             <Avatar src={avatarUrl ?? undefined} sx={{ width: 56, height: 56, fontSize: 20 }}>
               {avatarInitial}
             </Avatar>
@@ -601,7 +607,8 @@ export function AccountSettingsView() {
               if (file) handleAvatarFile(file);
             }}
           />
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+          {/* 用 gap 而不是 spacing：換行時 spacing 的左邊距會讓下一行縮排 */}
+          <Stack direction="row" sx={{ mt: 2, flexWrap: "wrap", gap: 1 }}>
             <Button size="small" onClick={openAvatarFilePicker} disabled={avatarBusy}>
               更換頭像
             </Button>
@@ -737,12 +744,12 @@ export function AccountSettingsView() {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 3, width: "100%" }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1, mb: 1 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               雙重驗證（MFA）
             </Typography>
             <Chip size="small" label={mfaFactorId ? "已啟用" : "未啟用"} color={mfaFactorId ? "primary" : "default"} />
-            {isDemo && <Chip size="small" label={DEMO_LOCK_LABEL} />}
+            {isDemo && <Chip size="small" label={DEMO_LOCK_LABEL} sx={DEMO_LOCK_CHIP_SX} />}
           </Stack>
 
           {mfaEnrollment ? (
