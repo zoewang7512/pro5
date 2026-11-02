@@ -44,7 +44,7 @@
       "【對照驗收標準與報告】verification/TASK-112.md（暗啟動時間線、還原後驗證、回歸、走查、寄信驗證、feature-spec 驗收對照、觀察與殘留）；截圖 verification/TASK-112-screenshots/（00～10）；前端產出密碼掃描 .next/static 267 檔與 .next/server/app 225 檔皆不含 DEMO_PASSWORD／DEMO_RATE_LIMIT_SECRET"
     ],
     "findings": [
-      "稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試 __TEST__ 殘留），待使用者決定處置（接受／清除／另開卡）",
+      "稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試 __TEST__ 殘留）——使用者 2026-11-02 決定「先接受」（日後若要清除，備份 backups/20261102T084511Z 已含這些列）",
       "手機 375px：帳號設定頁鎖定徽章文字被截斷、顯示名稱欄過窄；後台側邊欄不收合（既有版面）",
       "TASK-125：真實 Demo 存在時 test:demo-seed-bucket 1 個案例假設不成立（只改測試）",
       "已知殘留：R-A（Demo 可控信件文字＋匿名預約）、R1 別名繞過、_down 實測與真實還原失敗路徑未演練"
@@ -154,6 +154,11 @@
       "name": "Claude Code",
       "time": "2026-11-02",
       "text": "暗啟動前五步、還原後驗證、回歸、瀏覽器走查、寄信驗證皆完成（見 verification/TASK-112.md）。推到 verify，不轉 Done：需使用者決定稽核紀錄與手機畫面處置、依序開啟 DEMO_ENABLED／DEMO_RESET_ENABLED 並確認排程，再人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者決定：稽核紀錄頁顯示 designer001 紀錄一事「先接受」。仍待決定：手機 375px 畫面（徽章截斷）處置、開啟 DEMO_ENABLED／DEMO_RESET_ENABLED 的時機。"
     }
   ]
 }
