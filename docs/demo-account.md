@@ -50,7 +50,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 只有一個 Supabase 專案，git 分支隔離不了資料庫；而且 `vercel.json` 只有 `master` 會部署、Cron 只在 production 執行。所以採**暗啟動**：先讓所有程式與資料庫物件上線，但入口與排程都保持關閉，驗證完才依序開。
 
-1. **套用 migration**（`supabase/migrations/0021`～`0029`，每支整份貼到 SQL Editor 執行；順序與回滾說明見各檔檔頭）。
+1. **套用 migration**（`supabase/migrations/0021`～`0031`，每支整份貼到 SQL Editor 執行；順序與回滾說明見各檔檔頭）。
 2. **合併到 `master` 並部署**，此時 `DEMO_ENABLED`、`DEMO_RESET_ENABLED` 皆為 `false`（入口不顯示，登入頁與沒有這個功能時一致）。
 3. **建立 Demo 帳戶**（✅ `test:seed-demo-account` 14 項）：在 `.env.local` 填好 `DEMO_EMAIL`、`DEMO_PASSWORD` 後執行
 
@@ -302,8 +302,9 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 | Demo 的稽核紀錄（audit_log）被上限擋住而需要放行 | `drop trigger if exists demo_audit_log_cap on public.audit_log;`（0028；不要用 `0028_down`，雖然它與其他 migration 互不依賴） |
 | 正常儲存服務或店家設定被長度上限擋住而需要放行（0029） | `alter table public.<表> drop constraint if exists <constraint 名稱>;`，名稱見下方「文字欄位長度上限」表（只放行那一個欄位；不要用 `0029_down`，它會一次拿掉六個）。**放行等於重新打開缺口**：放行期間先 `demo:disable` 或明確接受風險；若放行期間已寫入超長資料，之後重跑 0029 會被套用前檢查擋下而中止，需先還原資料（例如 `demo:reset -- --yes`）再重套；放行後務必回頭重套 0029 |
 | 某張表的新增被 Demo 上限擋住而需要放行 | `drop trigger if exists demo_row_cap_<表> on public.<表>;`（表：`services`、`designers`、`designer_services`、`designer_leaves`、`designer_portfolio_images`、`closed_dates`） |
+| Demo 動過的預約提醒標記觸發器（0031）出問題而需要放行 | `drop trigger if exists demo_appointment_reminder on public.appointments;`（不要用 `0031_down`；白名單多一個名稱不影響還原）。**放行等於重新打開缺口**：Demo 改期會讓隔天提醒信重寄到預約上的 Email，放行期間先 `demo:disable` 或明確接受風險；處理完**只需重建觸發器**：`create trigger demo_appointment_reminder before update on public.appointments for each row execute function public.demo_appointment_reminder_guard();`（不要重跑整份 0031：若之後有更新的 migration 重新定義過 `reset_demo_data`，重跑會把它倒退） |
 
-> `0025_down` 是安全降級，`DEMO_ENABLED=true` 時須先 `demo:disable`。`0027_down` 會把 `reset_demo_data` 寫死成 0024 的本文：0027 之後若有 migration 又重新定義過該函式，不得使用。
+> `0025_down` 是安全降級，`DEMO_ENABLED=true` 時須先 `demo:disable`。`reset_demo_data` 目前的版本來自 0031（0024 → 0027 → 0031 各重新定義一次，每次只差觸發器白名單）：`0031_down` 會把它寫死成 0027 的本文、`0027_down` 會寫死成 0024 的本文，**回滾必須由新到舊（先 0031_down、再 0027_down）**，且之後若有 migration 又重新定義過該函式，這兩個 `_down` 都不得使用（單元測試會在出現更新的定義者時失敗提醒）。
 
 ### 7.6 Demo 的 Storage 額度用完
 
@@ -327,7 +328,8 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 ### 寄信行為
 - **預約確認信照常寄出**（資料庫觸發器 0011）：面試官在前台自己預約並填真實 Email，會收到確認信。
 - **Demo 發動的改期／取消不寄信**（0026）：判斷來源是請求 JWT 的 `app_metadata.is_demo`；後台在 Demo 登入時，按下改期或取消的最終確認後會先跳出說明視窗，顯示顧客在正式環境會收到的通知信示意圖。一般管理員、cron、service role 完全不受影響。
-- 已知殘留：Demo 改期會清掉 `reminder_sent_at` 使隔天提醒信重寄（TASK-121，尚未處理）。Demo 取消預約釋放「每個 Email 最多 3 筆」額度的缺口，已由 0030 的 24 小時視窗補上（TASK-120；套用後才生效），但 Email 的別名寫法（供應商別名、次網域、catch-all）仍可繞過，根本解法是全店寄信預算，尚未做。
+- **Demo 動過的預約不寄提醒信**（0031，TASK-121；已於 2026-11-02 套用）：資料庫在 `appointments` 上有一個 BEFORE UPDATE 觸發器 `demo_appointment_reminder`，Demo 帳號對預約做的任何更新都會把 `reminder_sent_at` 強制維持原值（原本是空的就填成目前時間），所以每日提醒排程撈不到 Demo 動過的預約，Demo 改期也無法再讓提醒信重寄。**副作用（已接受）：** Demo 動過的預約不會收到提醒信（只改狀態也算；之後若由一般管理員再改期，提醒會恢復）；面試官自己在前台預約、沒被 Demo 動過的預約，確認信與提醒信照常。一般管理員、提醒排程、service role 完全不受影響。這個觸發器也在 `reset_demo_data` 的觸發器白名單內（同一個 migration 補上）。
+- 已知殘留：Demo 取消預約釋放「每個 Email 最多 3 筆」額度的缺口，已由 0030 的 24 小時視窗補上（TASK-120；套用後才生效），但 Email 的別名寫法（供應商別名、次網域、catch-all）仍可繞過，根本解法是全店寄信預算，尚未做。
 
 ### 預約額度被鎖住（0030，24 小時視窗）— ⚠️ 未實跑，請照驗證方式確認
 `create_appointment` 對**同一支電話、同一個 Email**（正規化後）各有兩道上限，任一道達 3 筆就回 `BOOKING_LIMIT_EXCEEDED`：(1) 未來待服務（pending／confirmed）≥ 3；(2) **過去 24 小時內建立**的預約（不分狀態，取消也算）≥ 3。第 (2) 道是 0030 加的，目的是讓「取消再訂」不能無限寄確認信。
@@ -404,7 +406,7 @@ Demo 帳戶在 `audit_log` 的列數最多 500 筆（**只算 Demo 自己的列*
 
 ### 新增 migration 時
 - 新增任何以 `is_admin()` 開放的資料表或 Storage policy，驗收時加一項「Demo 管理員能對它做什麼」。
-- 在 `reset_demo_data` 覆寫的十一張表上新增觸發器，必須同步更新該函式內的觸發器白名單（見 0027 與 `tests/lib/demo-row-caps-migration.test.ts`）。
+- 在 `reset_demo_data` 覆寫的十一張表上新增觸發器，必須同步更新該函式內的觸發器白名單（以編號最大的那份為準，目前是 0031；見 `tests/lib/demo-reminder-guard-migration.test.ts` 與 `tests/lib/demo-row-caps-migration.test.ts`，漏補時兩者都會失敗）。
 
 ---
 
@@ -418,4 +420,5 @@ Demo 帳戶在 `audit_log` 的列數最多 500 筆（**只算 Demo 自己的列*
 | `demo:backup` 與 `restore.sql` | ✅ / ⚠️ | 備份對正式庫唯讀實跑；`restore.sql` 於 PGlite 實測，**未在正式庫執行** |
 | `demo:disable`／`demo:enable` | ✅ | `npm run test:demo-disable` 8 項（拋棄式帳號）＋ `tests/lib/demo-disable-script.test.ts` 22 項 |
 | 兩行 `drop trigger`（§7.4）、單項防護停用（§7.5） | ✅ | 與 `_down.sql` 內語句相同，已實跑；`test:demo-lock`、`test:storage-owner`、`test:demo-row-caps` 的 off 模式 |
+| Demo 動過的預約不寄提醒信（0031，§8） | ✅ 已套用（`_down` 實測未做） | 正式庫：`TASK-121-verify.sql` ALL_OK、`test:demo-reminder-guard` 預設模式 8/8、`test:demo-reset` 34 項、`test:notifications` 20/20；套用前基準線 off 模式 8/8（重現缺口）。PGlite 演練 39 項為記憶體 Postgres。詳見 `verification/TASK-121.md` |
 | Auth 不可用時刪 admins（§4）、檢視 SQL（§7.1、§7.6）、輪換密碼（§7.2）、刪除重建的稽核清理（§7.3） | ⚠️ | agent 沒有 SQL Editor 存取，未實跑。請在 TASK-112 建立 Demo 帳戶後，照各節「驗證方式」第一次使用時確認 |

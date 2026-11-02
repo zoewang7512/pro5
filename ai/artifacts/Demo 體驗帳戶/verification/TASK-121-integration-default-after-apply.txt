@@ -1,0 +1,28 @@
+
+> test:demo-reminder-guard
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-reminder-guard.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/demo-reminder-guard.integration.test.ts > Demo 動過的預約視為已提醒（0031，真實 Supabase 專案）
+[demo-reminder-guard] 模式：守門生效中（預設）；開始時預約 16 筆
+
+stdout | tests/demo-reminder-guard.integration.test.ts > Demo 動過的預約視為已提醒（0031，真實 Supabase 專案）
+[demo-reminder-guard] 預約總數：開始 16 筆、結束 16 筆
+
+ ✓ tests/demo-reminder-guard.integration.test.ts (8 tests) 14280ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > Demo 改期一筆已提醒過、有 Email 的預約：改期成功，reminder_sent_at 不被清成 null  591ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > Demo 改期一筆從未提醒過、有 Email 的預約：被標成已提醒，提醒排程的挑選條件撈不到它  689ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > Demo 直接把 reminder_sent_at 設成 null：無效（維持原值）  582ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > Demo 只改狀態（取消）：預約照常取消，並被標成已提醒（已接受的副作用）  1150ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > 一般管理員改期：reminder_sent_at 照常清成 null，排程撈得到（提醒功能不受影響，與模式無關）  769ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > 只在 user_metadata 偽裝 is_demo 的管理員：不被當成 Demo，改期照常清成 null（與模式無關）  603ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > 觸發器賴以完整的權限前提（與模式無關）：Demo 不能新增預約、不能改收件人 Email／姓名（42501）  929ms
+   ✓ Demo 動過的預約視為已提醒（0031，真實 Supabase 專案） > service role（cron 的 claim／release）：行為不變——claim 設為非 null，release 清回 null（與模式無關）  733ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  15:53:16
+   Duration  15.65s (transform 99ms, setup 0ms, collect 340ms, tests 14.28s, environment 0ms, prepare 597ms)
+

@@ -1,0 +1,29 @@
+
+> test:notifications
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.notifications.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stderr | tests/notifications.integration.test.ts > Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：INSERT 事件（確認信）對真實資料庫的查詢與去重 > 寄信失敗：釋放 confirmation_sent_at 佔位供後續補寄
+appointment-events: 確認信寄送失敗，釋放去重佔位供後續補寄 {
+  appointmentId: '5d1389c0-61de-4367-983d-5a3a02684e66',
+  code: 'SEND_FAILED'
+}
+
+ ✓ tests/notifications.integration.test.ts (20 tests) 11296ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：INSERT 事件（確認信）對真實資料庫的查詢與去重 > 有效 INSERT payload：寄出確認信、設定 confirmation_sent_at  1055ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：INSERT 事件（確認信）對真實資料庫的查詢與去重 > 已停用設計師的預約：確認信仍讀得到設計師名稱（service_role 略過 RLS，不加 is_active 條件）  681ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：INSERT 事件（確認信）對真實資料庫的查詢與去重 > 重複觸發同一筆 INSERT（confirmation_sent_at 已設定）：不重複寄信  908ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：INSERT 事件（確認信）對真實資料庫的查詢與去重 > customer_email 為 null：仍設定 confirmation_sent_at（去重佔位），但不寄信  412ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：INSERT 事件（確認信）對真實資料庫的查詢與去重 > 寄信失敗：釋放 confirmation_sent_at 佔位供後續補寄  1049ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：UPDATE 事件（取消／改期／標記完成）對真實資料庫的分派 > 取消：分派到取消通知信  613ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：UPDATE 事件（取消／改期／標記完成）對真實資料庫的分派 > 改期：分派到改期通知信  550ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Webhook 端點：UPDATE 事件（取消／改期／標記完成）對真實資料庫的分派 > customer_email 為 null：分類為取消仍略過寄信  301ms
+   ✓ Email 通知與提醒：前後端串接整合測試（真實 Supabase 專案） > Cron 端點：時間窗篩選與 reminder_sent_at 去重（對真實資料庫） > 只 claim 時間窗內、狀態為 pending/confirmed 的預約；已取消或超出時間窗的不受影響  2300ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  15:56:31
+   Duration  12.63s (transform 372ms, setup 0ms, collect 734ms, tests 11.30s, environment 0ms, prepare 193ms)
+

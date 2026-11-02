@@ -1033,3 +1033,33 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     (3) Demo 每日還原（0027）整表刪除 appointments，視窗隨之歸零，還原邊界前後各約 3 封；(4) 新計數無索引：資料約 5 萬列或回應變慢時補 appointments(created_at) 索引（檔頭已寫）。
   - 沒有後台新增預約的路徑（authenticated 只能 update status／start_at／end_at／reminder_sent_at），Demo 不能 insert／delete 預約或改 created_at／customer_email，所以繞不過新視窗。
 ```
+
+## TASK-121（Demo 體驗帳戶）：Demo 動過的預約視為已提醒，migration 0031
+
+```text
+日期：2026-11-02
+決策：
+  1. 新增 migration 0031：在 appointments 上建立 BEFORE UPDATE 觸發器 demo_appointment_reminder（函式 demo_appointment_reminder_guard，security definer、search_path 為空）。
+     Demo JWT（app_metadata.is_demo = true）的任何 UPDATE 都強制 new.reminder_sent_at := coalesce(old.reminder_sent_at, now())——已提醒的不能被清回 null，從沒提醒過的也被標成已提醒。
+     使用者於 2026-11-02 在 A（觸發器強制已提醒）／B（排程排除 Demo 動過的預約，需新增欄位）／C（接受殘留）中選定 A，並選「單一 migration」。
+  2. 為什麼觸發器與還原函式白名單放同一個 migration：reset_demo_data 的守門區（0024 決策 8）會拒絕白名單以外的觸發器；若觸發器先套用、白名單後套用，
+     中間那段時間每日還原與手動還原都會失敗。同一個交易內完成就沒有這個空窗。0031 以 create or replace 重新定義 reset_demo_data，**除白名單新增 demo_appointment_reminder 外與 0027 逐字相同**
+     （reset 區塊由腳本從 0027 抽出，不手抄；tests/lib/demo-reminder-guard-migration.test.ts 以逐字比對把關，並檢查「編號最大的 reset 定義者」是 0031、appointments 上所有觸發器都在白名單內）。
+  3. 識別 Demo 的方式與 0026／0027 相同（簽章後的 app_metadata.is_demo），並沿用 0027 的預篩：claims 字串裡沒有 is_demo 就放行、不解析 JSON、不依賴 auth schema，
+     所以一般管理員、提醒排程的 claim／release、每日還原不會被連帶影響。疑似 Demo 但解析失敗時**視為 Demo**（強制已提醒），不讓更新失敗也不放過。
+  4. 沒有 WHEN 條件、也不限定 UPDATE OF 欄位：改期只改 start_at／end_at 時也要經過（rescheduleAppointment 同時帶 reminder_sent_at: null，但不能假設呼叫端一定帶）。判斷全在函式內（auth.jwt() 不能放進 WHEN）。
+  5. 還原不受影響：reset_demo_data 是先 delete 再 insert、不發 UPDATE，不會觸發本觸發器；還原寫入的預約 reminder_sent_at 是 null 且不帶 Email。
+  6. 驗證：逐字比對單元測試（含 5 種突變測試）；整合測試 test:demo-reminder-guard（on／off 兩種模式，DEMO_REMINDER_GUARD_EXPECT=off 為套用前／回滾後）；
+     提醒排程的挑選條件在測試內以「id 限定的相同謂詞」重現，不呼叫排程端點，也不呼叫 claimAppointmentsForReminder（它沒有 id 限定，會佔走真實預約的提醒額度）；
+     另以 PGlite（記憶體 Postgres）實跑 0031／_down 39 項與 TASK-121-verify.sql。
+情境：TASK-121 高風險卡（TASK-114 審查 R2：Demo 正常改期會讓提醒排程對任意 Email 寄信）；migration 由使用者在 SQL Editor 套用。
+考慮過的替代方案：B 排程排除 Demo 動過的預約（要新增標記欄位與寫入邏輯、改動面大）；C 接受殘留（可被 R1 放大）；觸發器加 WHEN (new.reminder_sent_at is null)（省不了什麼、驗證面更複雜）；兩個 migration（有空窗會讓還原失敗）。
+影響與殘留風險：
+  - 副作用（已接受）：Demo 對預約做任何 UPDATE（含只改狀態）都會把 reminder_sent_at 填成目前時間；Demo 動過的預約不會收到提醒信（之後若由一般管理員再改期，會被清回 null、提醒恢復）。面試官自己在前台預約、沒被 Demo 動過的預約不受影響。reminder_sent_at 現在也代表「Demo 動過」，日後做報表或畫面時不能當成「提醒信已寄出」。
+  - 不處理：匿名 create_appointment 仍可用任意 Email 建立預約並在隔天收到提醒信（每筆預約每日最多一封；0030 的 24 小時視窗限制建立數量；Email 別名繞過需全店寄信預算，已記錄）。
+  - 回滾：0031_demo_reminder_guard_down.sql 移除觸發器與函式、把 reset_demo_data 還原成 0027 本文；回滾後缺口重新打開。必須先於 0027_down；0031 之後若有 migration 又重新定義 reset_demo_data，不得使用 _down。
+  - 緊急停用：drop trigger if exists demo_appointment_reminder on public.appointments;（白名單多一個名稱不影響還原）。處理完只重建觸發器，不重跑整份 0031（若有更新的 reset_demo_data 定義，重跑會把它倒退）。
+  - 三方審查（2026-11-02）皆為有條件核准、無 MUST FIX。已處理：檔頭不再宣稱 verify.sql 跑還原 dry-run（改以套用後 test:demo-reset 為必要證據）、重套警告與重建觸發器語句、鎖註解與排程時段、兩個 SQL 檔改 LF、預篩讀取順序與 auth.jwt() 一致、指紋預期值、單元測試補強（return new 恰三處、賦值為最上層語句）、verify.sql 加欄位權限前提檢查、整合測試加權限案例（Demo 改 Email／姓名與 INSERT 皆 42501，已在正式庫實測）、空轉防護（.select 與受影響列數）、結尾改確認無殘留而非比對總數、開頭掃除殘留預約。
+  - 未關閉：(R-A，中高，不在本卡範圍) Demo 可修改服務名稱、設計師名稱、店家資訊，這些文字會流進確認信與提醒信；搭配匿名預約（R1）可對任意 Email 寄純文字釣魚信——根本解法是全店寄信預算，或 Demo 開啟時信件改用固定文案，需使用者決定是否另開卡。(R-B) Demo 動過的預約不再提醒，已接受。N3（reminder_sent_at 加 comment on column）與 N6（0027_down 不察覺 0031 已套用，靠手冊順序）未做。
+  - tests/lib/demo-reset-test-scan.test.ts 白名單新增 0031 與其單元測試（兩者出現 reset_demo_data 字樣但不呼叫）。
+```

@@ -63,7 +63,7 @@
 - **腳本**：`seed-demo-account.mjs`（建立／檢查 Demo 帳戶）、`export-demo-base.mjs`（唯讀匯出 seed 基底）、`upload-demo-images.mjs`（匯入 `demo-seed`；Demo 上線中拒絕執行）、`reset-demo.mjs`（手動還原，預設 dry-run）、`backup-demo-tables.mjs`（還原前備份，輸出到 `backups/`，含個資、不進 git）、`disable-demo.mjs`（`demo:disable`／`demo:enable` 緊急關閉與恢復）。
 - **環境變數**（皆只放伺服器端）：`DEMO_ENABLED`、`DEMO_EMAIL`（會顯示在帳號設定頁，須為作者控制的信箱）、`DEMO_PASSWORD`（≥ 32 字元）、`DEMO_RATE_LIMIT_SECRET`（≥ 32 字元）、`DEMO_RESET_ENABLED`（只管排程）。改動後需 Redeploy。
 - **測試**：單元 `tests/lib/demo-*.test.ts`、`backup-demo-tables.test.ts`；整合 `npm run test:demo-lock／seed-demo-account／demo-rate-limit／demo-enter／demo-seed-bucket／demo-reset／demo-mail-suppress／storage-owner／demo-row-caps／text-length／demo-disable`。整合測試會在正式庫暫時建立拋棄式 `is_demo` 帳號，期間還原與 `demo:disable` 會因「Demo 帳戶不是剛好 1 個」而拒絕；排程啟用後避開台北 03:00–04:00 執行。`test:demo-disable` 只能在沒有真實 Demo 帳戶時跑。**整合測試不得對正式庫做真實還原**（`tests/lib/demo-reset-test-scan.test.ts` 把關）。
-- **已知限制與殘留**：Demo 就是 `is_admin()`＝公開後台全部寫入權限，靠每日還原兜底；顧客資料互相可見、公開前台可被竄改最長約 24 小時（使用者已接受）；欄位長度 CHECK、匿名預約容量（TASK-120、121、123）尚未完成。
+- **已知限制與殘留**：Demo 就是 `is_admin()`＝公開後台全部寫入權限，靠每日還原兜底；顧客資料互相可見、公開前台可被竄改最長約 24 小時（使用者已接受）；欄位長度 CHECK（TASK-123，0029）、預約 24 小時建立視窗（TASK-120，0030）、Demo 動過的預約不再觸發提醒信（TASK-121，0031，已套用）已做；Email 別名繞過寄信上限仍開放（根本解法是全店寄信預算，尚未做）。
 
 ## 技術棧
 

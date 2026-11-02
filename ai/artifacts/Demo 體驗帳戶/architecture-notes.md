@@ -178,6 +178,8 @@ Supabase Auth 自己的登入限流以呼叫端 IP 計算，而呼叫端是 Verc
 
 ### D13 Demo 發動的改期／取消不寄信，並以說明視窗示意（使用者決定，TASK-114、TASK-115）
 
+> **補充（TASK-121，2026-11-02）：** 提醒信這條路（R2）由 migration 0031 補上：appointments 上的 BEFORE UPDATE 觸發器讓 Demo 動過的預約視為已提醒（`reminder_sent_at` 不會被清成 null），並在同一個 migration 內補還原函式的觸發器白名單。
+
 > **補充（TASK-120，2026-11-01）：** 確認信照寄的前提是同 Email／電話有建立數上限。TASK-114 審查 R1 發現 Demo 取消預約可釋放原上限（只計未來待服務），已由 migration 0030 補上「過去 24 小時內建立、不分狀態 ≥ 3」的滾動視窗（修法 A'，與原檢查並存）；保證範圍只到 dedupe key 相同，全店寄信預算另需新卡。
 
 - 使用者選擇方案 A：新 migration 以 `create or replace` 改寫 `notify_appointment_update()`，在函式開頭加一道守門：`coalesce(auth.jwt() -> 'app_metadata' ->> 'is_demo', '') = 'true'` 時 `return new`，不呼叫 `net.http_post`。**其餘本文逐字沿用 `0012`**，觸發器本身與 `when` 條件不動。`_down.sql` 還原成 `0012` 的原函式本文。

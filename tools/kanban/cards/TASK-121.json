@@ -3,7 +3,7 @@
   "createdAt": "2026-10-31",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,20 +11,31 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/lib → 30 檔 569 項全過（含新單元測試 17 項）；npx tsc --noEmit、npm run lint、npm run build 通過",
+      "突變測試：5 種（白名單漏補、拿掉預篩、加 WHEN、改讀 user_metadata、還原函式改一字）全被抓到；測試審查另做 29 種，25 種被抓到，存活的行為層變異已補斷言",
+      "PGlite 演練 0031／_down 39 項全過；TASK-121-verify.sql 套用前 MISMATCH／套用後 ALL_OK（記憶體 Postgres，非正式庫）",
+      "套用前基準線：DEMO_REMINDER_GUARD_EXPECT=off npm run test:demo-reminder-guard 8/8（重現缺口）；預設模式 4 失敗 4 通過（有鑑別力）；正式庫權限前提實測：Demo 改 customer_email／customer_name 與直接 INSERT 皆 42501",
+      "全套件 vitest 有 4 個元件測試檔間歇失敗，乾淨樹（git stash -u）同樣失敗，與本卡無關",
+      "【套用後】TASK-121-verify.sql（使用者執行）RESULT=ALL_OK、grants_ok=t",
+      "【套用後】test:demo-reminder-guard 預設模式 8/8（套用前 4 失敗）；test:demo-reset 34 項；test:notifications 20/20"
+    ],
+    "findings": [
+      "三方審查（架構／安全／測試）皆有條件核准、無 MUST FIX；已處理：verify.sql 不宣稱還原 dry-run、重套警告改為只重建觸發器、鎖註解、LF、預篩順序、單元測試補強、verify.sql 加權限前提、整合測試加權限案例與空轉防護、結尾改確認無殘留",
+      "R-A（中高，不在本卡）：Demo 可改服務名稱／設計師名稱／店家資訊，文字流進確認信與提醒信，搭配匿名預約可寄純文字釣魚信；需使用者決定是否另開卡"
+    ],
+    "residual": "0031 已套用。未做：_down 回滾實測（需關閉 Demo 入口）；真實還原靠推理，留給 TASK-112。Demo 動過的預約不再提醒為已接受副作用。R-A（Demo 可控信件文字）不在本卡範圍。"
   },
   "id": "TASK-121",
   "title": "Demo 動過的預約不再觸發提醒信（TASK-114 審查 R2）",
@@ -54,6 +65,26 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "由 TASK-114 安全審查的未關閉殘留風險建立，使用者指示另開卡處理。草稿：須先由使用者決定修法並核准，才可把 human_approval_recorded 打勾並推進；TASK-114 驗收前不得進入 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者下令動工並決定：修法 A + 單一 migration 0031（BEFORE UPDATE 觸發器 demo_appointment_reminder 與 reset_demo_data 白名單同一個交易內完成）。視為核准，human_approval_recorded 打勾，推到 implementing。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "實作與三方審查完成（見 verification/TASK-121.md），套用前證據齊全；0031 待使用者在 SQL Editor 套用。套用後我再跑預設模式、test:demo-reset 等回歸與 _down 實測。推到 verify，不轉 Done（需套用後證據與人工驗收）。另有 R-A（Demo 可控信件文字）不在本卡範圍，待使用者決定是否另開卡。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者已套用 0031 並執行 verify.sql（RESULT=ALL_OK）；我跑完套用後回歸：整合測試預設模式 8/8、test:demo-reset 34 項、test:notifications 20/20。待人工驗收，不自行轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者人工驗收通過，轉 Done。_down 回滾實測未做（選做）；R-A 尚未決定是否另開卡。"
     }
   ]
 }

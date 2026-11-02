@@ -28,6 +28,7 @@
     "test:demo-seed-bucket": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-seed-bucket.config.ts",
     "test:demo-reset": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-reset.config.ts",
     "test:demo-mail-suppress": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-mail-suppress.config.ts",
+    "test:demo-reminder-guard": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-reminder-guard.config.ts",
     "test:storage-owner": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.storage-owner.config.ts",
     "test:demo-row-caps": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-row-caps.config.ts",
     "test:demo-audit-cap": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-audit-log-cap.config.ts",
