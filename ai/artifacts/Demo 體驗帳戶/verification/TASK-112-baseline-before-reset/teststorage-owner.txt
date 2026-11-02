@@ -1,0 +1,33 @@
+
+> test:storage-owner
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.storage-owner.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/storage-owner.integration.test.ts (19 tests) 76316ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > 擁有者 A 可以覆寫（upsert）與刪除自己的物件  1590ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > 另一位管理員 B 無法刪除 A 的物件  797ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > B 無法用 upsert 覆寫 A 的物件（內容與擁有者不變）  649ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > B 無法 move（搬動／改名）A 的物件  956ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > Demo 無法刪除 A（扮演 designer001）的頭像  782ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > Demo 可以刪除自己上傳的 admin-assets 物件（頭像更換流程）  912ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > 其他 bucket 的刪除不受擁有者限制：B 仍可刪除 A 在 store-assets 上傳的物件（既有行為不變）  988ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > admin-assets：update／delete 限擁有者 > 擁有者為 null 的物件（service role 上傳，例如還原複製進來的 seed）：一般管理員與 Demo 都刪不掉  1865ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 不能 update > Demo 無法用 move 把自己的物件跨 bucket 搬進 admin-assets（繞過上限的路徑）  1783ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 不能 update > Demo 無法用 upsert 覆寫自己的物件  1034ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > Demo 在 admin-assets 上傳第 31 個被拒絕；刪掉一個後又能上傳  6006ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > Demo 在 store-assets 上傳第 31 個被拒絕；刪掉一個後又能上傳  5509ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > Demo 在 designer-assets 上傳第 31 個被拒絕；刪掉一個後又能上傳  5122ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > 每個 bucket 獨立計數：store-assets 滿 30 後，Demo 仍可上傳到 admin-assets 與 designer-assets  5919ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > 簽名上傳網址繞不過上限：物件數為 0 時簽出 35 個網址再逐一上傳，最多只有 30 個成功  20938ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > 並行上傳繞不過上限：物件數為 0 時同時送出 40 個，剛好 30 個成功  3386ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > 滿 30 後 copy 自己的物件也被拒絕  3841ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > 非 Demo 管理員不受上限約束：B 在 store-assets 擁有超過 30 個，並可繼續上傳  3150ms
+   ✓ Storage 擁有者限制與 Demo 上傳上限（保護生效中） > Demo 上傳物件數上限（30，觸發器） > 上限只算自己的：B 已有超過 30 個物件，Demo 仍可上傳（不被其他帳號的物件佔用額度）  1052ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  16:15:28
+   Duration  77.17s (transform 67ms, setup 0ms, collect 235ms, tests 76.32s, environment 0ms, prepare 210ms)
+

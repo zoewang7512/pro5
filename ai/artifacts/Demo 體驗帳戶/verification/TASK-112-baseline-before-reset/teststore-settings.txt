@@ -1,0 +1,20 @@
+
+> test:store-settings
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.store-settings.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/store-settings.integration.test.ts > 商店基本資料設定：store_settings／store-assets 權限邊界（真實 Supabase 專案）
+[store-settings.integration.test] 原始 store_settings 快照（供中斷後人工還原用）：{"id":1,"name":"普洛午理髮廳","address":"台北市大安區忠孝東路四段1號","phone":"02-1234-5678","description":"我們相信，好的髮型不僅是外在的點綴，更是內在能量的釋放。","logo_url":"https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/logo/1df676dd-8f7c-4d0d-b600-3e76e6fbfaf8.jpg","cover_image_url":"https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/cover/414d45f8-a55a-4bfe-addd-a58a0647fbfc.jpg"}
+
+ ✓ tests/store-settings.integration.test.ts (11 tests) 5950ms
+   ✓ 商店基本資料設定：store_settings／store-assets 權限邊界（真實 Supabase 專案） > store_settings 寫入權限邊界：designer 可直接寫入，anon／非管理員 authenticated 皆被 RLS 拒絕 > anon 無法 update store_settings  399ms
+   ✓ 商店基本資料設定：store_settings／store-assets 權限邊界（真實 Supabase 專案） > store_settings 寫入權限邊界：designer 可直接寫入，anon／非管理員 authenticated 皆被 RLS 拒絕 > 已登入但非 is_admin() 的 authenticated 使用者無法 update store_settings（anon 測試只證明「沒有對應 policy 時被拒」，store_settings 對 authenticated 角色本身沒有整體 revoke，唯一防線是 is_admin() policy predicate，需要這個角色才能真正驗證該防線本身有效）  378ms
+   ✓ 商店基本資料設定：store_settings／store-assets 權限邊界（真實 Supabase 專案） > store-assets Storage bucket 權限邊界：designer 可上傳，anon／非管理員 authenticated 皆被拒絕，已上傳物件可公開讀取 > designer（is_admin()）可以上傳至 store-assets，且上傳後可被公開（未驗證）讀取  1341ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  16:04:29
+   Duration  6.69s (transform 56ms, setup 0ms, collect 155ms, tests 5.95s, environment 0ms, prepare 173ms)
+

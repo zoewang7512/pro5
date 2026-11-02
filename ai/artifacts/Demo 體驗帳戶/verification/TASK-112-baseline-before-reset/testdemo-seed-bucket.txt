@@ -1,0 +1,24 @@
+
+> test:demo-seed-bucket
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-seed-bucket.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/demo-seed-bucket.integration.test.ts (14 tests) 35727ms
+   ✓ 私有性：只有 service role 能存取 > service role 可以上傳與讀取  1354ms
+   ✓ 私有性：只有 service role 能存取 > 公開網址讀不到（私有 bucket 不提供 /object/public/）  389ms
+   ✓ 私有性：只有 service role 能存取 > 匿名：下載、列出、簽名網址、上傳都被拒絕  900ms
+   ✓ 私有性：只有 service role 能存取 > authenticated（非 Demo 的拋棄式帳號）：下載、列出、簽名網址、上傳都被拒絕  1596ms
+   ✓ 私有性：只有 service role 能存取 > is_admin() 為真的帳號（Demo 帳戶的身分）：對 demo-seed 下載、列出、簽名網址、上傳、刪除都被拒絕，對 store-assets 則可列出  2241ms
+   ✓ scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不引用任何圖片的基底，只測護欄、不複製） > DEMO_ENABLED=true 時拒絕；加 --allow-while-demo-live 才執行；--dry-run 不受影響  1954ms
+   ✓ scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不引用任何圖片的基底，只測護欄、不複製） > is_demo 帳戶仍登記在 admins 時拒絕；停用（移除 admins 列）後允許  5022ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > 來源缺檔：列出清單、結束碼非 0，且 demo-seed 沒有任何變動  6343ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > 不在允許清單的 bucket（含 demo-seed 自己）與路徑穿越都中止  622ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > --dry-run 對真實 seed-base 只報告計畫，demo-seed 沒有任何變動  10122ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  16:11:19
+   Duration  36.63s (transform 76ms, setup 0ms, collect 238ms, tests 35.73s, environment 0ms, prepare 218ms)
+

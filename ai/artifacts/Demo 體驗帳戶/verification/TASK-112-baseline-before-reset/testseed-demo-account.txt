@@ -1,0 +1,27 @@
+
+> test:seed-demo-account
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.seed-demo-account.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/seed-demo-account.integration.test.ts (14 tests) 18014ms
+   ✓ seed:demo-account 腳本 > 建立與冪等 > 第一次執行：建立帳戶、標記 is_demo、登記 admins、顯示名稱  1802ms
+   ✓ seed:demo-account 腳本 > 建立與冪等 > 輸出與 stderr 不含密碼、service role key  832ms
+   ✓ seed:demo-account 腳本 > 建立與冪等 > 連跑第二次：不報錯、不重複、帳戶未被修改  1512ms
+   ✓ seed:demo-account 腳本 > 建立與冪等 > 顯示名稱被改掉時，重跑會校正，且只動這一列  2000ms
+   ✓ seed:demo-account 腳本 > 建立與冪等 > admins 登記被移除時，重跑會補登記  1480ms
+   ✓ seed:demo-account 腳本 > 拒絕：已存在但不是 Demo 的帳戶 > 中止，帳戶、密碼與 admins 都未被修改  2052ms
+   ✓ seed:demo-account 腳本 > 拒絕：輸入檢查（資料庫沒有任何變更） > DEMO_EMAIL 等於 DESIGNER_EMAIL（大小寫不同）時中止，未建立帳戶、admins 筆數不變  1132ms
+   ✓ seed:demo-account 腳本 > 拒絕：輸入檢查（資料庫沒有任何變更） > DEMO_EMAIL 設成真正的 DESIGNER_EMAIL 時中止，designer001 不受影響  658ms
+   ✓ seed:demo-account 腳本 > 拒絕：輸入檢查（資料庫沒有任何變更） > 密碼少於 32 字元時中止，未建立帳戶  317ms
+   ✓ seed:demo-account 腳本 > 拒絕：輸入檢查（資料庫沒有任何變更） > 缺 DEMO_EMAIL 時中止  320ms
+   ✓ seed:demo-account 腳本 > 拒絕：輸入檢查（資料庫沒有任何變更） > 缺 SUPABASE_SERVICE_ROLE_KEY 時中止  417ms
+   ✓ seed:demo-account 腳本 > MFA factor > 既有 Demo 帳戶帶有 MFA factor 時，腳本刪除並提示  2905ms
+   ✓ seed:demo-account 腳本 > designer001 的 auth.users 列與 admins 列在整個測試前後一致  300ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  16:18:29
+   Duration  18.81s (transform 79ms, setup 0ms, collect 216ms, tests 18.01s, environment 0ms, prepare 169ms)
+

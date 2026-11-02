@@ -1,0 +1,30 @@
+
+> test:demo-audit-cap
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-audit-log-cap.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/demo-audit-log-cap.integration.test.ts > Demo 的 audit_log 每帳戶筆數上限（0028）
+[demo-audit-log-cap] audit_log 真實筆數 261（Demo 的額度與它無關：每帳戶計數）
+
+ ✓ tests/demo-audit-log-cap.integration.test.ts (13 tests) 30083ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 每帳戶計數：另一個帳戶已有大量紀錄，不佔 Demo 的額度；Demo 恰好寫到 500 筆  2840ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 滿額時：Demo 新增被拒絕（P0001／DEMO_ROW_CAP），內容不變；一般管理員照常新增  1953ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 只算自己的列：Demo 的額度與整張表總列數無關（整張表 ≫ 500 時，Demo 空額度仍可新增）  1708ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 並行：剩 3 個額度時，同時送出多筆 Demo 新增，恰好 3 筆成功（硬上限）  2121ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 多列單一 insert：額度不足時整句被拒絕，沒有留下部分資料  1737ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 還有額度時：Demo 可以新增，剛好補滿到上限（沒有誤擋）  1580ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 一般管理員自己超過 500 筆仍可寫入（每帳戶計數只限制 Demo；designer001 的紀錄會無限成長）  1759ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 只在 user_metadata 偽造 is_demo 的真實帳號被當成一般管理員，不受上限  1811ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 多列單一 insert 的邊界：剩 2 個額度、剛好 insert 2 列 → 成功，總數恰好 500；再 1 列被拒  1700ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > Demo 無法指定 actor_id 來規避計數（欄位層級 grant，兩種模式都成立）  1020ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 單一請求超過 20 列：整句被拒絕，沒有部分寫入；20 列可以；一般管理員一次寫 50 列不受限  1688ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 單筆大小：Demo 的 event_type 超過 64 位元組被拒絕，64 位元組可以；一般管理員不受限  947ms
+   ✓ Demo 的 audit_log 每帳戶筆數上限（0028） > 每日還原等同「刪光 Demo 的列」：額度恢復，Demo 可再寫入  2317ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  16:16:48
+   Duration  30.94s (transform 106ms, setup 0ms, collect 212ms, tests 30.08s, environment 0ms, prepare 222ms)
+

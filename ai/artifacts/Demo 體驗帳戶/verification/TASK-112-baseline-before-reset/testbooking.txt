@@ -1,0 +1,33 @@
+
+> test:booking
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/booking.integration.test.ts > 顧客預約流程整合測試（真實 Supabase 專案）
+[booking.integration.test] 原始 booking_policy 快照（供中斷後人工還原用）：{"min_lead_time_hours":1,"cancel_window_hours":null}
+
+ ✓ tests/booking.integration.test.ts (23 tests) 14559ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > get_available_slots > 已佔用的時段不會出現在可預約清單，其他時段仍正常回傳  485ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > get_available_slots > 非營業時間（公休日）回傳空陣列，不報錯  323ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > create_appointment：成功建立與顧客去重 > 同一電話兩次不衝突的預約，關聯同一個 customer_id，不產生重複顧客  789ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > create_appointment：成功建立與顧客去重 > phone 命中既有顧客 A、email 另外命中不同顧客 B 時，以 A 為準且不覆寫 A 的既有欄位  980ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > 併發衝突防護：多輪重複驗證恰好一筆成功 > 第 3 輪：4 個並發請求搶同一時段，恰好一筆成功  304ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > Exclusion constraint 邊界：相鄰時段 vs 重疊時段 > 恰好相鄰的兩個時段（10:00-10:30 與 10:30-11:00）皆應成功  327ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > Exclusion constraint 邊界：相鄰時段 vs 重疊時段 > 重疊 1 分鐘的時段應被拒絕  342ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > 同號碼預約數上限 > 同一電話第 4 筆 pending 預約應回傳 BOOKING_LIMIT_EXCEEDED  626ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments／customers 的直接存取皆被拒 > anon 無法直接 select appointments／customers（先確認底下確實有資料，避免驗證恆真）  637ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments／customers 的直接存取皆被拒 > anon 無法直接 insert appointments／customers（精確比對權限錯誤代碼，並確認沒有資料真的寫入）  628ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments／customers 的直接存取皆被拒 > anon 直接 delete appointments／customers 在權限層就被拒（42501），資料不會被刪除  1175ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments／customers 的直接存取皆被拒 > anon 直接 update appointments／customers 在權限層就被拒（42501），資料不會被更動  885ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > booking_policy 讀取：提前量設定值影響 get_available_slots／create_appointment（TASK-048） > min_lead_time_hours 設為上限 720 小時時，近期營業日的可預約時段全部消失（證明確實讀取設定值，而非仍寫死 1 小時）  717ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > booking_policy 讀取：提前量設定值影響 get_available_slots／create_appointment（TASK-048） > min_lead_time_hours 設為非預設值時，create_appointment 以新門檻判斷提前量：門檻高於目標距離應拒絕，低於目標距離應成功  760ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > booking_policy 讀取：提前量設定值影響 get_available_slots／create_appointment（TASK-048） > 組合案例：公休日（週日，business_hours.is_closed）的早退判斷不受提前量設定值影響（新增的 booking_policy 讀取插在公休判斷之前，不應短路或跳過該判斷）  515ms
+   ✓ 顧客預約流程整合測試（真實 Supabase 專案） > booking_policy 讀取：提前量設定值影響 get_available_slots／create_appointment（TASK-048） > 組合案例：緩衝時間排除與提前量放行同時正確生效，互不遮蔽（AND 關係）  1122ms
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  16:03:19
+   Duration  15.36s (transform 85ms, setup 0ms, collect 219ms, tests 14.56s, environment 0ms, prepare 174ms)
+

@@ -1,0 +1,21 @@
+
+> test:reports
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.reports.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/reports.integration.test.ts (19 tests) 14584ms
+   ✓ 預約價格快照 price_at_booking（真實 Supabase 專案） > 快照寫入（trigger） > 服務之後改價：既有預約快照不變，新預約帶新價格  524ms
+   ✓ 預約價格快照 price_at_booking（真實 Supabase 專案） > 快照寫入（trigger） > service_role 可以直接改快照（供之後的彙總測試造資料）  449ms
+   ✓ 預約價格快照 price_at_booking（真實 Supabase 專案） > 權限矩陣 > 店長不能更新 price_at_booking（欄位層級授權），資料不變  354ms
+   ✓ 預約價格快照 price_at_booking（真實 Supabase 專案） > 權限矩陣 > 店長仍可更新 status（回歸：新增欄位沒有破壞既有授權）  309ms
+   ✓ 預約價格快照 price_at_booking（真實 Supabase 專案） > 權限矩陣 > 非店長登入者讀得到空結果（先確認底下確實有資料）  325ms
+   ✓ 預約價格快照 price_at_booking（真實 Supabase 專案） > 顧客端 RPC > get_available_slots／create_appointment 的回傳不含 price_at_booking，且建立的預約快照正確  492ms
+   ✓ 報表彙總（真實 Supabase 專案） > 前一日 23:59 與次日 00:00 的預約只出現在各自的日期  308ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  16:09:37
+   Duration  15.53s (transform 175ms, setup 0ms, collect 357ms, tests 14.58s, environment 0ms, prepare 173ms)
+

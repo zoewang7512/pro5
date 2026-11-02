@@ -1,0 +1,21 @@
+
+> test:demo-disable
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-disable.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/demo-disable.integration.test.ts (8 tests) 14887ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > 沒有 --yes：只預覽，什麼都不會變  1338ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > DEMO_EMAIL 與找到的帳戶不同 → 中止，沒有任何變更  894ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > 出現第二個 Demo 帳戶 → 中止，不猜要動哪個，兩個都沒有變更  1402ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > --disable --yes：admins 被刪、立即失去管理權限、refresh 失效、無法再登入；對照組不受影響  2735ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > 可重複執行：已關閉狀態再關一次仍成功  1694ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > --enable 沒有 --yes：只預覽，仍是關閉狀態  1172ms
+   ✓ demo:disable／demo:enable 對拋棄式 Demo 帳號實測 > --enable --yes：解除封鎖、重新登記 admins、可再登入且是管理員  2640ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:18:10
+   Duration  15.67s (transform 73ms, setup 0ms, collect 180ms, tests 14.89s, environment 0ms, prepare 183ms)
+

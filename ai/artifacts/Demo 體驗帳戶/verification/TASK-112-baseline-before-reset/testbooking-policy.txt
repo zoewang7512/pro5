@@ -1,0 +1,18 @@
+
+> test:booking-policy
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking-policy.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/booking-policy.integration.test.ts > 預約規則與政策設定：booking_policy 權限邊界（真實 Supabase 專案）
+[booking-policy.integration.test] 原始 booking_policy 快照（供中斷後人工還原用）：{"id":1,"min_lead_time_hours":1,"cancel_window_hours":null}
+
+ ✓ tests/booking-policy.integration.test.ts (7 tests) 3293ms
+   ✓ 預約規則與政策設定：booking_policy 權限邊界（真實 Supabase 專案） > 已登入但非 is_admin() 的 authenticated 使用者無法 update booking_policy  310ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  16:04:38
+   Duration  4.04s (transform 70ms, setup 0ms, collect 151ms, tests 3.29s, environment 0ms, prepare 181ms)
+

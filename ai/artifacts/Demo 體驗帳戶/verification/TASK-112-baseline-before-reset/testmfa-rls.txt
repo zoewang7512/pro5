@@ -1,0 +1,39 @@
+
+> test:mfa-rls
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.mfa-rls.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/mfa-rls.integration.test.ts > 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案）
+[mfa-rls.integration.test] 建立拋棄式測試使用者 mfa-admin：b2812fc7-35c8-412c-863c-4ea820877e1d（供中斷後人工清除用）
+
+stdout | tests/mfa-rls.integration.test.ts > 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案）
+[mfa-rls.integration.test] 建立拋棄式測試使用者 plain-admin：48ac08f3-814d-48be-85ae-20e4b060360a（供中斷後人工清除用）
+
+stdout | tests/mfa-rls.integration.test.ts > 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案）
+[mfa-rls.integration.test] 建立拋棄式測試使用者 mfa-nonadmin：9603059d-56b0-43ca-8add-3b2eddd6ad46（供中斷後人工清除用）
+
+ ✓ tests/mfa-rls.integration.test.ts (20 tests) 21980ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 1：沒有 verified factor 的管理員，行為與原本相同 > aal1 session 的 is_admin() 為 true  411ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 1：沒有 verified factor 的管理員，行為與原本相同 > aal1 session 可讀寫自己的個人資料（get_admin_profile／update_admin_profile）  567ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 1：沒有 verified factor 的管理員，行為與原本相同 > 註冊中（unverified）的 factor 不算已啟用 MFA：is_admin() 仍為 true  833ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > is_admin() 回傳 false  375ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > 前提：aal1 session 無法替自己再註冊一個新 factor 來升級成 aal2（否則 DB 層保護可被繞過）  597ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > 繞過路徑 1：直接用 PostgREST 更新 services，受影響列數為 0、資料未變  553ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > 繞過路徑 2：呼叫 update_admin_profile 回傳 false，個人資料維持原值  712ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > get_admin_profile 回傳空結果集（不洩漏個人資料）  368ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > 繞過路徑 3：上傳 admin-assets 被拒絕，物件確實不存在  650ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > Storage 刪除被拒絕：既有物件仍在  841ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 2：有 verified factor、session 為 aal1 → is_admin() 為 false > 讀取被拒絕：aal1 查不到 appointments（含顧客個資），資料確實存在  699ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 3：同一帳號完成 TOTP、session 為 aal2 → is_admin() 為 true > aal2 可更新 services（資料確實改變）  329ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 3：同一帳號完成 TOTP、session 為 aal2 → is_admin() 為 true > aal2 可呼叫 update_admin_profile／get_admin_profile，寫入立即可讀回  312ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 3：同一帳號完成 TOTP、session 為 aal2 → is_admin() 為 true > aal2 可上傳與刪除 admin-assets  4204ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 3：同一帳號完成 TOTP、session 為 aal2 → is_admin() 為 true > session refresh 後仍是 aal2，is_admin() 仍為 true  1095ms
+   ✓ 資料庫層強制 MFA：is_admin() 對已啟用 MFA 的帳號要求 aal2（真實 Supabase 專案） > 情境 4：非管理員（不在 admins 表）不論 aal 都是 false > 有 verified factor 的非管理員，aal1 → false  517ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  16:08:46
+   Duration  22.81s (transform 88ms, setup 0ms, collect 202ms, tests 21.98s, environment 0ms, prepare 188ms)
+

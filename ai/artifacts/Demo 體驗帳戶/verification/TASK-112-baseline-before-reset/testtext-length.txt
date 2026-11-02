@@ -1,0 +1,31 @@
+
+> test:text-length
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.text-length-checks.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/text-length-checks.integration.test.ts > 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案）
+[text-length-checks] 原始 store_settings 快照（會被改動的欄位，供中斷後人工還原用）：{"name":"普洛午理髮廳","address":"台北市大安區忠孝東路四段1號","logo_url":"https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/logo/1df676dd-8f7c-4d0d-b600-3e76e6fbfaf8.jpg","cover_image_url":"https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/store-assets/cover/414d45f8-a55a-4bfe-addd-a58a0647fbfc.jpg"}
+
+ ✓ tests/text-length-checks.integration.test.ts (21 tests) 9002ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.name（60） > 61 字元：以 23514 拒絕，沒有新增列  422ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.name（60） > 以碼點計，不是位元組或 UTF-16 單位（全形字）：總長 60 字元成功；61 字元被拒絕  370ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.name（60） > 以碼點計，不是位元組或 UTF-16 單位（表情符號）：總長 60 字元成功；61 字元被拒絕  347ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.name（60） > update 路徑（直接 PATCH 既有列）同樣受限，被拒絕時原值不變  591ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.description（500，可為 null） > null、空字串、剛好 500 字元：成功  427ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.description（500，可為 null） > 501 字元：以 23514 拒絕，沒有新增列  310ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > services.description（500，可為 null） > update 路徑：501 字元被拒絕、原值不變  501ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > store_settings.'name'（200） > 上限 + 1：以 23514 拒絕，資料不變  411ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > store_settings.'address'（200） > 上限 + 1：以 23514 拒絕，資料不變  460ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > store_settings.'logo_url'（2048） > 上限 + 1：以 23514 拒絕，資料不變  420ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > store_settings.'cover_image_url'（2048） > 上限 + 1：以 23514 拒絕，資料不變  406ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > store_settings：同一個 update 裡一個欄位超過上限，整句被拒絕，其他欄位也不會被改（沒有部分寫入）  538ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > 店長身分（authenticated） > services：剛好 60 字元成功；61 字元以 23514 拒絕  328ms
+   ✓ 文字欄位長度 CHECK（TASK-123，on：已套用 0029；真實 Supabase 專案） > 店長身分（authenticated） > store_settings.name：剛好 200 字元成功；201 字元以 23514 拒絕、資料不變  655ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  16:17:21
+   Duration  9.85s (transform 93ms, setup 0ms, collect 214ms, tests 9.00s, environment 0ms, prepare 197ms)
+

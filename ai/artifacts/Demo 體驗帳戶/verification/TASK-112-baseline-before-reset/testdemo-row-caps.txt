@@ -1,0 +1,33 @@
+
+> test:demo-row-caps
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-row-caps.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/demo-row-caps.integration.test.ts > Demo 專屬資料筆數上限（0027）
+[demo-row-caps] closed_dates 真實 1 / 上限 20 / 額度 19；services 真實 4 / 上限 10 / 額度 6；designers 真實 4 / 上限 5 / 額度 1
+
+ ✓ tests/demo-row-caps.integration.test.ts (16 tests) 21010ms
+   ✓ Demo 專屬資料筆數上限（0027） > closed_dates（上限 20） > 表已滿時：Demo 新增被拒絕（P0001／DEMO_ROW_CAP），內容不變  842ms
+   ✓ Demo 專屬資料筆數上限（0027） > closed_dates（上限 20） > 表已滿時：一般管理員與 service role 照常新增（不受上限約束）  1217ms
+   ✓ Demo 專屬資料筆數上限（0027） > closed_dates（上限 20） > 並行：剩 S 個額度時，同時送出多筆 Demo 新增，恰好 S 筆成功（硬上限）  973ms
+   ✓ Demo 專屬資料筆數上限（0027） > closed_dates（上限 20） > 多列單一 insert：額度不足時整句被拒絕，沒有留下部分資料  817ms
+   ✓ Demo 專屬資料筆數上限（0027） > closed_dates（上限 20） > 還有額度時：Demo 可以新增（沒有誤擋）  853ms
+   ✓ Demo 專屬資料筆數上限（0027） > services（上限 10） > 表已滿時：Demo 新增被拒絕（P0001／DEMO_ROW_CAP），內容不變  885ms
+   ✓ Demo 專屬資料筆數上限（0027） > services（上限 10） > 表已滿時：一般管理員與 service role 照常新增（不受上限約束）  1120ms
+   ✓ Demo 專屬資料筆數上限（0027） > services（上限 10） > 並行：剩 S 個額度時，同時送出多筆 Demo 新增，恰好 S 筆成功（硬上限）  802ms
+   ✓ Demo 專屬資料筆數上限（0027） > services（上限 10） > 多列單一 insert：額度不足時整句被拒絕，沒有留下部分資料  957ms
+   ✓ Demo 專屬資料筆數上限（0027） > services（上限 10） > 還有額度時：Demo 可以新增（沒有誤擋）  844ms
+   ✓ Demo 專屬資料筆數上限（0027） > designers（上限 5） > 表已滿時：Demo 新增被拒絕（P0001／DEMO_ROW_CAP），內容不變  947ms
+   ✓ Demo 專屬資料筆數上限（0027） > designers（上限 5） > 表已滿時：一般管理員與 service role 照常新增（不受上限約束）  1364ms
+   ✓ Demo 專屬資料筆數上限（0027） > designers（上限 5） > 並行：剩 S 個額度時，同時送出多筆 Demo 新增，恰好 S 筆成功（硬上限）  572ms
+   ✓ Demo 專屬資料筆數上限（0027） > designers（上限 5） > 多列單一 insert：額度不足時整句被拒絕，沒有留下部分資料  838ms
+   ✓ Demo 專屬資料筆數上限（0027） > designers（上限 5） > 還有額度時：Demo 可以新增（沒有誤擋）  868ms
+   ✓ Demo 專屬資料筆數上限（0027） > closed_dates 已知行為：表已滿時，Demo 對「已存在日期」的 upsert 也被拒絕（BEFORE INSERT 先於 on conflict）  648ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  16:15:04
+   Duration  21.84s (transform 69ms, setup 0ms, collect 175ms, tests 21.01s, environment 0ms, prepare 175ms)
+

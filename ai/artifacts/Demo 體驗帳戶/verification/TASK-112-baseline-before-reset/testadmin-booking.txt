@@ -1,0 +1,30 @@
+
+> test:admin-booking
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.admin-booking.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/admin-booking.integration.test.ts (16 tests) 17169ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > 讀取權限邊界：designer 可查週次資料，anon 被拒 > designer（authenticated + is_admin()）查詢某週的 appointments 含 embedded services，資料正確  483ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > 讀取權限邊界：designer 可查週次資料，anon 被拒 > anon 查詢同樣範圍的 appointments 在權限層就被拒絕（重新確認邊界未被意外放寬）  510ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > markAppointmentCompleted／cancelAppointment：資料庫層確實反映狀態變更 > designer 標記完成成功，資料庫狀態變為 completed  917ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > markAppointmentCompleted／cancelAppointment：資料庫層確實反映狀態變更 > designer 取消成功，資料庫狀態變為 cancelled  832ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > markAppointmentCompleted／cancelAppointment：資料庫層確實反映狀態變更 > 對已經是 cancelled 的預約再次標記完成，被資料庫層狀態條件擋下，狀態不變  770ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > markAppointmentCompleted／cancelAppointment：資料庫層確實反映狀態變更 > 對已經是 completed 的預約再次取消，被資料庫層狀態條件擋下，狀態不變  641ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > rescheduleAppointment：exclusion constraint 透過 authenticated 直接 update 路徑仍正確運作 > 改期到相鄰但不重疊的時段應該成功，原時段不再佔用  947ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > rescheduleAppointment：exclusion constraint 透過 authenticated 直接 update 路徑仍正確運作 > 改期到與既有預約重疊的時段被 appointments_no_overlap exclusion constraint 擋下（23P01→SLOT_CONFLICT），原預約時段不受影響  975ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > TASK-075：改期只看該預約的設計師（佔用時段、請假日） > getOccupiedRangesForDate 只回傳該設計師的預約（正向對照：自己的預約確實被回傳，別位的不在其中）  801ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > TASK-075：改期只看該預約的設計師（佔用時段、請假日） > 兩位設計師同時段各有預約，各自改期互不影響；撞到自己的預約回 SLOT_CONFLICT，撞到別位的則可以  2085ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > TASK-075：改期只看該預約的設計師（佔用時段、請假日） > isDesignerOnLeave／getDesignerLeavesInRange：admin 讀得到請假日（RLS 路徑），只算指定的設計師，anon 讀不到  1251ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments 的直接寫入（含 update／delete）皆被拒 > anon 無法直接 insert appointments（精確比對權限錯誤代碼，並確認沒有資料真的寫入）  337ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments 的直接寫入（含 update／delete）皆被拒 > anon 直接 update appointments（標記完成／改期路徑）不會實際更動資料  1280ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments 的直接寫入（含 update／delete）皆被拒 > anon 直接 delete appointments 不會實際刪除資料  433ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > RLS 邊界：anon 對 appointments 的直接寫入（含 update／delete）皆被拒 > anon 讀不到本測試建立的任何 appointments（重新確認整個 Epic 沒有意外開放更寬的存取）  383ms
+   ✓ 預約管理後台整合測試（真實 Supabase 專案） > getAppointmentDetail：customer_phone 的 anon PII 邊界 > designer 可讀取單筆詳情含 customer_phone，anon 讀取同一筆被 RLS 拒絕（回傳找不到，不洩漏資料存在與否）  767ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  16:03:37
+   Duration  18.17s (transform 199ms, setup 0ms, collect 408ms, tests 17.17s, environment 0ms, prepare 185ms)
+

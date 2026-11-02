@@ -1,0 +1,47 @@
+
+> test:demo-reset
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-reset.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/lib/demo-reset-test-scan.test.ts (6 tests) 1462ms
+   ✓ reset_demo_data 的測試只准 dry-run > 整個 repo 中，reset_demo_data 只出現在白名單檔案（含 .sql、.sh、.cjs、.mts 等任何副檔名）  827ms
+   ✓ reset_demo_data 的測試只准 dry-run > 測試注入用的 runDemoResetWithDeps 只能被 reset.ts 自己與單元測試引用（端點與指令只能用 runDemoReset）  625ms
+stdout | tests/demo-reset.integration.test.ts > dry-run > 回傳各表筆數：寫入筆數等於 payload 各陣列長度，刪除筆數等於現況；資料完全不變
+[demo-reset] dry-run 耗時 985 ms，payload 預約 425 筆
+
+ ✓ tests/demo-reset.integration.test.ts (28 tests) 182561ms
+   ✓ 授權 > anon、一般登入帳號、已登記 admins 的非 Demo 帳號呼叫 reset_demo_data 都被拒絕（42501）  1832ms
+   ✓ 授權 > anon、一般登入帳號、已登記 admins 的帳號呼叫 demo_list_storage_objects 都被拒絕（42501）  782ms
+   ✓ Demo 帳戶數量由函式自己決定 > 沒有 is_demo 帳戶時失敗（資料不變）  8764ms
+   ✓ Demo 帳戶數量由函式自己決定 > 有 2 個 is_demo 帳戶時失敗（資料不變）  7421ms
+   ✓ Demo 帳戶數量由函式自己決定 > payload 的 demo_user_id 與查到的不同時失敗（資料不變）  6873ms
+   ✓ Demo 帳戶數量由函式自己決定 > payload 沒帶 demo_user_id（必填）時失敗（資料不變）  8315ms
+   ✓ Demo 帳戶數量由函式自己決定 > payload 帶正確的 demo_user_id 時通過交叉檢查  920ms
+   ✓ Demo 帳戶數量由函式自己決定 > Demo 帳戶沒有登記在 admins 時失敗（只在拋棄式帳戶上測，不動真實 Demo 帳戶）  11956ms
+   ✓ dry-run > 回傳各表筆數：寫入筆數等於 payload 各陣列長度，刪除筆數等於現況；資料完全不變  16308ms
+   ✓ dry-run > audit_log 只刪 Demo 帳戶的列：另一位管理員的稽核列不被計入、也不受影響  8663ms
+   ✓ dry-run > 連跑兩次結果相同，資料仍然不變  7431ms
+   ✓ dry-run > 同時兩個 dry-run：不死鎖，至少一個成功，另一個成功或明確因鎖失敗，資料不變  7540ms
+   ✓ 守門：失敗一律不改資料 > 空 payload、陣列、缺或錯的 confirm  8800ms
+   ✓ 守門：失敗一律不改資料 > 缺任一必要鍵都失敗  14218ms
+   ✓ 守門：失敗一律不改資料 > 必要陣列低於最低筆數（空陣列）失敗  8471ms
+   ✓ 守門：失敗一律不改資料 > business_hours 不是 7 列或 weekday 重複失敗  6568ms
+   ✓ 守門：失敗一律不改資料 > 預約帶非 null 的 customer_email、帶 access_token、顧客帶 email 都失敗（還原不寄信）  8800ms
+   ✓ 守門：失敗一律不改資料 > p_dry_run 傳 null 失敗；不傳（沒有預設值）失敗  7041ms
+   ✓ 真實錯誤不被吞掉（dry-run 也一樣往外丟，資料不變） > 同一設計師重疊的預約違反 exclusion constraint（23P01）  7016ms
+   ✓ 真實錯誤不被吞掉（dry-run 也一樣往外丟，資料不變） > 違反 check constraint（設計師名稱為空）與外鍵（服務不存在）  7029ms
+   ✓ 真實錯誤不被吞掉（dry-run 也一樣往外丟，資料不變） > 作品集超過 12 張被資料庫觸發器擋下  6592ms
+   ✓ demo_list_storage_objects > 非白名單 bucket 與 null 被拒絕  799ms
+   ✓ demo_list_storage_objects > 三個公開 bucket 都能列出，且與 Storage API 的結果筆數一致  4337ms
+   ✓ 重置閘門 > anon、一般帳號、已登記 admins 的帳號都不能呼叫三個閘門函式（42501）  1573ms
+   ✓ 重置閘門 > 閘門資料表不授權給任何 Data API 角色（含 service_role 與 anon）  986ms
+   ✓ 重置閘門 > 預設關閉；開啟後在期限內為開，關閉後為關；期限必須是 1～30 分鐘  1927ms
+   ✓ 重置閘門 > dry-run 不受閘門影響，也不消耗閘門（閘門開著跑 dry-run，仍然開著）  7635ms
+
+ Test Files  2 passed (2)
+      Tests  34 passed (34)
+   Start at  16:11:58
+   Duration  183.39s (transform 156ms, setup 0ms, collect 318ms, tests 184.02s, environment 0ms, prepare 378ms)
+

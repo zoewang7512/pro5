@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "implementing",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,7 +11,7 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,7 +22,10 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
+    "commands": [
+      "【真實還原前基準線，2026-11-02】26 個 test:* 套件依序對正式庫執行，全數通過（notifications 20、rls 18、booking 23、admin-booking 16、business-hours 33、store-settings 11、booking-policy 7、services 17、designers 122、account 17、mfa-rls 20、audit-log 28、reports 19、demo-lock 24、demo-rate-limit 21、demo-enter 22、demo-seed-bucket 14、demo-reset 34、demo-row-caps 16、storage-owner 19、demo-audit-cap 13、text-length 21、booking-limit 8、demo-reminder-guard 8、demo-disable 8、seed-demo-account 14）；輸出存於 verification/TASK-112-baseline-before-reset/",
+      "npx tsc --noEmit、npm run lint、npm run build 通過；測試後正式庫無殘留（auth.users 1、appointments 16）"
+    ],
     "findings": [],
     "residual": ""
   },
@@ -89,6 +92,16 @@
       "name": "Claude Code",
       "time": "2026-11-01",
       "text": "TASK-111 帶來的事項：(1) 建立真實 Demo 帳戶後，在 SQL Editor 實跑 docs/demo-account.md §7.1 檢視查詢（應剛好 1 列），並在開放入口前演練 §7.2 輪換密碼（agent 無法實跑這些 SQL）；(2) 建立真實 Demo 帳戶後 test:demo-disable 無法再執行（要求 is_demo 剛好 1 個），回歸改看 tests/lib/demo-disable-script.test.ts，真實帳戶用 npm run demo:disable 的預覽模式（無 --yes 不寫入）演練；(3) README 截圖在入口開放後補；(4) 可順手更正 0023 檔頭驗證查詢「11 列」為 14 列（純註解）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "22 張前置卡皆 Done。使用者下令動工，視為計畫核准（human_approval_recorded 打勾、推到 implementing）。範圍界線：本機測試、唯讀查詢、驗收對照表由我直接做；任何對正式庫／正式站的寫入（合併 master 與部署、建立 Demo 帳戶、匯入圖片、備份後的真實還原、改環境變數與 Redeploy）都逐步停下來取得使用者明確同意。現況（唯讀）：正式庫只有 designer001、尚無 Demo 帳戶、demo-seed bucket 已存在；master 落後 feat/demo-account 34 個 commit、沒有領先；.env.local 尚無 DEMO_* 變數。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "真實還原前基準線完成：26 個整合套件全過、tsc／lint／build 通過、正式庫無殘留。Vercel Production 環境變數目前沒有任何 DEMO_*（兩個開關預設關閉），CRON_SECRET 已存在。下一步（第 1 步：合併 master 並部署）等待使用者同意。"
     }
   ]
 }
