@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "implementing",
+  "stage": "verify",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -24,10 +24,32 @@
   "evidence": {
     "commands": [
       "【真實還原前基準線，2026-11-02】26 個 test:* 套件依序對正式庫執行，全數通過（notifications 20、rls 18、booking 23、admin-booking 16、business-hours 33、store-settings 11、booking-policy 7、services 17、designers 122、account 17、mfa-rls 20、audit-log 28、reports 19、demo-lock 24、demo-rate-limit 21、demo-enter 22、demo-seed-bucket 14、demo-reset 34、demo-row-caps 16、storage-owner 19、demo-audit-cap 13、text-length 21、booking-limit 8、demo-reminder-guard 8、demo-disable 8、seed-demo-account 14）；輸出存於 verification/TASK-112-baseline-before-reset/",
-      "npx tsc --noEmit、npm run lint、npm run build 通過；測試後正式庫無殘留（auth.users 1、appointments 16）"
+      "npx tsc --noEmit、npm run lint、npm run build 通過；測試後正式庫無殘留（auth.users 1、appointments 16）",
+      "【第 1 步完成，2026-11-02】master fast-forward 到 c7cd5d0 並 push，Vercel Production 部署 Ready（pro5-l3otjw1zk）；正式站 https://pro5-nu.vercel.app：/login 200 且無「進入體驗帳號」（RSC 內 demoEnabled=false）、截圖為原本的登入頁；POST /api/demo/enter 403 {ok:false}；/api/cron/demo-reset 無／錯密鑰皆 401；/api/cron/appointment-reminders 無密鑰 401；首頁 200",
+      "【第 2 步完成，2026-11-02】使用者在自己的終端機執行 npm run seed:demo-account；agent 唯讀驗證：auth.users 2 個、is_demo 帳戶 1 個（Email 符合 DEMO_EMAIL、app_metadata 含 is_demo、MFA factor 0、未封鎖、admins 登記顯示名稱「Demo帳號」、從未登入）；designer001 仍為「店長」、無 is_demo；業務資料筆數與基準線相同（appointments 16、customers 14、services 4、designers 4、designer_services 14、designer_leaves 4、portfolio_images 40、closed_dates 1）",
+      "【第 3 步完成，2026-11-02】npm run demo:upload-images -- --from-public --dry-run：seed-base 引用 45 個圖片物件，已相同 45、缺少 0、內容不同 0——demo-seed 先前已匯入齊全，不需要再寫入（也因此不需要 --allow-while-demo-live）",
+      "【Vercel，2026-11-02】Production 新增 DEMO_EMAIL／DEMO_PASSWORD／DEMO_RATE_LIMIT_SECRET（Sensitive），未設 DEMO_ENABLED／DEMO_RESET_ENABLED；Redeploy 後 Ready（pro5-bjsa8chqz）；登入頁仍無入口（demoEnabled=false）、POST /api/demo/enter 403、cron 無密鑰 401",
+      "【第 4 步 dry-run 還原，使用者終端機執行】npm run demo:reset -- --url https://pro5-nu.vercel.app：HTTP 200、4764ms、資料庫已還原：否；prepare done、reset_database done（dry-run 已回滾）、其餘 skipped；圖片同步 referenced 45／unchanged 45／copy 0／replace 0；還原後筆數 services 4、customers 12、designers 4、appointments 425、closed_dates 1、booking_policy 1、business_hours 7、store_settings 1、designer_leaves 2、portfolio_images 40、designer_services 14、admins 1；刪除筆數 services 4、customers 14、designers 4、appointments 16、closed_dates 1、business_hours 7、designer_leaves 4、portfolio_images 40、designer_services 14、audit_log 0",
+      "【備份，2026-11-02】npm run demo:backup -- --yes → backups/20261102T084511Z（只讀、讀回驗證通過）：13 張表（services 4、designers 4、designer_services 14、designer_leaves 4、portfolio_images 40、business_hours 7、closed_dates 1、booking_policy 1、store_settings 1、customers 14、appointments 16、audit_log 261、admins 2）、圖片 50 個 10,693,517 bytes；agent 另行重算：13 個資料表 SHA-256 與 restore.sql 全部吻合、50 個圖片物件逐一重算無缺漏；各表筆數與備份當下的正式庫一致",
+      "【designer001 還原前基準，2026-11-02T08:46Z】verification/TASK-112-designer001-before-reset.json（只存雜湊：auth 欄位、metadata、identities、admins 列、audit_log 261 列皆屬 designer001、admin-assets 頭像 3 個含 etag）",
+      "【第 5 步 真實還原，2026-11-02 約 16:49（台北），使用者終端機執行】npm run demo:reset -- --url https://pro5-nu.vercel.app --yes --confirm-host=pro5-nu.vercel.app：HTTP 200、12136ms、資料庫已還原：是；六階段 prepare／sync_images／reset_database／cleanup_orphans／revoke_account／health_check 全部 done；圖片 referenced 45／unchanged 45；還原後 admins 1、services 4、customers 12、designers 4、appointments 425、closed_dates 1、booking_policy 1、business_hours 7、store_settings 1、designer_leaves 2、portfolio_images 40、designer_services 14；刪除筆數與 dry-run 預演相同（services 4、customers 14、designers 4、appointments 16、closed_dates 1、business_hours 7、designer_leaves 4、portfolio_images 40、designer_services 14、audit_log 0）",
+      "【還原後 agent 唯讀驗證】designer001：SQL Editor 密碼指紋 md5(encrypted_password)、updated_at、last_sign_in_at 前後完全相同（使用者貼出）；agent 比對 auth 欄位／metadata 雜湊／identities／admins 列／audit_log 261 列／admin-assets 3 個頭像的前後快照 JSON 完全相同；Demo 帳戶 is_demo、factors 0、未封鎖、admins「Demo帳號」，last_sign_in 08:49:16（健康檢查登入成功，Vercel 的 DEMO_EMAIL／DEMO_PASSWORD 正確）；預約與顧客帶 Email 的筆數 0、reminder_sent_at 非 null 0；預約分佈 過去 completed 269／cancelled 26，未來 confirmed 84／pending 35／cancelled 11（2026-09-21～2026-11-23）；bucket：designer-assets 43、admin-assets 3、demo-seed 45 不變，store-assets 4→2（少掉 8/7 上傳、還原前已無任何資料引用的舊封面與舊 Logo，屬公開 bucket 孤兒清理設計，備份內仍有）",
+      "【還原後回歸，2026-11-02】24 個整合套件依序執行（輸出存於 verification/TASK-112-regression-after-reset/）：21 個與基準線完全相同（notifications 20、rls 18、booking 23、admin-booking 16、business-hours 33、store-settings 11、booking-policy 7、services 17、designers 122、account 17、mfa-rls 20、audit-log 28、reports 19、demo-rate-limit 21、demo-enter 22、demo-row-caps 16、storage-owner 19、demo-audit-cap 13、text-length 21、booking-limit 8、demo-reminder-guard 8）；3 個有差異：demo-lock 22 passed／2 skipped、demo-reset 31 passed／3 skipped（測試內建「真實 Demo 存在」條件式跳過，標示 skipped 非 passed）、demo-seed-bucket 13 passed／1 failed（該案例預期 Demo 樣態帳號未登記 admins 時允許匯入，但真實 Demo 已登記，守門正確拒絕——測試假設不成立，已另開 TASK-125，不改產品程式碼與 seed）",
+      "test:demo-disable、test:seed-demo-account 在真實 Demo 存在後無法執行（既有限制）：以 tests/lib 單元測試（30 檔 569 項全過，含 demo-disable-script、seed 相關）與 npm run demo:disable 預覽模式（辨識 Demo 帳戶 099a0fcb…、admins 已登記未封鎖、列出三個動作、無 --yes 不寫入）替代；測試後正式庫無殘留（auth.users 2、is_demo 1、預約 425、顧客 12）",
+      "【瀏覽器走查（本機 next-dev-demo，launch.json 只對開發伺服器注入 DEMO_ENABLED=true，不改 .env.local 與 Vercel；連同一個正式庫），2026-11-02】登入頁出現「進入體驗帳號」→ 一鍵進入 /admin（約 6 秒內，不輸入帳密）→ 說明視窗（可以體驗／不開放）→「開始體驗」→ 橫幅（您正在使用體驗帳號…，可關閉、含「了解更多」）；側邊欄顯示「Demo帳號」；預約週曆（本週 43 筆、含店長／Alice／Jack／Kenny 篩選）、儀表板（本月 129 筆預約、已完成營收 NT$17,000、預估營收 NT$274,200）、設計師（含頭像與專長）、服務設定（京喚羽／剪髮造型／染髮設計／頭皮護理）、營業時間（含 2026/11/11 特殊公休日）、預約規則、商店設定、稽核紀錄皆可載入；帳號設定頁密碼／登入 Email／啟用雙重驗證三項皆顯示「🔒 體驗帳號不開放」、按鈕 disabled=true（DOM 確認）",
+      "【改期取消說明視窗】Demo 取消 11/3 10:00 的一筆預約 → 出現「顧客會收到這封取消通知信」示意圖（主旨「預約已取消：剪髮 …」）與「正式環境會寄出這封信；體驗帳號不會真的寄出。」→ 按「我知道了，繼續」後資料庫唯讀確認該筆 status=cancelled；且 reminder_sent_at 被 0031 觸發器填成取消當下的時間（真實 Demo 操作下的觸發器生效證據）；該預約 customer_email 為 null，無信件來源",
+      "【亮暗與手機】暗色（預設）與亮色（太陽圖示切換）皆走查；手機寬度 375x812 走查帳號設定頁；Demo 登出使用 signOut({scope:\"local\"})，按登出後回到登入頁、入口按鈕仍在",
+      "【觀察，待使用者決定】(1) 稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試殘留的 __TEST__ 事件），Demo 與面試官看得到；(2) 手機 375px 後台側邊欄不收合（既有版面，非 Demo 專屬），帳號設定頁「🔒 體驗帳號不開放」徽章文字被截斷為「體驗帳號不…」、顯示名稱欄只顯示「Dem」",
+      "【寄信行為驗證，2026-11-02，使用者信箱 zoework0401@gmail.com】(1) 前台（本機 next-dev-demo，連同一個正式庫）預約 11/6 14:00 剪髮造型、姓名「TASK112 驗證」、電話 0900000112、Email 為使用者信箱 → 預約成功畫面；資料庫 confirmation_sent_at=09:14:44；使用者確認收到 1 封確認信（確認信照寄）。(2) 以 Demo 帳號登入後台，把同一筆預約改期到 11/6 16:00（出現「顧客會收到這封改期通知信」示意視窗，按繼續後 start_at 變更）、再取消（示意視窗，status=cancelled）；使用者於約 3 分鐘後確認信箱沒有任何新信（Demo 改期與取消不寄信）。同一筆帶真實 Email 的預約，Demo 改期後 reminder_sent_at 被 0031 觸發器填成 09:16:19（非 null），所以隔天提醒排程不會對該 Email 寄信。(3) 對照組：DEMO_MAIL_TEST_EMAIL=zoework0401@gmail.com npm run test:demo-mail-suppress → 3/3 通過（Demo 改期、Demo 取消、非 Demo 管理員改期；後者寄出 1 封真實通知信）",
+      "【對照驗收標準與報告】verification/TASK-112.md（暗啟動時間線、還原後驗證、回歸、走查、寄信驗證、feature-spec 驗收對照、觀察與殘留）；截圖 verification/TASK-112-screenshots/（00～10）；前端產出密碼掃描 .next/static 267 檔與 .next/server/app 225 檔皆不含 DEMO_PASSWORD／DEMO_RATE_LIMIT_SECRET"
     ],
-    "findings": [],
-    "residual": ""
+    "findings": [
+      "稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試 __TEST__ 殘留），待使用者決定處置（接受／清除／另開卡）",
+      "手機 375px：帳號設定頁鎖定徽章文字被截斷、顯示名稱欄過窄；後台側邊欄不收合（既有版面）",
+      "TASK-125：真實 Demo 存在時 test:demo-seed-bucket 1 個案例假設不成立（只改測試）",
+      "已知殘留：R-A（Demo 可控信件文字＋匿名預約）、R1 別名繞過、_down 實測與真實還原失敗路徑未演練"
+    ],
+    "residual": "入口（DEMO_ENABLED）與排程（DEMO_RESET_ENABLED）尚未開啟；備份資料夾 backups/20261102T084511Z 保留在本機；待使用者決定稽核紀錄與手機畫面處置、依序開啟兩個開關、人工驗收。"
   },
   "id": "TASK-112",
   "title": "Demo 體驗帳戶 端到端串接、暗啟動、首次正式環境 seed 與驗收",
@@ -102,6 +124,36 @@
       "name": "Claude Code",
       "time": "2026-11-02",
       "text": "真實還原前基準線完成：26 個整合套件全過、tsc／lint／build 通過、正式庫無殘留。Vercel Production 環境變數目前沒有任何 DEMO_*（兩個開關預設關閉），CRON_SECRET 已存在。下一步（第 1 步：合併 master 並部署）等待使用者同意。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者同意後完成第 1 步：master 已 fast-forward 並 push，正式部署 Ready，兩個開關關閉、登入頁與現況一致。下一步（第 2 步：建立 Demo 帳戶）需先確認 DEMO_* 環境變數由誰產生，並取得使用者同意。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "第 2、3 步完成（見證據）。對正式庫的寫入指令（seed:demo-account、demo:reset 對正式站的 dry-run）被執行環境的權限分類器擋下（Modify Shared Resources），agent 未繞過，改由使用者在自己的終端機執行、agent 唯讀驗證。文件備註：手冊 §2 第 4 步（匯入圖片）排在第 3 步（建立 Demo 帳戶）之後，但 upload-demo-images 在 Demo 登記於 admins 時會拒絕非 dry-run 匯入，需另外說明（本次因圖片已齊全而不需要）。待辦：Vercel Production 需要 DEMO_EMAIL／DEMO_PASSWORD（真實還原的健康檢查要用）與 DEMO_RATE_LIMIT_SECRET，由使用者設定並 Redeploy。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "備份完成並由 agent 獨立核對；designer001 基準已記錄。待使用者：(1) 確認備份可用；(2) 在 SQL Editor 查 designer001 的 encrypted_password 指紋（agent 讀不到雜湊）；(3) 明確同意後由使用者在自己的終端機執行真實還原（agent 的寫入指令會被權限分類器擋下）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者同意後，於自己的終端機完成第一次真實還原，所有階段成功；designer001 前後完全一致；已啟動還原後的整合套件回歸。尚待：回歸結果、瀏覽器走查（登入頁→進入體驗帳號→說明視窗→橫幅→後台操作→鎖定→登出，亮暗與手機）、寄信行為驗證、README／文件同步、驗證報告，以及使用者決定是否開啟 DEMO_ENABLED 與 DEMO_RESET_ENABLED。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "還原後回歸完成（結果見證據）。唯一失敗為測試假設問題，已另開 TASK-125。下一步：瀏覽器走查與寄信行為驗證（寄信會真的寄到使用者指定信箱，需先問信箱）、文件同步、驗證報告，再由使用者決定是否開啟 DEMO_ENABLED／DEMO_RESET_ENABLED。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "暗啟動前五步、還原後驗證、回歸、瀏覽器走查、寄信驗證皆完成（見 verification/TASK-112.md）。推到 verify，不轉 Done：需使用者決定稽核紀錄與手機畫面處置、依序開啟 DEMO_ENABLED／DEMO_RESET_ENABLED 並確認排程，再人工驗收。"
     }
   ]
 }

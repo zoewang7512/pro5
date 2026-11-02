@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-11-02",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-125",
+  "title": "整合測試相容真實 Demo 帳戶存在的情況（TASK-112 還原後回歸發現）",
+  "content": "真實 Demo 帳戶建立並完成首次還原後，test:demo-seed-bucket 有 1 個案例失敗：「is_demo 帳戶仍登記在 admins 時拒絕；停用後允許」的第一個斷言預期『Demo 樣態拋棄式帳號沒登記 admins 時允許匯入』，但真實 Demo 已登記在 admins，upload-demo-images 的守門正確拒絕（退出碼 1）——測試假設沒有真實 Demo。同樣原因 test:demo-lock 跳過 2 個、test:demo-reset 跳過 3 個（測試內建條件式跳過，標示為 skipped）；test:demo-disable、test:seed-demo-account 在真實 Demo 存在時更是整支不能跑（既有限制，docs/demo-account.md 已記載）。建議：讓失敗案例在真實 Demo 存在時 ctx.skip（比照 demo-reset 的 realDemoExists 寫法）或把守門斷言改成相對判斷；只改測試，不改產品程式碼與 seed。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "文件與入口公開",
+  "track": "test",
+  "dependsOn": [
+    "TASK-112"
+  ],
+  "order": 125,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "tests/demo-seed-bucket.integration.test.ts",
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-112-regression-after-reset/test:demo-seed-bucket.txt"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "由 TASK-112 還原後回歸衍生（任務卡規定測試依賴還原前資料時另開卡，不改 seed）。草稿，待使用者決定是否處理與核准。"
+    }
+  ]
+}

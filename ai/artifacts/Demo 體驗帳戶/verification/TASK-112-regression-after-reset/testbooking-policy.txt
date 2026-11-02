@@ -1,0 +1,20 @@
+
+> test:booking-policy
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking-policy.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/booking-policy.integration.test.ts > 預約規則與政策設定：booking_policy 權限邊界（真實 Supabase 專案）
+[booking-policy.integration.test] 原始 booking_policy 快照（供中斷後人工還原用）：{"id":1,"min_lead_time_hours":1,"cancel_window_hours":null}
+
+ ✓ tests/booking-policy.integration.test.ts (7 tests) 3965ms
+   ✓ 預約規則與政策設定：booking_policy 權限邊界（真實 Supabase 專案） > anon 可讀取的欄位集合鎖定為目前這 4 個公開欄位，未來新增欄位不會悄悄變成公開（RLS select policy 是整列 using(true)，沒有 column-level 限制，見 0008_booking_policy.sql 檔頭說明）  522ms
+   ✓ 預約規則與政策設定：booking_policy 權限邊界（真實 Supabase 專案） > anon 無法 update booking_policy  313ms
+   ✓ 預約規則與政策設定：booking_policy 權限邊界（真實 Supabase 專案） > 已登入但非 is_admin() 的 authenticated 使用者無法 update booking_policy  312ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  16:52:47
+   Duration  4.73s (transform 66ms, setup 0ms, collect 175ms, tests 3.97s, environment 0ms, prepare 191ms)
+

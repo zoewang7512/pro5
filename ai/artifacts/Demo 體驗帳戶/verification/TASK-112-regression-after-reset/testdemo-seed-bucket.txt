@@ -1,0 +1,51 @@
+
+> test:demo-seed-bucket
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-seed-bucket.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ❯ tests/demo-seed-bucket.integration.test.ts (14 tests | 1 failed) 34375ms
+   ✓ bucket 設定 > demo-seed 存在、是私有、5MB 上限、MIME 只允許 jpg／png／webp  304ms
+   ✓ 私有性：只有 service role 能存取 > service role 可以上傳與讀取  1133ms
+   ✓ 私有性：只有 service role 能存取 > 公開網址讀不到（私有 bucket 不提供 /object/public/）  399ms
+   ✓ 私有性：只有 service role 能存取 > 匿名：下載、列出、簽名網址、上傳都被拒絕  2135ms
+   ✓ 私有性：只有 service role 能存取 > authenticated（非 Demo 的拋棄式帳號）：下載、列出、簽名網址、上傳都被拒絕  1789ms
+   ✓ 私有性：只有 service role 能存取 > is_admin() 為真的帳號（Demo 帳戶的身分）：對 demo-seed 下載、列出、簽名網址、上傳、刪除都被拒絕，對 store-assets 則可列出  1973ms
+   ✓ 私有性：只有 service role 能存取 > MIME 白名單：service role 上傳 SVG 被拒絕  531ms
+   ✓ scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不引用任何圖片的基底，只測護欄、不複製） > DEMO_ENABLED=true 時拒絕；加 --allow-while-demo-live 才執行；--dry-run 不受影響  2315ms
+   × scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不引用任何圖片的基底，只測護欄、不複製） > is_demo 帳戶仍登記在 admins 時拒絕；停用（移除 admins 列）後允許 1274ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > 沒帶 --from-public 時拒絕執行 210ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > 來源缺檔：列出清單、結束碼非 0，且 demo-seed 沒有任何變動  5820ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > 網址不是本專案的 Storage 公開網址時中止  302ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > 不在允許清單的 bucket（含 demo-seed 自己）與路徑穿越都中止  613ms
+   ✓ scripts/upload-demo-images.mjs 的防呆（都在複製之前中止，不寫入 demo-seed） > --dry-run 對真實 seed-base 只報告計畫，demo-seed 沒有任何變動  11298ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/demo-seed-bucket.integration.test.ts > scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不引用任何圖片的基底，只測護欄、不複製） > is_demo 帳戶仍登記在 admins 時拒絕；停用（移除 admins 列）後允許
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/demo-seed-bucket.integration.test.ts:287:71
+    285| 
+    286|     // 帳戶存在但沒登記在 admins（Demo 已停用）→ 允許。
+    287|     expect(runScript(["--from-public", "--base", empty], env).status).…
+       |                                                                       ^
+    288| 
+    289|     const registered = await admin.from("admins").insert({ user_id: de…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  16:59:48
+   Duration  35.24s (transform 70ms, setup 0ms, collect 207ms, tests 34.38s, environment 0ms, prepare 184ms)
+

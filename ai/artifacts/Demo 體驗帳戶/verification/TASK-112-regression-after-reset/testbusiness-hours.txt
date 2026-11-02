@@ -1,0 +1,46 @@
+
+> test:business-hours
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.business-hours.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/business-hours.integration.test.ts
+[business-hours.integration.test][TASK-062] 本次執行使用的日期：{"BUSINESS_HOURS_DATE":"2027-01-21","CLOSED_COMBO_DATE":"2027-01-28","MISSING_ROW_DATE":"2027-01-15","SUNDAY_DATE":"2027-01-17"}
+
+stdout | tests/business-hours.integration.test.ts > 營業時間與可預約時段管理整合測試（真實 Supabase 專案）
+[business-hours.integration.test] 原始 business_hours 快照（供中斷後人工還原用）：[{"weekday":0,"open_time":null,"close_time":null,"is_closed":true},{"weekday":1,"open_time":"10:00:00","close_time":"19:00:00","is_closed":false},{"weekday":2,"open_time":"10:00:00","close_time":"19:00:00","is_closed":false},{"weekday":3,"open_time":"10:00:00","close_time":"19:00:00","is_closed":false},{"weekday":4,"open_time":"10:00:00","close_time":"19:00:00","is_closed":false},{"weekday":5,"open_time":"10:00:00","close_time":"19:00:00","is_closed":false},{"weekday":6,"open_time":"10:00:00","close_time":"19:00:00","is_closed":false}]
+
+ ✓ tests/business-hours.integration.test.ts (33 tests) 26225ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > 寫入權限邊界：designer 可直接寫入 business_hours，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic 第一次開放 authenticated 直接寫入，需重新確認邊界未被意外放寬） > designer 寫入成功，重新查詢確認資料確實生效，並還原為原始值  1544ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > 寫入權限邊界：designer 可直接寫入 business_hours，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic 第一次開放 authenticated 直接寫入，需重新確認邊界未被意外放寬） > anon 呼叫 updateBusinessHours 被拒絕，資料不受影響，錯誤訊息不外洩原始 Postgres 細節  459ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > 寫入權限邊界：designer 可直接寫入 business_hours，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic 第一次開放 authenticated 直接寫入，需重新確認邊界未被意外放寬） > 已登入但非 is_admin() 的 authenticated 使用者呼叫 updateBusinessHours 被拒絕，資料不受影響（anon 測試只證明「沒有對應 policy 時被拒」，business_hours 對 authenticated 角色本身沒有整體 revoke，唯一防線是 is_admin() policy predicate，需要這個角色才能真正驗證該防線本身有效）  445ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > findAffectedAppointments：對真實預約資料正確判定受影響／不受影響（不寫入 business_hours，只吃假設性 newRows） > 縮小營業時間後，落在新時段外的預約被判定受影響，落在新時段內／其他星期幾的不受影響，已取消的預約不列入  1237ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > business_hours 變更後 get_available_slots RPC 正確反映新設定 > 把某天設為公休後，該天回傳空陣列；還原後恢復可預約時段  1398ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > closed_dates 讀寫權限邊界：designer 可直接讀寫，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界） > designer 新增後查詢確認生效，移除後查詢確認已刪除  1287ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > closed_dates 讀寫權限邊界：designer 可直接讀寫，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界） > anon 呼叫 addClosedDate 被拒絕，資料不受影響，錯誤訊息不外洩原始 Postgres 細節  437ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > closed_dates 讀寫權限邊界：designer 可直接讀寫，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界） > 已登入但非 is_admin() 的 authenticated 使用者呼叫 addClosedDate 被拒絕，資料不受影響（anon 測試只證明「沒有對應 policy 時被拒」，closed_dates 對 authenticated 角色本身沒有整體 revoke，唯一防線是 is_admin() policy predicate，需要這個角色才能真正驗證該防線本身有效）  435ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > closed_dates 讀寫權限邊界：designer 可直接讀寫，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界） > anon 呼叫 removeClosedDate 被拒（TASK-066 起在權限層就擋下），既有列不受影響（上面三個案例只驗證了 WITH CHECK／INSERT 路徑，這裡補上 DELETE 路徑）  716ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > closed_dates 讀寫權限邊界：designer 可直接讀寫，anon 在權限層、非管理員 authenticated 被 RLS 拒絕（本 Epic closed_dates 第一次讓 authenticated 直接寫入，比照上方 business_hours 的既有測試方式重新確認邊界） > 已登入但非 is_admin() 的 authenticated 使用者對已存在的日期呼叫 addClosedDate（upsert 衝突路徑）被拒絕，既有列不受影響（上面的 nonAdmin 案例是對不存在的日期 INSERT，這裡改成對已存在的日期 UPDATE，覆蓋 upsert 的另一個分支）  881ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > findAffectedAppointmentsForClosedDate：對真實預約資料正確判定受影響／不受影響（不依賴該日期是否已標記為公休，只查該日期範圍內的預約） > 回傳同一天未取消的未來預約，不含其他日期，不含已取消，欄位最小化不含電話等非必要個資  651ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > get_available_slots RPC 對 closed_dates 的回應（比照上方 business_hours 公休的既有測試模式） > 標記為特殊公休日後回傳空陣列，移除後恢復正常可預約時段  1180ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 closed_dates 的回應（TASK-028：公休日是硬規則，不能只在畫面層擋） > 已標記為特殊公休日：回傳 SLOT_CONFLICT，不寫入任何 appointments／customers 資料  861ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 closed_dates 的回應（TASK-028：公休日是硬規則，不能只在畫面層擋） > 台北時間跨 UTC 日界（00:30）：公休日判定仍以 Asia/Taipei 曆日為準，不是 UTC 曆日  427ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 closed_dates 的回應（TASK-028：公休日是硬規則，不能只在畫面層擋） > 同一組輸入：get_available_slots 回傳空陣列、create_appointment 拒絕寫入，兩者判斷一致  561ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 closed_dates 的回應（TASK-028：公休日是硬規則，不能只在畫面層擋） > 移除公休標記後，同樣輸入的 create_appointment 恢復成功（回歸安全網：未標記公休的日期行為不變）  469ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > 整天公休（週日，種子資料既有設定）：回傳 SLOT_CONFLICT，不寫入任何 appointments／customers 資料  342ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > 邊界相等值：起點恰好等於 open_time 應成功，終點恰好等於 close_time 應成功  308ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > 台北時間跨 UTC 日界的 weekday 判斷：暫時把週一設為整天營業（00:00-23:00），台北週一 00:30 起訂應成功；若誤用 UTC 日期（此時仍是週日、is_closed）則會被誤拒  1006ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > 查無該 weekday 設定列的 fail-closed 分支：先確認正常可預約（positive control），刪除該 weekday 列後應被拒絕，插回後恢復可預約  780ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > 非有限 p_start_at（infinity／null）：回傳 VALIDATION_ERROR，不寫入任何資料列  444ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > closed_dates 優先性組合案例：同一天同時符合正常營業時間、但被標記為特殊公休，closed_dates 檢查仍正確優先拒絕  848ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > create_appointment RPC 對 business_hours 的回應（TASK-062：每週固定公休／營業時間也是硬規則，不能只在畫面層擋） > 同一組輸入（限 business_hours 判斷維度）：get_available_slots 回傳空陣列的情況，create_appointment 一律拒絕寫入，兩者判斷一致  311ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > get_available_slots RPC 對 services.buffer_minutes 的回應 > buffer_minutes=30 的服務，緊接既有預約結束後 30 分鐘內的候選時段不可預約，30 分鐘後恢復正常  601ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > get_available_slots RPC 對 services.buffer_minutes 的回應 > buffer_minutes=0（既有服務，行為不變）：同樣情境下緊接既有預約結束後的候選時段正常可預約  319ms
+   ✓ 營業時間與可預約時段管理整合測試（真實 Supabase 專案） > 後台改期表單（computeAvailableSlots）與 get_available_slots RPC 對同一組輸入產生一致的可預約時段判斷 > 同一天、buffer_minutes=30 的服務、同一筆既有預約，兩條獨立實作算出完全相同的可預約時段集合（刻意用非零緩衝，不是只驗證兩邊都不套緩衝的平凡情況）  843ms
+
+ Test Files  1 passed (1)
+      Tests  33 passed (33)
+   Start at  16:52:05
+   Duration  27.51s (transform 266ms, setup 0ms, collect 492ms, tests 26.23s, environment 0ms, prepare 192ms)
+

@@ -1,0 +1,23 @@
+
+> test:rls
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/rls.integration.test.ts (18 tests) 13715ms
+   ✓ RLS 邊界（真實 Supabase 專案） > anon 可讀取啟用中的 service，讀不到未啟用的  492ms
+   ✓ RLS 邊界（真實 Supabase 專案） > anon 無法直接 insert appointments（唯一寫入路徑是 create_appointment RPC）  414ms
+   ✓ RLS 邊界（真實 Supabase 專案） > 設計師帳密登入後可讀取 appointments，但對 customers／admins 在權限層就被拒  1259ms
+   ✓ TASK-066 授權層邊界（真實 Supabase 專案） > 設計師對 business_hours 沒有 delete 授權（42501）  324ms
+   ✓ TASK-066 授權層邊界（真實 Supabase 專案） > 設計師對 booking_policy 沒有 delete 授權（42501）  1208ms
+   ✓ TASK-066 授權層邊界（真實 Supabase 專案） > 設計師對 store_settings／booking_policy／appointments 沒有 insert 授權（42501）  512ms
+   ✓ TASK-066 授權層邊界（真實 Supabase 專案） > 設計師讀不到 appointments.access_token、改不了授權欄位以外的欄位（欄位層級授權）  422ms
+   ✓ TASK-066 授權層邊界（真實 Supabase 專案） > 非管理員 authenticated 改不動 appointments（RLS 回空陣列，資料不變）  478ms
+   ✓ TASK-066 授權層邊界（真實 Supabase 專案） > 非管理員 authenticated 對 appointments 的 insert／delete、對 customers／admins 的 select 在權限層就被拒（42501）  558ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  16:51:10
+   Duration  14.57s (transform 88ms, setup 0ms, collect 182ms, tests 13.71s, environment 0ms, prepare 215ms)
+

@@ -1,0 +1,35 @@
+
+> test:demo-lock
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-lock.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/demo-lock.integration.test.ts (24 tests | 2 skipped) 32995ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：不受影響的操作 > token refresh 成功  459ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：不受影響的操作 > 登出（scope: local）成功  421ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：不受影響的操作 > 更新 user_metadata 成功（不在鎖定欄位內）  478ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：不受影響的操作 > admin 設定與解除 ban_duration 成功（緊急關閉 demo:disable 依賴 banned_until 可寫）  338ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > updateUser({ password })  1070ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > updateUser({ email })  2810ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > resetPasswordForEmail  2568ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > mfa.enroll  607ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > admin.updateUserById({ password })（service_role 也經過 GoTrue，同樣被擋）  511ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > admin.updateUserById({ email })  325ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > is_demo 標記不可被清除（否則可分兩步繞過所有鎖）  480ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > reauthenticate() 被擋下（不寄 OTP 信到 Demo 信箱）  2545ms
+   ✓ Demo 帳戶鎖定（鎖定中） > Demo 帳號：憑證變更被資料庫擋下 > 錯誤訊息有固定前綴、且不洩漏欄位名稱與資料庫細節  5068ms
+   ✓ Demo 帳戶鎖定（鎖定中） > 對照組（非 Demo 拋棄式帳號）：所有操作與套用前一致 > 登入、refresh、登出  597ms
+   ✓ Demo 帳戶鎖定（鎖定中） > 對照組（非 Demo 拋棄式帳號）：所有操作與套用前一致 > updateUser({ password })  810ms
+   ✓ Demo 帳戶鎖定（鎖定中） > 對照組（非 Demo 拋棄式帳號）：所有操作與套用前一致 > updateUser({ email })  2470ms
+   ✓ Demo 帳戶鎖定（鎖定中） > 對照組（非 Demo 拋棄式帳號）：所有操作與套用前一致 > resetPasswordForEmail  2321ms
+   ✓ Demo 帳戶鎖定（鎖定中） > 對照組（非 Demo 拋棄式帳號）：所有操作與套用前一致 > mfa.enroll（啟用 MFA 路徑不受 auth.mfa_factors 觸發器影響）  862ms
+   ✓ Demo 帳戶鎖定（鎖定中） > 對照組（非 Demo 拋棄式帳號）：所有操作與套用前一致 > admin.updateUserById({ password })  458ms
+   ✓ demo_revoke_sessions() > anon 與 authenticated 不可執行  1736ms
+   ✓ demo_revoke_sessions() > 2 個以上 is_demo 帳戶：必定失敗且不刪任何 session  2367ms
+
+ Test Files  1 passed (1)
+      Tests  22 passed | 2 skipped (24)
+   Start at  16:58:27
+   Duration  33.76s (transform 61ms, setup 0ms, collect 174ms, tests 33.00s, environment 0ms, prepare 169ms)
+

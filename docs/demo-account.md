@@ -67,6 +67,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
    這支指令在 Demo 上線中（`DEMO_ENABLED=true`，或有 Demo 帳戶仍登記在 `admins`）會**拒絕執行**，見 §6。
+
+   > **順序提醒（TASK-112 首次上線實際遇到）：** 步驟 3 建立 Demo 帳戶後，它就登記在 `admins`，此時**非 dry-run** 的匯入會被拒絕。若 `demo-seed` 還沒有圖片，請**先匯入再建立 Demo 帳戶**，或先 `npm run demo:disable -- --yes`、匯入完再 `demo:enable -- --yes`。先用上面的 `--dry-run` 看「缺少 N」：為 0 就不需要匯入（首次上線時 `demo-seed` 已經齊全，所以略過）。
 5. **手動 dry-run 還原**（✅，只試跑、不寫入任何東西）。`CRON_SECRET` 要設在目前的 shell（對正式站請用正式站的值；已存在於 shell 的同名變數優先於 `.env.local`）：
 
    ```bash

@@ -1,0 +1,25 @@
+
+> test:services
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.services.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/services.integration.test.ts (17 tests) 10349ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > services 寫入權限邊界：designer 可新增/編輯/切換上下架，anon／非管理員 authenticated 皆被拒 > anon 無法編輯服務項目  318ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > services 寫入權限邊界：designer 可新增/編輯/切換上下架，anon／非管理員 authenticated 皆被拒 > designer 可以切換服務項目上下架狀態  397ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > services 寫入權限邊界：designer 可新增/編輯/切換上下架，anon／非管理員 authenticated 皆被拒 > anon 無法切換服務項目上下架狀態  333ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > services 寫入權限邊界：designer 可新增/編輯/切換上下架，anon／非管理員 authenticated 皆被拒 > anon 可讀取上架中的服務項目（供顧客前台使用），但讀不到已下架的項目  841ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 下架後對 get_available_slots／create_appointment 的實際影響 > 下架後，get_available_slots 回傳空陣列（不報錯，比照既有設計：不細分「沒有時段」的原因）  309ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 下架後對 get_available_slots／create_appointment 的實際影響 > 下架後，create_appointment 對該服務的新預約請求回傳 SERVICE_INACTIVE，不寫入任何資料  338ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 下架後對 get_available_slots／create_appointment 的實際影響 > 重新上架後，get_available_slots 恢復回傳非空的可預約時段  330ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 緩衝時間 buffer_minutes（TASK-078）：admin 可寫入、超出範圍被 check constraint 拒絕、確實影響可預約時段 > designer 可以新增帶 buffer_minutes 的服務項目，且讀得回來  471ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 緩衝時間 buffer_minutes（TASK-078）：admin 可寫入、超出範圍被 check constraint 拒絕、確實影響可預約時段 > designer 可以編輯 buffer_minutes 到邊界值 0 與 120  359ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 緩衝時間 buffer_minutes（TASK-078）：admin 可寫入、超出範圍被 check constraint 拒絕、確實影響可預約時段 > buffer_minutes = 121 與 -1 被 services_buffer_minutes_range check constraint 拒絕，值不變  931ms
+   ✓ 服務項目管理：services 權限邊界與下架對既有 RPC 的影響（真實 Supabase 專案） > 緩衝時間 buffer_minutes（TASK-078）：admin 可寫入、超出範圍被 check constraint 拒絕、確實影響可預約時段 > 設定 30 分鐘緩衝後，既有預約前後相鄰的時段被排除；緩衝為 0 時相鄰時段可預約  913ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  16:52:54
+   Duration  11.18s (transform 83ms, setup 0ms, collect 211ms, tests 10.35s, environment 0ms, prepare 192ms)
+

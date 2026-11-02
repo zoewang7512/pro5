@@ -1,0 +1,21 @@
+
+> test:demo-rate-limit
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-rate-limit.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/demo-rate-limit.integration.test.ts (21 tests) 18535ms
+   ✓ 授權 > anon／authenticated 對資料表沒有任何權限（讀、寫、刪都被拒）  1193ms
+   ✓ 計數與上限 > 同一 bucket 在時間窗內前 N 次回 true，第 N+1 次起回 false  903ms
+   ✓ 計數與上限 > 不同 bucket 互不影響  503ms
+   ✓ 計數與上限 > 進入下一個時間窗後恢復 true（並留下兩列）  10195ms
+   ✓ 計數與上限 > 平行 20 個請求，被允許的次數恰好等於上限（原子性）  675ms
+   ✓ 清除過期列 > 每次呼叫刪除兩小時前的列，保留較新的列  539ms
+   ✓ 清除過期列 > 進行中的 3600 秒時間窗不會被清掉  469ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  16:59:03
+   Duration  19.36s (transform 78ms, setup 0ms, collect 237ms, tests 18.53s, environment 0ms, prepare 175ms)
+

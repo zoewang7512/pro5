@@ -1,0 +1,22 @@
+
+> test:booking-limit
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.booking-limit.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/booking-limit.integration.test.ts (8 tests) 18175ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 取消不釋放額度：建立 3 筆、其中 1 筆改成 cancelled 後，第 4 筆被拒（BOOKING_LIMIT_EXCEEDED）  1311ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 全部取消後也不釋放額度：3 筆都改成 cancelled，第 4 筆仍被拒  1623ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 視窗內（23 小時前建立）仍計入；視窗外（25 小時前建立）不計入，可再建立  4874ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 一般顧客不受影響：3 筆內建立、同日取消後重新預約都成功；第 4 筆才被擋  887ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 原本的「未來待服務 ≥ 3」仍生效，不是被取代：3 筆都是 25 小時前建立（視窗外）時，第 4 筆仍被拒（兩種模式皆然）  1507ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 額度以電話為單位：電話 A 被視窗擋下時，電話 B（未填 Email）的第 1 筆仍成功  1618ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > 電話（customer_email 一律 null，不寄信） > 並行：已有 2 筆（其中 1 筆已取消）時同時送 4 筆，恰好 1 筆成功（視窗總數到 3 為止）  969ms
+   ✓ create_appointment 滾動視窗（TASK-120，生效中） > Email（會寄出確認信到 Resend 測試位址） > 取消不釋放 Email 額度，且 +標籤變體不能繞過；視窗外則可再建立  2639ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  17:05:47
+   Duration  18.99s (transform 92ms, setup 0ms, collect 210ms, tests 18.17s, environment 0ms, prepare 193ms)
+

@@ -1,0 +1,30 @@
+
+> test:demo-enter
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.demo-enter.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+ ✓ tests/demo-enter.integration.test.ts (22 tests) 19911ms
+   ✓ 成功路徑與 /admin 存取 > 用回應的 cookie 存取後台守門條件：getUser() 成功、是 Demo、aal 已滿足、is_admin() 為 true  368ms
+   ✓ 非 Demo 帳戶保證（真實 Supabase） > DEMO_EMAIL 指向非 Demo 的管理員帳號：被 not_demo 擋下、回應沒有任何 session cookie、剛建立的 session 已被撤銷  663ms
+   ✓ 非 Demo 帳戶保證（真實 Supabase） > 帳號有已驗證的 TOTP（需要 aal2）：被 aal2 擋下、不帶 session cookie、session 已被撤銷  575ms
+   ✓ 非 Demo 帳戶保證（真實 Supabase） > Demo 帳號但密碼錯誤（sign_in_failed）與非 Demo（not_demo）：回應的狀態、本文、標頭、Set-Cookie 完全相同  1055ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > admins：不能新增、讀取、修改、刪除（無法讓任何帳號成為管理員）  760ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > is_admin() 本身只回自己的布林；get/update_admin_profile 只作用於自己那列  332ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > customers：不能讀、不能寫  624ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > appointments：不能新增／刪除；只能改 status、start_at、end_at、reminder_sent_at；讀不到 access_token、customer_id 之外的憑證  1151ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > services／designers／audit_log：不能刪除；designers 不能改 id／created_at；audit_log 不能改  1241ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > 單例表（store_settings、booking_policy）：不能新增列、不能刪除  672ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > 限流與還原用的函式：Demo 不能呼叫（只有 service_role）  610ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > auth、storage 等 schema 沒有透過 REST 暴露：讀不到 auth.users、auth.mfa_factors、storage.objects  828ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > Auth Admin API（需要 service_role）：用 Demo 的 JWT 呼叫一律被拒  639ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > Storage：不能建立 bucket；不能寫入既有 bucket 的非白名單路徑／檔名  1537ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > Storage（TASK-113 後）：Demo 能列出 admin-assets 內既有物件，但不能刪除不是自己上傳的  2895ms
+   ✓ is_admin() 寫入面：Demo 管理員無法提權、無法新增 admins、無法讀 auth 資料 > MFA／密碼：Demo 不能替自己啟用 MFA 或改密碼（0021 資料庫鎖定）  614ms
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  16:59:25
+   Duration  20.90s (transform 220ms, setup 0ms, collect 393ms, tests 19.91s, environment 0ms, prepare 187ms)
+

@@ -1,0 +1,30 @@
+
+> test:audit-log
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.audit-log.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stderr | tests/audit-log.integration.test.ts > audit_log 權限矩陣（真實 Supabase 專案） > recordAdminAction／listAuditLog 對真實資料庫 > 非店長 client 呼叫 recordAdminAction 不 throw，也寫不進資料表
+[audit-log] 寫入稽核紀錄失敗 42501
+
+ ✓ tests/audit-log.integration.test.ts (28 tests) 21603ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > anon：沒有任何權限 > select 被拒（42501）  303ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > 非店長登入者：RLS 讓他讀不到、寫不進 > select 回空陣列（不是錯誤）  318ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > 非店長登入者：RLS 讓他讀不到、寫不進 > update／delete 被拒（沒有授權，42501），基準紀錄不受影響  522ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > 店長：可新增與讀取，不能改刪，不能指定操作者與時間 > insert 帶 id 被拒（generated always identity 欄位；實測回 428C9，且 id 也不在授權清單）  356ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > 店長：可新增與讀取，不能改刪，不能指定操作者與時間 > constraint 把關：事件代碼格式錯誤、summary 不是物件、summary 超過 4096 位元組都被資料庫拒絕  815ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > service_role：只能 select 與 delete > delete 成功（清掃用）  441ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > recordAdminAction／listAuditLog 對真實資料庫 > 店長 client 寫入後，列表依類別篩選讀得到；非店長 client 讀到空結果  902ms
+   ✓ audit_log 權限矩陣（真實 Supabase 專案） > recordAdminAction／listAuditLog 對真實資料庫 > 游標分頁：第二頁的 id 都小於第一頁最後一筆，且不重複  712ms
+   ✓ 後台函式留下稽核紀錄（真實 Supabase 專案） > createService／updateService／setServiceActive：留下 created／updated／deactivated 事件  1497ms
+   ✓ 後台函式留下稽核紀錄（真實 Supabase 專案） > setDesignerService／addDesignerLeave／removeDesignerLeave：留下事件，重複操作不重複記錄  2524ms
+   ✓ 後台函式留下稽核紀錄（真實 Supabase 專案） > 預約：完成／取消／改期留下事件，摘要不含顧客個資；失敗的操作不留紀錄  2623ms
+   ✓ 後台函式留下稽核紀錄（真實 Supabase 專案） > setDesignerActive／updateDesignerBasicInfo：停用與改名留下事件；沒改名稱不記錄  1708ms
+   ✓ 後台函式留下稽核紀錄（真實 Supabase 專案） > addClosedDate／removeClosedDate：留下事件，重複加入同一天不重複記錄  1477ms
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  16:57:44
+   Duration  22.62s (transform 229ms, setup 0ms, collect 420ms, tests 21.60s, environment 0ms, prepare 182ms)
+

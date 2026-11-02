@@ -1,0 +1,130 @@
+
+> test:designers
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.designers.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/designers.integration.test.ts > 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 提前量：時段落在提前量內，時段查詢是空陣列、建立預約 VALIDATION_ERROR
+[designers.integration.test] 原始 booking_policy.min_lead_time_hours = 1
+
+stdout | tests/designers.integration.test.ts > 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 權限與效能證據 > 耗時記錄：三位設計師的「不指定」時段查詢（只記錄含網路往返的耗時，不是 explain analyze，見驗證報告）
+[designers.integration.test] get_available_slots（不指定、3 位設計師、2027-01-27）耗時 160 ms（含網路往返）
+
+stdout | tests/designers.integration.test.ts > 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 刪除前先讀過公開網址（預熱 CDN 快取）：記錄刪除後仍能讀到的狀態（TASK-071 殘留風險 M3），不硬性要求 400／404
+[TASK-071] 預熱快取後刪除，公開網址狀態：200（cacheControl 300 秒）
+
+ ✓ tests/designers.integration.test.ts (122 tests) 235222ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 預設設計師（0017 回填結果，唯讀檢查） > 最早建立的設計師不是測試資料，而且在它建立之前的所有預約都有 designer_id  678ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > anon 邊界 > select * 與非公開欄位（created_at／updated_at）被拒（42501）  302ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > anon 邊界 > 讀得到啟用中設計師的作品集公開欄位，讀不到停用中的，也讀不到 storage_path  442ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > anon 邊界 > 不能寫入任何設計師資料表（insert／update／delete 皆 42501）  1778ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 非管理員 authenticated 邊界 > 不能寫入四張表（RLS 擋下，42501）  553ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 非管理員 authenticated 邊界 > update／delete 不會影響任何資料列  714ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 非管理員 authenticated 邊界 > 對已有 12 張作品的設計師 insert，得到 42501 而不是 PORTFOLIO_LIMIT（不能用張數 trigger 探測）  486ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 可以讀到停用中設計師、他的服務開關、作品集與請假日  1065ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 可以新增與更新設計師（含專長陣列，證明 authenticated 可執行 check constraint 的驗證函式）  315ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > update 會透過 trigger 刷新 updated_at  612ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > insert 不能自訂 id 或 created_at，update 不能改 id 與 created_at（欄位層級 grant）  638ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 不能刪除設計師（authenticated 不 grant delete），資料列仍在  354ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 可以開關服務（insert／delete），但不能 update designer_services  642ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 可以新增與刪除請假日，同一天重複新增被主鍵擋下（23505），但不能 update  853ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 作品集可以新增與刪除，但不能 update  624ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 管理員（admin）權限 > 可以讀 appointments.designer_id，但不能更新（不能改派）  337ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > service_role > 可以讀寫（含 update）四張表並刪除設計師  1210ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > check constraint（資料庫層最終防線，以 service_role 寫入繞過 RLS 也擋得住） > 名稱：空白（含全形空白）、超過 30 字、含控制字元或方向覆寫字元被擋下  929ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > check constraint（資料庫層最終防線，以 service_role 寫入繞過 RLS 也擋得住） > 簡介：超過 200 字被擋下，200 字通過  308ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > check constraint（資料庫層最終防線，以 service_role 寫入繞過 RLS 也擋得住） > IG 帳號：含空白、@、網址、超過 30 字、空字串被擋下，合法格式與 30 字通過  1279ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > check constraint（資料庫層最終防線，以 service_role 寫入繞過 RLS 也擋得住） > 專長：超過 5 個、重複、超過 12 字、空白標籤、前後有空白、控制字元、方向覆寫字元、NULL 元素被擋下  1743ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > check constraint（資料庫層最終防線，以 service_role 寫入繞過 RLS 也擋得住） > avatar_url：超過 2048 字被擋下，2048 字通過  315ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > check constraint（資料庫層最終防線，以 service_role 寫入繞過 RLS 也擋得住） > 作品集：每個案例只違反它想測的那一條 constraint  1596ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 作品集 12 張上限（trigger） > 第 13 張被擋下（P0001＋PORTFOLIO_LIMIT）且張數維持 12，刪除一張後可再新增  1067ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 作品集 12 張上限（trigger） > 並行上傳不會超過 12 張（trigger 鎖住設計師列後才數張數），失敗的都是 PORTFOLIO_LIMIT 而不是死結等其他錯誤  761ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 作品集 12 張上限（trigger） > 單一 insert 一次送 14 列也會被擋下，整個語句回滾（張數維持 0）  558ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > admin 可以上傳到 avatar／portfolio 路徑，公開網址可讀取  1735ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > anon 與非管理員 authenticated 不能上傳（403＋RLS）  376ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > 路徑不合法時，admin 也不能上傳（403＋RLS）：前綴、第二段、層數、副檔名  1073ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > 沒有任何角色可以覆寫或搬移既有檔案（不建 update policy）  1014ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > anon 無法列舉檔案（service_role 對照組看得到）  599ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > admin 刪除檔案：remove() 回傳 1 筆，之後公開網址回 400 或 404  2148ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > Storage：designer-assets bucket > anon 與非管理員不能刪除檔案，檔案仍在  1264ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 兩位設計師同一時段各成立一筆；同一位設計師同一時段第二筆 SLOT_CONFLICT；成功時回傳實際被指派的設計師  1875ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 資料庫層級：同一位設計師同時段不能有第二筆有效預約（23P01），不同設計師可以，designer_id 不可為 null  2199ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 指定設計師不合格（不存在／停用／沒開服務／請假）時：時段是空陣列，建立預約的回應完全相同；90 天外一律 VALIDATION_ERROR  5075ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定成功後：資料列與回傳完全一致（designer_id、設計師名稱、時間、顧客、狀態）  1189ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定且候選名單含不合格設計師（停用／沒開服務／請假） > 不合格者的 sort_order 最小也不會被指派；時段聯集等於合格設計師自己的時段；請假只擋請假那一天  3256ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定且候選名單含不合格設計師（停用／沒開服務／請假） > 候選全部不合格：時段聯集是空陣列，建立預約 SLOT_CONFLICT  1319ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定：時段是聯集；指定時只看該設計師；回應只有時間、不含設計師資訊  2444ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定的自動指派規則：當天有效預約數 → sort_order → id > 當天預約數最少的設計師優先（即使 sort_order 較大）  1141ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定的自動指派規則：當天有效預約數 → sort_order → id > 預約數相同時取 sort_order 較小者；已取消與已完成的預約不計入有效預約數  1528ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 不指定的自動指派規則：當天有效預約數 → sort_order → id > 預約數與 sort_order 都相同時取 id 較小者  1179ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 併發 > 兩筆「不指定」同時送同一時段、兩位候選 → 兩筆都成功且分屬不同設計師  1081ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 併發 > 三筆「不指定」同時送同一時段、兩位候選 → 兩筆成功、第三筆 SLOT_CONFLICT，而且 customers 沒有多出孤兒列  2153ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 併發壓力 > 同一時段同時送 8 筆「不指定」給 3 位設計師：恰好 3 筆成功且分屬不同設計師，其餘都是 SLOT_CONFLICT（沒有任何 INTERNAL_ERROR），沒有孤兒 customers  1552ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 特殊公休日（closed_dates）  1455ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 每週固定公休  1792ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 營業時間邊界：開門前與打烊後（含服務時長跨過打烊）都被拒  1062ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 提前量：時段落在提前量內，時段查詢是空陣列、建立預約 VALIDATION_ERROR  1845ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 不指定、兩位候選、第一順位被 buffer 擋住：改派給另一位（不是 SLOT_CONFLICT）；時段聯集仍列出該時段  1722ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > buffer 與非 30 倍數的時長：45 分鐘＋30 分鐘 buffer，依序建立每個列出的時段都成功，直到清單變空  2786ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 跨服務的 buffer：既有預約屬於另一個 buffer 較大的服務，候選時段要避開「既有預約自己的 buffer」  1889ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > buffer：擠進既有預約的 buffer、或自己的 buffer 擠進既有預約，指定與不指定都 SLOT_CONFLICT；時段查詢與建立預約判斷一致  2092ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 與既有規則交叉：指定與不指定兩種模式都仍然生效 > 只有一位設計師、30 分鐘無 buffer 時，get_available_slots 列出的每個時段都能成功建立，建完之後時段清單變空  3795ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > BOOKING_LIMIT：電話跨設計師合計；email 上限 > 同電話對三位設計師各約一筆後，第四筆被拒（BOOKING_LIMIT_EXCEEDED）  1916ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > BOOKING_LIMIT：電話跨設計師合計；email 上限 > 同 email 已有 3 筆未過期的待服務預約（大小寫與前後空白不同視為同一個）→ 第 4 筆被拒；未填 email 不受影響  2265ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > BOOKING_LIMIT：電話跨設計師合計；email 上限 > 同一支電話同時送出多筆（不同設計師）：advisory lock 讓上限不會被併發繞過，正好 3 筆成功  1986ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > BOOKING_LIMIT：電話跨設計師合計；email 上限 > 檢查順序（特徵化）：電話已達上限的人去約一個已被佔的時段，得到 SLOT_CONFLICT 而不是 BOOKING_LIMIT_EXCEEDED  1897ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > BOOKING_LIMIT：電話跨設計師合計；email 上限 > email 上限跨設計師合計，而且 confirmed 也計入  2296ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > BOOKING_LIMIT：電話跨設計師合計；email 上限 > email 上限只計未過期的待服務預約：已取消與已過期的不計入；不同 email 不會被誤判為同一個  2218ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 權限與效能證據 > anon、authenticated（店長 session）、service_role 都能呼叫兩支 RPC（套用前實測三者皆可；pg_proc.proacl 的前後比對見驗證報告）  1411ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 權限與效能證據 > anon 與 authenticated 不能直接呼叫兩支內部判斷函式（42501）  566ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > 依設計師計算時段與建立預約（0018） > 權限與效能證據 > 耗時記錄：三位設計師的「不指定」時段查詢（只記錄含網路往返的耗時，不是 explain analyze，見驗證報告）  1219ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > listDesigners（真實 admin session 的後台列表查詢） > 依 sort_order 排序、包含停用中的設計師、服務數只計上架中的服務  1082ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > createDesigner：sort_order 排在目前最大值之後、預設啟用，欄位依規則清理（去 @、去空白、簡介空白轉 null）  819ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > createDesigner：資料庫 check constraint 擋下繞過前端的非法值（名稱空白、IG 含空白、標籤重複），回傳通用錯誤  1856ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > updateDesignerBasicInfo：admin 可更新；只動基本資料欄位，不動頭像／啟用／順序  776ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > updateDesignerBasicInfo：非管理員被擋下（0 列），資料不變；非法值被資料庫擋下  1115ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > setDesignerActive：admin 可停用再重新啟用；非管理員不能  2254ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > countFutureAppointmentsForDesigner：新設計師為 0；欄位層級授權下 head count 可用（不是 42501）  643ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > swapDesignerOrder：交換相鄰兩位；第一位上移、最後一位下移不變；預設設計師完全不受影響  3657ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > swapDesignerOrder：非管理員被擋下，順序不變  727ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > 頭像：上傳 → 更換（舊檔真的被刪）→ 移除（檔案真的被刪），資料列隨之更新  9435ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > 頭像：非管理員上傳被 Storage policy 擋下，資料列不變、不留下檔案  953ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-069：後台設計師寫入函式（真實 admin session） > 頭像：舊網址被手動改成其他設計師的檔案時，只更新資料列、不會刪到別人的檔案（回傳警告）  2858ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-070：設計師服務開關（真實 admin session） > admin 開啟：寫入一列；重複開啟冪等（仍只有一列）；listDesignerServiceIds 讀得到  1273ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-070：設計師服務開關（真實 admin session） > admin 關閉：只刪掉那一列，同一位設計師的其他服務與其他設計師的同一項服務都不受影響  2638ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-070：設計師服務開關（真實 admin session） > 關閉一項本來就沒開的服務（或已被別處關閉）：回失敗而不是成功（0 列），資料不變  993ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-070：設計師服務開關（真實 admin session） > admin 可以讀到停用中設計師的服務開關，也可以對停用中的設計師開關（先設定好再啟用）  946ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-070：設計師服務開關（真實 admin session） > 不存在的設計師或服務（外鍵）：回通用錯誤，不寫入  619ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-070：設計師服務開關（真實 admin session） > 非管理員：開啟被 RLS 擋下（沒有寫入）；關閉被擋下時回失敗（0 列），既有的列仍在  898ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 上傳：路徑 portfolio/<id>/<uuid>.png、image_url 等於 getPublicUrl(storage_path)、公開網址 200 且 cache-control 為 300 秒；listPortfolio 最新在前  4028ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 第 13 張：函式回上限文案，資料列與檔案都維持 12 個（補刪的只有剛上傳的新檔，沒有誤刪既有檔案）  3776ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 已有 11 張時並行上傳兩張：剛好一張成功、另一張回上限文案，資料列與檔案都是 12 個  4152ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 直接打 API 的第 13 張（繞過前端與函式）也被 trigger 擋下，錯誤是 P0001＋PORTFOLIO_LIMIT 前綴  2192ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 刪除：資料列消失、檔案真的被刪（公開網址回 400／404）；同設計師的其他作品與別位設計師的檔案都還在  5701ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 刪除前先讀過公開網址（預熱 CDN 快取）：記錄刪除後仍能讀到的狀態（TASK-071 殘留風險 M3），不硬性要求 400／404  4100ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 用 A 設計師的 id 搭配 B 的作品 id 刪除：失敗，B 的資料列與檔案都還在  2121ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 刪除不存在的作品：回提示，不動任何資料  1038ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 非管理員與 anon：上傳失敗且不留下檔案或資料列；非管理員刪除失敗（0 列），資料列與檔案仍在  3743ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > removePortfolioFile：admin 刪得掉自己設計師的檔案；非管理員刪不掉；別位設計師的路徑與頭像路徑被擋下  2489ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-071：作品集上傳／刪除（真實 admin session） > 資料庫放行被竄改的 image_url（帶 query 指到別人的檔案）——證明洞存在，顯示層的白名單必須擋下它  1262ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > admin 新增：寫入一列；重複新增冪等（仍只有一列）；listDesignerLeaves 讀得到  1423ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > admin 可以對停用中的設計師新增請假日  812ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > admin 移除：只刪指定那一天，同一位設計師的其他日期與其他設計師的同一天都還在；再移除一次回失敗（0 列）  1857ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > 非管理員：新增被 RLS 擋下（不被當成成功、沒有寫入）；移除回失敗（0 列），既有的列仍在；讀取是空的  1250ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > anon：讀取、新增、移除都失敗，既有的列仍在  978ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > 受影響預約與前台時段 > 只回該設計師當天的 pending／confirmed：排除其他設計師、cancelled、completed、前一天 23:30 與次日 00:00；依時間排序；欄位剛好是最小集合  1828ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > 受影響預約與前台時段 > 非管理員與 anon 看不到任何預約（RLS／欄位授權）  614ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-072：設計師請假日（真實 admin session） > 受影響預約與前台時段 > 標記請假後，指定該設計師的 get_available_slots 回空陣列；移除後恢復（寫入後預約端立即生效）  1909ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-073：前台服務與設計師查詢（anon／admin／非管理員） > 前提：admin session 讀得到停用中的設計師與下架中的服務（證明下面的「看不到」是查詢上的明確過濾，不是 RLS）  409ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-073：前台服務與設計師查詢（anon／admin／非管理員） > getServices：有啟用中設計師提供的上架服務才列出；唯一設計師停用、下架、沒有設計師的服務都不列出（三種 session 結果一致）  532ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-073：前台服務與設計師查詢（anon／admin／非管理員） > getServices：同一個服務有多位設計師提供時只出現一次  565ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-073：前台服務與設計師查詢（anon／admin／非管理員） > getDesignersForService(s1)：只回啟用中且有開該服務的設計師；欄位剛好是白名單；作品只留合格的、新的在前  494ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-073：前台服務與設計師查詢（anon／admin／非管理員） > getDesignersForService：只有停用中的設計師提供（s2）、服務下架（s3）、沒人提供（s4）都回空陣列，admin 也一樣  1720ms
+   ✓ 多位設計師資料基礎：RLS／GRANT／constraint／trigger／Storage（真實 Supabase 專案） > TASK-073：前台服務與設計師查詢（anon／admin／非管理員） > 竄改 designerId：停用中的設計師、沒開該服務的設計師、不存在的 id，時段都是空陣列、預約都是 SLOT_CONFLICT 且沒有建立預約  1369ms
+
+ Test Files  1 passed (1)
+      Tests  122 passed (122)
+   Start at  16:53:08
+   Duration  236.44s (transform 403ms, setup 0ms, collect 614ms, tests 235.22s, environment 0ms, prepare 199ms)
+

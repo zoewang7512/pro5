@@ -1,0 +1,24 @@
+{
+  "taken_at": "2026-11-02T08:49:47.123Z",
+  "designer001": "c70e38fb",
+  "auth": {
+    "updated_at": "2026-11-02T08:24:41.613862Z",
+    "last_sign_in_at": "2026-11-02T08:24:41.563416Z",
+    "created_at": "2026-08-04T08:53:19.281547Z",
+    "email_confirmed_at": "2026-08-04T08:53:19.302197Z",
+    "factors": 0,
+    "banned_until": null,
+    "app_metadata_hash": "5b0bfedb37484704",
+    "user_metadata_hash": "6aed121bf6318faa",
+    "email_hash": "9ecd4aca34614935",
+    "identities_hash": "4f53cda18c2baa0c"
+  },
+  "admins_row_hash": "dbaa71370fb42290",
+  "admins_row_count": 1,
+  "audit_log_rows_by_designer001": 261,
+  "admin_assets_avatar": [
+    "218d0614-7a4f-4ed9-b3cc-e6492f01299a.png|\"b5cd3ea1cfe131432bf06b0c7a4aad3d\"|25757|owner=",
+    "80c53a82-5d8b-4605-8339-d19e33fa261e.png|\"b5cd3ea1cfe131432bf06b0c7a4aad3d\"|25757|owner=",
+    "ec419c4a-14c6-4d95-b567-84e6b5f69ba9.png|\"e44e7ecfec99356632c13cd3eaa3e250\"|68|owner="
+  ]
+}

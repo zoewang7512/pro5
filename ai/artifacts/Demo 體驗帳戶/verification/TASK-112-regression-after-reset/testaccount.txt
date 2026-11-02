@@ -1,0 +1,25 @@
+
+> test:account
+> node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.account.config.ts
+
+
+ RUN  v3.2.7 C:/Users/User/Desktop/project/pro5
+
+stdout | tests/account.integration.test.ts > 帳號設定：get_admin_profile／update_admin_profile RPC 權限邊界（真實 Supabase 專案）
+[account.integration.test] 原始 admins 個人資料快照（供中斷後人工還原用）：{"display_name":"店長","avatar_url":"https://ymbhlyhohzceyeppvyxv.supabase.co/storage/v1/object/public/admin-assets/avatar/80c53a82-5d8b-4605-8339-d19e33fa261e.png"}
+
+ ✓ tests/account.integration.test.ts (17 tests) 11434ms
+   ✓ 帳號設定：get_admin_profile／update_admin_profile RPC 權限邊界（真實 Supabase 專案） > designer 可以更新自己的個人資料，寫入立即可讀回  424ms
+   ✓ 帳號設定：get_admin_profile／update_admin_profile RPC 權限邊界（真實 Supabase 專案） > update_admin_profile 對超過長度上限（50 字）的顯示名稱回傳 false，不寫入  306ms
+   ✓ 帳號設定：admin-assets Storage bucket 權限邊界（真實 Supabase 專案） > designer（is_admin()）可以上傳至 admin-assets，且上傳後可被公開（未驗證）讀取  1629ms
+   ✓ 帳號設定：MFA（mfa.enroll／challenge／verify／unenroll）呼叫行為（真實 Supabase 專案，拋棄式使用者） > mfa.enroll 回傳 unverified factor，含 QR code 與可手動輸入的密鑰  369ms
+   ✓ 帳號設定：MFA（mfa.enroll／challenge／verify／unenroll）呼叫行為（真實 Supabase 專案，拋棄式使用者） > 用錯誤的驗證碼呼叫 challenge／verify 會被拒絕，factor 仍為 unverified  657ms
+   ✓ 帳號設定：MFA（mfa.enroll／challenge／verify／unenroll）呼叫行為（真實 Supabase 專案，拋棄式使用者） > 用本機以 RFC 6238 算出的正確驗證碼呼叫 challenge／verify 會成功，factor 轉為 verified（同時把目前 session 升級到 aal2——GoTrue 既有行為）  531ms
+   ✓ 帳號設定：MFA（mfa.enroll／challenge／verify／unenroll）呼叫行為（真實 Supabase 專案，拋棄式使用者） > verified factor 需要 aal2 才能 unenroll——重新用帳密登入取得的全新 session（aal1，尚未走 challenge/verify）呼叫 unenroll 會被 GoTrue 拒絕（422 insufficient_aal），對應 TASK-043 完成證據記錄的既有行為  522ms
+   ✓ 帳號設定：MFA（mfa.enroll／challenge／verify／unenroll）呼叫行為（真實 Supabase 專案，拋棄式使用者） > 升級到 aal2（用正確驗證碼再次 challenge／verify）後，unenroll 該 factor 會成功  850ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  16:57:06
+   Duration  12.19s (transform 62ms, setup 0ms, collect 151ms, tests 11.43s, environment 0ms, prepare 198ms)
+
