@@ -1006,3 +1006,30 @@ security-reviewer 套用前複審（2026-10-24）：無 Critical／High；採納
     (M2) customers.name／appointments.customer_name 只檢查 trim 後長度、appointments.customer_email 無長度限制，匿名就能做；(S1) auth.users.raw_user_meta_data 未鎖（也會進 JWT）。皆需另開卡並列為入口前置條件，待使用者決定。
   - 緊急放行單一欄位：drop constraint if exists <名稱>（手冊 §8「文字欄位長度上限」），不要用 _down（一次拿掉六個）。
 ```
+
+## TASK-120（Demo 體驗帳戶）：create_appointment 加「24 小時建立」滾動視窗，migration 0030
+
+```text
+日期：2026-11-01
+決策：
+  1. 新增 migration 0030：以 create or replace 改寫 public.create_appointment（六參數版本），**保留** 0018 原本兩道 BOOKING_LIMIT 檢查
+     （電話、Email；只計未來的 pending／confirmed ≥ 3），**各自之後另加一道**「過去 24 小時內建立（created_at）、不分狀態 ≥ 3」。N = 3，視窗 24 小時。
+  2. 為什麼是「新增並存」而不是任務卡原方案 A 的「取代」：取代會讓同一人每天訂 3 筆、累積任意多筆未來預約，比現況寬鬆。兩道並存、取其嚴，
+     只會更嚴，不會放寬。使用者於 2026-11-01 在 A／A'／B／C／D 中選定 A'，N 選 3。
+  3. 超過上限沿用既有 BOOKING_LIMIT_EXCEEDED 與同一句 message，不新增錯誤碼、不洩漏是哪一道檢查擋下；前台文案不變。
+  4. 函式本文其餘與 0018 逐字相同（tests/lib/booking-limit-migration.test.ts 以逐字比對把關：拿掉兩個新增區塊後必須與 0018 相同）；授權（revoke／grant）、
+     advisory lock、檢查順序、確認信觸發器與 Demo 守門（0026）都不動。重用既有變數 v_pending_count／v_email_count，不增加 declare。
+  5. 不為新計數建索引（資料量小；與既有 Email 計數同一取捨）。
+  6. 驗證：逐字比對單元測試；新增整合測試 test:booking-limit（on／off 兩種模式，BOOKING_LIMIT_EXPECT=off 為套用前／回滾後），並以 test:booking、
+     test:booking-policy、test:designers、test:admin-booking 做套用前後回歸。Email 案例只用 Resend 測試位址 delivered+...@resend.dev，取消前先把 customer_email 設成 null 避免觸發取消信。
+情境：TASK-120 高風險卡（TASK-114 審查 R1：Demo 把預約改成 cancelled 釋放額度，可用同一個受害者 Email 無限次觸發確認信）；migration 由使用者在 SQL Editor 套用。
+考慮過的替代方案：A 取代（放寬既有限制）；B 確認信頻率節流（需紀錄表、動到確認信路徑）；C 禁止 Demo 取消未來預約（與「Demo 可體驗取消」的產品決定衝突）；D 接受殘留（攻擊前提在 Demo 存在時成立）；N = 5（對攻擊者更寬鬆）。
+影響與殘留風險：
+  - 對真實顧客：24 小時內「訂了又取消再訂」超過 3 次（Email 與電話各自計算）會被擋；後台替同一支電話代訂的預約若寫進 appointments 且在 24 小時內，也計入該電話額度。
+  - 換「受害者 Email」與電話，總量仍沒有上限（0018 已記錄）；這只是縱深防禦，不能取代限流。
+  - 回滾：0030_booking_limit_rolling_window_down.sql 把函式還原成 0018 本文；回滾後靜默取消迴圈重新開啟。
+  - 三方審查（2026-11-01）無 MUST FIX。審查後確認的殘留：(1) 電話額度 DoS——任何人用別人的電話建 3 筆預約即可鎖住該電話，0030 之前店長取消即可解除，之後只能等 24 小時（或 service_role 手動處理），前台文案「太多筆待確認的預約」對此不準確；
+    (2) 保證只到 dedupe key 相同，供應商別名／次網域定址／catch-all／IDN 仍可繞過；anon key 可直接打 PostgREST，Next／Vercel 層限流管不到；根本解法是全店寄信預算（原方案 B），需另開卡；
+    (3) Demo 每日還原（0027）整表刪除 appointments，視窗隨之歸零，還原邊界前後各約 3 封；(4) 新計數無索引：資料約 5 萬列或回應變慢時補 appointments(created_at) 索引（檔頭已寫）。
+  - 沒有後台新增預約的路徑（authenticated 只能 update status／start_at／end_at／reminder_sent_at），Demo 不能 insert／delete 預約或改 created_at／customer_email，所以繞不過新視窗。
+```

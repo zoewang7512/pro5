@@ -327,7 +327,37 @@ drop trigger if exists demo_lock_mfa_guard on auth.mfa_factors;
 ### 寄信行為
 - **預約確認信照常寄出**（資料庫觸發器 0011）：面試官在前台自己預約並填真實 Email，會收到確認信。
 - **Demo 發動的改期／取消不寄信**（0026）：判斷來源是請求 JWT 的 `app_metadata.is_demo`；後台在 Demo 登入時，按下改期或取消的最終確認後會先跳出說明視窗，顯示顧客在正式環境會收到的通知信示意圖。一般管理員、cron、service role 完全不受影響。
-- 已知殘留（尚未關閉，見 TASK-120／121）：Demo 取消預約會釋放「每個 Email 最多 3 筆」的額度；Demo 改期會清掉 `reminder_sent_at` 使隔天提醒信重寄。
+- 已知殘留：Demo 改期會清掉 `reminder_sent_at` 使隔天提醒信重寄（TASK-121，尚未處理）。Demo 取消預約釋放「每個 Email 最多 3 筆」額度的缺口，已由 0030 的 24 小時視窗補上（TASK-120；套用後才生效），但 Email 的別名寫法（供應商別名、次網域、catch-all）仍可繞過，根本解法是全店寄信預算，尚未做。
+
+### 預約額度被鎖住（0030，24 小時視窗）— ⚠️ 未實跑，請照驗證方式確認
+`create_appointment` 對**同一支電話、同一個 Email**（正規化後）各有兩道上限，任一道達 3 筆就回 `BOOKING_LIMIT_EXCEEDED`：(1) 未來待服務（pending／confirmed）≥ 3；(2) **過去 24 小時內建立**的預約（不分狀態，取消也算）≥ 3。第 (2) 道是 0030 加的，目的是讓「取消再訂」不能無限寄確認信。
+
+- **店長把預約取消不會釋放第 (2) 道的額度**；要等建立滿 24 小時（Demo 每日還原也會整表清空並歸零）。
+- 已知取捨：任何人能用別人的電話建 3 筆預約鎖住那支電話 24 小時（不必填 Email、也不寄信）。前台顯示的文案是「你的聯絡資訊目前有太多筆待確認的預約…」（會在 TASK-124 改成中性說法）。
+- **顧客被擋、需要立刻放行時**，在 SQL Editor 把該電話（或 Email）24 小時內建立的預約的建立時間往前推 25 小時（不刪資料、不動預約內容；只改 `created_at`，不會觸發任何通知信）：
+
+  ```sql
+  -- 先看有哪些（唯讀）
+  select id, customer_name, status, start_at, created_at
+  from public.appointments
+  where customer_phone = '<正規化後的電話，只有數字>'
+    and created_at > now() - interval '24 hours';
+
+  -- 確認後放行（電話）
+  update public.appointments
+  set created_at = created_at - interval '25 hours'
+  where customer_phone = '<正規化後的電話，只有數字>'
+    and created_at > now() - interval '24 hours';
+
+  -- Email 版（用同一個正規化函式比對）
+  update public.appointments
+  set created_at = created_at - interval '25 hours'
+  where public._email_dedupe_key(customer_email) = public._email_dedupe_key('<信箱>')
+    and created_at > now() - interval '24 hours';
+  ```
+
+  放行後若第 (1) 道（未來待服務 ≥ 3）也擋著，需要先把多餘的預約取消或完成。這個語句是依 0030 的邏輯推導，**尚未在真實資料庫實跑**；首次使用前先用上面的「先看有哪些」確認列數，再執行 update。
+- 整體停用 0030 的視窗：套用 `0030_booking_limit_rolling_window_down.sql`（把函式還原成 0018；取消會重新釋放額度，靜默取消迴圈重新開啟）。
 
 ### 各表筆數上限（0027，只對 Demo 生效，數字為整張表總列數）
 `services` 10、`designers` 5、`designer_services` 50、`designer_leaves` 20、`designer_portfolio_images` 60、`closed_dates` 20。一般管理員與 service role（含還原）不受影響。調整上限：改 `demo_row_cap_guard()` 內的 case 數字後整份重跑，並同步 `tests/lib/demo-row-caps-migration.test.ts` 與 `TASK-116-verify.sql`。

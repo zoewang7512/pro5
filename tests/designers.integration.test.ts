@@ -1210,6 +1210,9 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
       status?: "pending" | "confirmed" | "completed" | "cancelled";
       email?: string;
       phone?: string;
+      // TASK-120（0030）：create_appointment 另計「過去 24 小時內建立、不分狀態」的預約數，預設 created_at 是現在，
+      // 會被計入。要驗證「原檢查只計未來待服務」時，把種子的建立時間推到視窗外。
+      createdAt?: string;
     }) {
       const { data, error } = await serviceRoleClient
         .from("appointments")
@@ -1222,6 +1225,7 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
           start_at: params.startAt,
           end_at: params.endAt,
           status: params.status ?? "pending",
+          ...(params.createdAt ? { created_at: params.createdAt } : {}),
         })
         .select("id")
         .single();
@@ -2117,9 +2121,13 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
           designers: [d1],
         } = await makeScenario({ designers: [{}] });
         const past = new Date(Date.now() - 2 * 86_400_000);
+        // 種子預約的建立時間推到 24 小時視窗之外（0030）：這個案例驗證的是原本那道檢查「只計未來待服務」，
+        // 不能被新的「24 小時內建立」視窗遮蔽；視窗本身由 tests/booking-limit.integration.test.ts 驗證。
+        const createdAt = new Date(Date.now() - 25 * 3_600_000).toISOString();
         const pastEnd = new Date(past.getTime() + 30 * 60_000);
 
         await seedAppointment({
+          createdAt,
           serviceId,
           designerId: d1,
           startAt: at(day.date, day.openMin + 30),
@@ -2127,6 +2135,7 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
           email,
         });
         await seedAppointment({
+          createdAt,
           serviceId,
           designerId: d1,
           startAt: at(day.date, day.openMin + 60),
@@ -2134,6 +2143,7 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
           email,
         });
         await seedAppointment({
+          createdAt,
           serviceId,
           designerId: d1,
           startAt: at(day.date, day.openMin + 90),
@@ -2142,6 +2152,7 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
           status: "cancelled",
         });
         await seedAppointment({
+          createdAt,
           serviceId,
           designerId: d1,
           startAt: past.toISOString(),
@@ -2150,6 +2161,7 @@ describe("多位設計師資料基礎：RLS／GRANT／constraint／trigger／Sto
         });
         // 另一個不同信箱的待服務預約：若正規化過度（把不同 email 併成同一個 key），這裡會讓計數變成 3 而被拒。
         await seedAppointment({
+          createdAt,
           serviceId,
           designerId: d1,
           startAt: at(day.date, day.openMin + 120),

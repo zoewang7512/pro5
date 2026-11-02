@@ -1,0 +1,59 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-11-01",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "backlog",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": false,
+    "verification_contract": false,
+    "human_approval_recorded": false
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [],
+    "findings": [],
+    "residual": ""
+  },
+  "id": "TASK-124",
+  "title": "前台預約額度被擋的文案改為中性說法（TASK-120 審查）",
+  "content": "TASK-120（0030）之後，BOOKING_LIMIT_EXCEEDED 也會在「24 小時內建立過 3 筆（含已取消）」時回傳，但前台文案 lib/booking/error-messages.ts 仍寫「你的聯絡資訊目前有太多筆待確認的預約」，對被視窗擋下的顧客不準確（他可能沒有任何待確認預約）。建議改為中性說法（例如「預約次數已達上限，請稍後再試或聯繫我們」），並更新 tests/booking/error-messages.test.ts。草稿：文案待使用者確認後才進入 ready。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "濫用防護與緊急開關",
+  "track": "frontend",
+  "dependsOn": [
+    "TASK-120"
+  ],
+  "order": 124,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "ai/artifacts/Demo 體驗帳戶/verification/TASK-120.md",
+    "lib/booking/error-messages.ts"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "由 TASK-120 的審查與使用者選 (b) 衍生。依賴 TASK-120（0030 套用後文案才不準確）；文案待使用者確認。"
+    }
+  ]
+}

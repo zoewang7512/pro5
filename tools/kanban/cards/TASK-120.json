@@ -3,7 +3,7 @@
   "createdAt": "2026-10-31",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -11,20 +11,35 @@
     "files_known": true,
     "scope_defined": true,
     "verification_contract": true,
-    "human_approval_recorded": false
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
     "ui": false,
-    "architecture": false,
-    "security": false,
-    "test": false,
+    "architecture": true,
+    "security": true,
+    "test": true,
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "npx vitest run tests/lib/booking-limit-migration.test.ts → 10 passed（逐字比對、新增區塊固定、函式外白名單）",
+      "BOOKING_LIMIT_EXPECT=off npm run test:booking-limit（套用前）→ 8/8，重現攻擊情境（取消後第 4 筆成功）",
+      "npm run test:booking-limit（預設，套用前）→ 7 failed / 1 passed（測試有鑑別力）",
+      "套用前基準：test:booking 23/23、test:booking-policy 7/7、test:designers 122/122、test:admin-booking 16/16",
+      "npx tsc --noEmit、npm run lint 通過；測試後無 __TEST__ 殘留（appointments 仍 16 筆）",
+      "唯讀量測：過去 24 小時建立的預約 0 筆，套用當下不會擋到任何人",
+      "【套用後】DB 查詢：has_window true、overloads 1、anon/authenticated/service_role 皆可執行、acl 無 PUBLIC",
+      "【套用後】test:booking-limit（預設）8/8；回歸 test:booking 23、booking-policy 7、admin-booking 16、business-hours 33、services 17、reports 19 全過",
+      "【套用後】test:designers 121/122→122/122：既有案例種子 created_at 在視窗內而失敗（預期行為改變），seedAppointment 加 createdAt、該案例推到 25h 前後全過",
+      "【_down 後】BOOKING_LIMIT_EXPECT=off test:booking-limit 8/8，test:booking 23、booking-policy 7；【重新套用後】預設 8/8，回歸全過；各階段無 __TEST__ 殘留（appointments 16）"
+    ],
+    "findings": [
+      "三方審查（架構／安全／測試）無 MUST FIX；已修：還原機制說法、不存在的後台代訂路徑、效能說法、測試恆真案例、afterAll 守門、大寫 Email 變體、新增區塊與函式外白名單",
+      "安全 S3：電話額度 DoS，0030 後店長取消不再釋放額度（需使用者決定 (a) cancelled_by_demo／(b) 手冊＋前台文案）",
+      "安全 S2：保證只到 dedupe key 相同，別名繞過需全店寄信預算（原方案 B，另開卡）"
+    ],
+    "residual": "沒有函式本文 md5 前後比對（套用前未記錄）；test:notifications／test:rls 未跑；電話額度 DoS（使用者選 (b)：手冊＋TASK-124 文案）；Email 別名繞過（全店寄信預算，使用者決定先不建卡）。0030 已套用。"
   },
   "id": "TASK-120",
   "title": "Email 寄信上限改為建立時間滾動視窗（堵住 Demo 靜默取消解除上限，TASK-114 審查 R1）",
@@ -54,6 +69,26 @@
       "name": "Claude Code",
       "time": "2026-10-31",
       "text": "由 TASK-114 安全審查的未關閉殘留風險建立，使用者指示另開卡處理。草稿：須先由使用者決定修法並核准，才可把 human_approval_recorded 打勾並推進；TASK-114 驗收前不得進入 ready。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "TASK-114 已 Done。使用者下令動工並決定：修法 A'（保留原「未來待服務 ≥3」檢查，另外加「過去 24 小時內建立、不分狀態 ≥3」，電話與 Email 同步；N=3）。理由：任務卡原方案 A 是取代原計數，會讓同一人每天訂 3 筆而累積任意多筆未來預約，比現在寬鬆。視為核准，human_approval_recorded 打勾，推到 implementing；migration 編號 0030。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-01",
+      "text": "實作與三方審查完成（見 verification/TASK-120.md），套用前證據齊全。0030 待使用者在 SQL Editor 套用，並請先決定電話額度 DoS 的取捨。套用後我再跑預設模式、七個回歸套件與 _down 實測。推到 verify，不轉 Done（需套用後證據與人工驗收）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者已套用 0030 並完成回滾實測與重新套用；套用後證據齊全（見 verification/TASK-120.md）。test:designers 一個既有案例因視窗預期行為改變而調整種子建立時間。待人工驗收，不自行轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-02",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }
