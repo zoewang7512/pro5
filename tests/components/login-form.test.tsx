@@ -368,12 +368,12 @@ describe("LoginForm - 體驗帳號入口（TASK-104）", () => {
 
   it("demoEnabled 未提供或為假時完全不渲染入口，也不呼叫端點", () => {
     const { unmount } = render(<LoginForm />);
-    expect(screen.queryByText("面試官／訪客？")).not.toBeInTheDocument();
+    expect(screen.queryByText("體驗帳號")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
     unmount();
 
     render(<LoginForm demoEnabled={false} />);
-    expect(screen.queryByText("面試官／訪客？")).not.toBeInTheDocument();
+    expect(screen.queryByText("體驗帳號")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
     expect(screen.queryByText("或")).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -382,7 +382,7 @@ describe("LoginForm - 體驗帳號入口（TASK-104）", () => {
   it("demoEnabled 為真時顯示說明文字與入口按鈕，登入仍是唯一的 submit 主按鈕", () => {
     render(<LoginForm demoEnabled />);
 
-    expect(screen.getByText("面試官／訪客？")).toBeInTheDocument();
+    expect(screen.getByText("體驗帳號")).toBeInTheDocument();
     expect(screen.getByText("一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。")).toBeInTheDocument();
     const enter = screen.getByRole("button", { name: enterButtonName });
     expect(enter).toBeEnabled();
@@ -396,7 +396,7 @@ describe("LoginForm - 體驗帳號入口（TASK-104）", () => {
 
     await user.click(screen.getByRole("button", { name: "忘記密碼？" }));
     expect(screen.queryByRole("button", { name: enterButtonName })).not.toBeInTheDocument();
-    expect(screen.queryByText("面試官／訪客？")).not.toBeInTheDocument();
+    expect(screen.queryByText("體驗帳號")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "← 返回登入" }));
     expect(screen.getByRole("button", { name: enterButtonName })).toBeInTheDocument();

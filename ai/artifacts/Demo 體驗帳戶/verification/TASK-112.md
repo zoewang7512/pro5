@@ -91,6 +91,13 @@
 5. `_down` 回滾實測（TASK-121）、真實還原**失敗**路徑未演練。
 6. 備份資料夾 `backups/20261102T084511Z`（含顧客個資，只在本機）何時刪除由使用者決定；建議開啟入口並穩定運作後再刪。
 
+## 入口開啟後的修正（2026-11-05，使用者回報）
+
+使用者在正式站開啟入口後看到兩個問題，已在 `feat/demo-account` 修正（**尚未部署到正式站，待使用者同意合併 master**）：
+1. **預約詳情視窗按鈕沒有對齊**：根因是 MUI `DialogActions` 預設讓「第二個以後的子元素」加 `margin-left: 8px`，視窗把它改成直排（`flexDirection: column`）後沒清掉，「改期／取消預約／關閉」整體向右偏一格、與「標記完成」對不齊。`AppointmentDetailDialog.tsx` 新增 `STACKED_ACTIONS_SX`（清除該左邊距、間距交給 `gap`）套用在詳情與改期兩個子畫面；Demo 版本機以 DOM 量測，四顆（及改期子畫面兩顆）按鈕 `left=112.5 right=532.5` 完全相同；截圖 14。專案內其餘 `DialogActions` 都是橫排，不受影響。
+2. **登入頁入口標題**「面試官／訪客？」改為「體驗帳號」（`app/login/login-form.tsx`，同步更新 `login-form.test.tsx` 的 4 處斷言）；截圖 15。
+驗證：`tsc`、`lint` 通過；`login-form` 與 `appointment-detail-dialog` 元件測試 45/45（連跑兩次）。
+
 ## 尚待（使用者）
 
 - 上列 1（稽核紀錄）已決定先接受；上列 2（手機畫面）已修。

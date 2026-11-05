@@ -421,7 +421,7 @@ export function LoginForm({ demoEnabled = false }: { demoEnabled?: boolean }) {
             <>
               <Divider sx={{ mt: 3, mb: 2, fontSize: 11, color: "grey.500" }}>或</Divider>
               <Box sx={{ bgcolor: "grey.100", borderRadius: 1, p: 2 }}>
-                <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>面試官／訪客？</Typography>
+                <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>體驗帳號</Typography>
                 <Typography variant="caption" sx={{ color: "text.secondary", display: "block", lineHeight: 1.5, mb: 1.5 }}>
                   一鍵進入體驗帳號，不需要輸入密碼，後台功能全開。
                 </Typography>

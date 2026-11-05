@@ -63,6 +63,17 @@ type SlotsResult = { key: string; status: "loaded" | "error"; cells: SlotCell[] 
 
 const RESCHEDULE_DATE_RANGE_DAYS = 21;
 
+// 直排按鈕的 DialogActions：MUI 預設讓「第二個以後的子元素」加 margin-left: 8px（給並排按鈕的間距），
+// 直排時沒清掉就會讓第二顆以後的按鈕整體向右偏一格、與第一顆對不齊。間距改由 gap 負責。
+const STACKED_ACTIONS_SX = {
+  px: 3,
+  pb: 3,
+  flexDirection: "column",
+  alignItems: "stretch",
+  gap: 1,
+  "& > :not(style) ~ :not(style)": { ml: 0 },
+} as const;
+
 export function AppointmentDetailDialog({
   open,
   appointment,
@@ -305,7 +316,7 @@ export function AppointmentDetailDialog({
             {rescheduleError && <Alert severity="error">{rescheduleError}</Alert>}
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, flexDirection: "column", alignItems: "stretch", gap: 1 }}>
+        <DialogActions sx={STACKED_ACTIONS_SX}>
           <Button
             variant="contained"
             onClick={handleSubmitReschedule}
@@ -355,7 +366,7 @@ export function AppointmentDetailDialog({
           <Typography variant="body2">狀態：{STATUS_LABEL[effectiveStatus]}</Typography>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, flexDirection: "column", alignItems: "stretch", gap: 1 }}>
+      <DialogActions sx={STACKED_ACTIONS_SX}>
         {actions.canComplete && (
           <Button variant="contained" onClick={onMarkCompleted} loading={markCompletedLoading} fullWidth>
             標記完成
