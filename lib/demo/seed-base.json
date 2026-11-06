@@ -519,9 +519,9 @@
   "schedule": {
     "history_days": 42,
     "future_days": 21,
-    "min_per_designer_per_day": 1,
-    "max_per_designer_per_day": 3,
-    "cancelled_per_hundred": 10,
+    "min_per_designer_per_day": 0,
+    "max_per_designer_per_day": 1,
+    "cancelled_per_hundred": 8,
     "pending_per_hundred_of_future": 30
   },
   "customer_pool": [
