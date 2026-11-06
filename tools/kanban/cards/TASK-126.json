@@ -1,0 +1,81 @@
+{
+  "approvalRequired": true,
+  "createdAt": "2026-11-06",
+  "owner": "zoewang7512",
+  "agent": "Claude Code",
+  "stage": "done",
+  "readiness": {
+    "problem_clear": true,
+    "non_goals_clear": true,
+    "acceptance_testable": true,
+    "files_known": true,
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
+  },
+  "gates": {
+    "product": false,
+    "ui": false,
+    "architecture": false,
+    "security": false,
+    "test": false,
+    "code_review": false
+  },
+  "evidence": {
+    "commands": [
+      "lib/demo/seed-base.json schedule：min_per_designer_per_day 1→0、max_per_designer_per_day 3→1、cancelled_per_hundred 10→8（history_days 42／future_days 21 不變）；以 buildDemoSeed 模擬先重現舊設定 10 月 194 筆，再試出新設定 54 筆",
+      "npx vitest run tests/lib/demo-seed-data.test.ts -u（快照差異僅預約數 425→111 與內容）；npx vitest run tests/lib/demo → 11 檔 268 項通過；npx tsc --noEmit 無錯誤",
+      "commit 50365c7 推到 master，Vercel 自動部署（pro5-flewz17a7，Ready，alias pro5-nu.vercel.app）",
+      "npm run demo:backup -- --yes（434 筆預約，存本機 backups/，含個資不進 git）→ npm run demo:reset（dry-run，還原後預約 113）→ npm run demo:reset -- --url https://pro5-nu.vercel.app --yes --confirm-host=pro5-nu.vercel.app（HTTP 200，六階段皆 done）",
+      "還原後以 service role 唯讀查詢：預約 113 筆；9 月 8／10 月 54／11 月 41（不含已取消）；admins 仍為 2"
+    ],
+    "findings": [
+      "使用者原以為 10 月 194 筆是真實網路預約；查證是 Demo seed 產生（12 位固定顧客、無 Email、confirmation_sent_at 全空、updated_at 為當日 03:03 還原時間）",
+      "9、10 月預估營收為 0 屬正常：預估營收只計 pending＋confirmed，過去月份的預約全為 completed（營收 9 月 15,000、10 月 117,800）；使用者決定維持現狀",
+      "密度調整會讓所有月份一起變少（9 月 35→8、11 月 168→41），使用者已同意"
+    ],
+    "residual": "歷史只保留 42 天，10 月預約約 12 月中旬起會滾出範圍；54 是以 2026-11-06 為基準的結果，換日後每日還原會隨相對日期重新產生，數字會略有變動。取消率改 8% 純為讓 10 月剛好 54，無其他意義。本卡為事後補開（工作完成後才建卡）。"
+  },
+  "id": "TASK-126",
+  "title": "Demo seed 降低每日預約密度，10 月預約量由 194 降為 54",
+  "content": "使用者在儀表板看到 10 月 194 筆預約，經查為 Demo seed 產生。使用者要求改為 54 筆，並同意其他月份一起變少。做法：調低 seed-base.json 的 schedule（每位設計師每天 0～1 筆、取消率 8%），更新快照，部署後對正式庫執行一次還原。只改種子設定與快照，不改產品程式碼與資料表結構。",
+  "risk": "low",
+  "epic": "Demo 體驗帳戶",
+  "userStory": "Demo seed 資料",
+  "track": "backend",
+  "dependsOn": [
+    "TASK-106"
+  ],
+  "order": 126,
+  "links": {
+    "featureSpec": "ai/artifacts/Demo 體驗帳戶/feature-spec.md",
+    "screenSpec": "",
+    "mockupDecision": "",
+    "taskCard": "",
+    "verificationReport": "",
+    "pr": ""
+  },
+  "refs": [
+    "lib/demo/seed-base.json",
+    "tests/lib/__snapshots__/demo-seed-data.test.ts.snap",
+    "lib/demo/seed-data.ts",
+    "docs/demo-account.md"
+  ],
+  "comments": [
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者指示將 10 月預約量由 194 改為 54（選擇調低種子密度、其他月份一併變少），視為核准。事後補開此卡。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "實作、部署（commit 50365c7）與正式庫還原完成，10 月實測 54 筆（見證據）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者已在後台確認 10 月預約量，人工驗收通過，轉 Done。"
+    }
+  ]
+}
