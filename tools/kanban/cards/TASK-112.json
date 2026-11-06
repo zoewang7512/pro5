@@ -44,7 +44,8 @@
       "【對照驗收標準與報告】verification/TASK-112.md（暗啟動時間線、還原後驗證、回歸、走查、寄信驗證、feature-spec 驗收對照、觀察與殘留）；截圖 verification/TASK-112-screenshots/（00～10）；前端產出密碼掃描 .next/static 267 檔與 .next/server/app 225 檔皆不含 DEMO_PASSWORD／DEMO_RATE_LIMIT_SECRET",
       "【手機畫面修正，2026-11-02】app/admin/_components/AccountSettingsView.tsx（只改 sx，不改文案與行為）；npx tsc --noEmit、npm run lint 通過；npx vitest run tests/components/account-settings-view.test.tsx 55/55（連跑三次）；本機 next-dev-demo 以 Demo 帳號於 375px 與桌面寬度驗證，截圖 TASK-112-screenshots/11～13",
       "【入口開啟後的修正，2026-11-05，使用者回報】(1) AppointmentDetailDialog 直排按鈕對不齊：DialogActions 預設的 margin-left 未清除，新增 STACKED_ACTIONS_SX 套用於兩處；DOM 量測按鈕 left／right 完全相同；(2) 登入頁入口標題「面試官／訪客？」→「體驗帳號」並更新 login-form 測試；tsc／lint 通過、元件測試 45/45×2；截圖 14、15。尚未部署，待使用者同意合併 master。",
-      "【排程還原第一次自動執行，2026-11-06（使用者開啟 DEMO_ENABLED 與 DEMO_RESET_ENABLED 後）】Demo 帳戶 last_sign_in 2026-11-05T19:04:02Z、updated 19:04:03Z（= 台北 11/6 03:04，健康檢查登入與 session 撤銷）；agent 唯讀驗證：設計師名稱「艾莉絲Aliceee」→「艾莉絲Alice」、11/2 建立的「TASK112 驗證」預約 0 筆、預約與顧客帶 Email 皆 0、顧客 12／服務 4／設計師 4／請假 2／作品集圖片 40／設計師服務 14／公休日 1、預約 434（seed 日期相對今天產生，筆數隨星期對齊略有不同）；使用者確認還原成功。designer001 快照（verification/TASK-112-designer001-after-scheduled-reset.json）與還原前相比：metadata／identities 雜湊、admins 列、MFA、admin-assets 頭像皆相同；updated_at／last_sign_in_at 變為 11/6 07:08:10Z（有人以 designer001 登入，待使用者確認是本人）；audit_log designer001 列 261→298（11/2 還原後回歸套件留下，最新事件 11/2 16:56 之後無新增）"
+      "【排程還原第一次自動執行，2026-11-06（使用者開啟 DEMO_ENABLED 與 DEMO_RESET_ENABLED 後）】Demo 帳戶 last_sign_in 2026-11-05T19:04:02Z、updated 19:04:03Z（= 台北 11/6 03:04，健康檢查登入與 session 撤銷）；agent 唯讀驗證：設計師名稱「艾莉絲Aliceee」→「艾莉絲Alice」、11/2 建立的「TASK112 驗證」預約 0 筆、預約與顧客帶 Email 皆 0、顧客 12／服務 4／設計師 4／請假 2／作品集圖片 40／設計師服務 14／公休日 1、預約 434（seed 日期相對今天產生，筆數隨星期對齊略有不同）；使用者確認還原成功。designer001 快照（verification/TASK-112-designer001-after-scheduled-reset.json）與還原前相比：metadata／identities 雜湊、admins 列、MFA、admin-assets 頭像皆相同；updated_at／last_sign_in_at 變為 11/6 07:08:10Z（有人以 designer001 登入，待使用者確認是本人）；audit_log designer001 列 261→298（11/2 還原後回歸套件留下，最新事件 11/2 16:56 之後無新增）",
+      "【畫面修正已部署，2026-11-06】master fast-forward 到 377368b 並 push，Vercel Production 部署 Ready（pro5-9jaxpkyba）；正式站 /login 200、含「進入體驗帳號」按鈕與新標題「體驗帳號」、不含舊標題「面試官／訪客」、demoEnabled=true；/api/cron/demo-reset 與 /api/cron/appointment-reminders 無密鑰 401；首頁 200；瀏覽器看正式站登入頁確認新標題"
     ],
     "findings": [
       "稽核紀錄頁對 Demo 顯示 designer001 的 261 筆紀錄（多為整合測試 __TEST__ 殘留）——使用者 2026-11-02 決定「先接受」（日後若要清除，備份 backups/20261102T084511Z 已含這些列）",
@@ -177,6 +178,11 @@
       "name": "Claude Code",
       "time": "2026-11-06",
       "text": "排程還原第一次自動執行成功（使用者確認，agent 唯讀驗證）。待使用者：確認 designer001 在 11/6 07:08Z 的登入是本人；決定何時部署 69a8f51（按鈕對齊與入口標題）；人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者同意後已把 69a8f51（按鈕對齊、入口標題）與後續文件一併合併 master 並部署，正式站驗證完成。待使用者確認 designer001 的登入是本人，並人工驗收。"
     }
   ]
 }
