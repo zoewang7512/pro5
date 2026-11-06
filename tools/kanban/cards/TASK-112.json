@@ -3,7 +3,7 @@
   "createdAt": "2026-10-30",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "verify",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -53,7 +53,7 @@
       "TASK-125：真實 Demo 存在時 test:demo-seed-bucket 1 個案例假設不成立（只改測試）",
       "已知殘留：R-A（Demo 可控信件文字＋匿名預約）、R1 別名繞過、_down 實測與真實還原失敗路徑未演練"
     ],
-    "residual": "入口（DEMO_ENABLED）與排程（DEMO_RESET_ENABLED）尚未開啟；備份資料夾 backups/20261102T084511Z 保留在本機；待使用者決定稽核紀錄與手機畫面處置、依序開啟兩個開關、人工驗收。"
+    "residual": "入口（DEMO_ENABLED）與排程（DEMO_RESET_ENABLED）已由使用者開啟，排程於 2026-11-06 台北 03:04 第一次自動還原成功。designer001 在 11/6 07:08Z 的登入經使用者確認為本人。備份 backups/20261102T084511Z 保留在本機（含顧客個資，何時刪除由使用者決定）。稽核紀錄頁顯示 designer001 紀錄：使用者決定先接受。未關閉：TASK-125（只改測試）、R-A（Demo 可改信件文字＋匿名預約）、R1 Email 別名繞過、_down 回滾實測與真實還原失敗路徑未演練、後台側邊欄在手機不收合（全後台議題）。"
   },
   "id": "TASK-112",
   "title": "Demo 體驗帳戶 端到端串接、暗啟動、首次正式環境 seed 與驗收",
@@ -183,6 +183,11 @@
       "name": "Claude Code",
       "time": "2026-11-06",
       "text": "使用者同意後已把 69a8f51（按鈕對齊、入口標題）與後續文件一併合併 master 並部署，正式站驗證完成。待使用者確認 designer001 的登入是本人，並人工驗收。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者確認 designer001 在 11/6 07:08Z 的登入是本人，並人工驗收通過，轉 Done。"
     }
   ]
 }
