@@ -3,15 +3,15 @@
   "createdAt": "2026-11-01",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "verify",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
     "acceptance_testable": true,
     "files_known": true,
-    "scope_defined": false,
-    "verification_contract": false,
-    "human_approval_recorded": false
+    "scope_defined": true,
+    "verification_contract": true,
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,18 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "lib/booking/error-messages.ts：BOOKING_LIMIT_EXCEEDED 改為「預約次數已達上限，請稍後再試或聯繫我們。」（使用者採用草稿文案；句尾補全形句號）",
+      "tests/booking/error-messages.test.ts：更新期望文案，新增「不得出現 待確認／待服務／太多筆」斷言（0030 的 24 小時視窗擋下的顧客可能沒有待確認預約）",
+      "docs/demo-account.md：前台文案說明改為新文案",
+      "npx vitest run tests/booking → 7 檔 72 項全過；tests/components/booking* 8 項全過；npx tsc --noEmit、npm run lint 通過",
+      "全 repo 搜尋舊文案：只剩歷史紀錄（TASK-073／TASK-120 驗證報告、decisions.md、0030 檔頭註解、卡片 JSON），不屬於程式或畫面；未改已套用的 migration"
+    ],
+    "findings": [
+      "錯誤代碼 BOOKING_LIMIT_EXCEEDED 的後端行為與整合測試（test:booking-limit、test:booking）不受影響，它們比對的是代碼而不是文案",
+      "未在畫面上實際觸發這則 toast：要觸發需在正式庫用同一電話建立 3 筆預約；對應由單元測試涵蓋文案，BookingFlow 以 getBookingErrorMessage(code) 顯示 toast（app/_components/booking/BookingFlow.tsx:272）"
+    ],
+    "residual": "尚未部署到正式站（待使用者同意合併 master）；電話額度 DoS 的取捨維持 TASK-120 的決定（手冊補解除程序＋本卡文案）。"
   },
   "id": "TASK-124",
   "title": "前台預約額度被擋的文案改為中性說法（TASK-120 審查）",
@@ -54,6 +63,16 @@
       "name": "Claude Code",
       "time": "2026-11-01",
       "text": "由 TASK-120 的審查與使用者選 (b) 衍生。依賴 TASK-120（0030 套用後文案才不準確）；文案待使用者確認。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者採用草稿文案並下令動工，視為核准（human_approval_recorded 打勾、推到 implementing）。文案：「預約次數已達上限，請稍後再試或聯繫我們。」（句尾補全形句號，與其他訊息一致）。範圍：lib/booking/error-messages.ts、tests/booking/error-messages.test.ts、docs/demo-account.md 的一行說明；不改 migration 與預約邏輯。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "實作與測試完成，推到 verify；尚未部署，待使用者同意合併 master 並部署，再人工驗收後轉 Done。"
     }
   ]
 }
