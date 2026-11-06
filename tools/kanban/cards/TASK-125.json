@@ -3,7 +3,7 @@
   "createdAt": "2026-11-02",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "verify",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -72,6 +72,11 @@
       "name": "Claude Code",
       "time": "2026-11-06",
       "text": "實作與驗證完成（見證據），推到 verify；只改測試，不需要部署，待使用者人工驗收後轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者人工驗收通過，轉 Done。"
     }
   ]
 }
