@@ -3,7 +3,7 @@
   "createdAt": "2026-11-01",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "verify",
+  "stage": "done",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
@@ -27,13 +27,14 @@
       "tests/booking/error-messages.test.ts：更新期望文案，新增「不得出現 待確認／待服務／太多筆」斷言（0030 的 24 小時視窗擋下的顧客可能沒有待確認預約）",
       "docs/demo-account.md：前台文案說明改為新文案",
       "npx vitest run tests/booking → 7 檔 72 項全過；tests/components/booking* 8 項全過；npx tsc --noEmit、npm run lint 通過",
-      "全 repo 搜尋舊文案：只剩歷史紀錄（TASK-073／TASK-120 驗證報告、decisions.md、0030 檔頭註解、卡片 JSON），不屬於程式或畫面；未改已套用的 migration"
+      "全 repo 搜尋舊文案：只剩歷史紀錄（TASK-073／TASK-120 驗證報告、decisions.md、0030 檔頭註解、卡片 JSON），不屬於程式或畫面；未改已套用的 migration",
+      "【部署，2026-11-06】master fast-forward 到 cec5170 並 push，Vercel Production 部署 Ready（pro5-lvxyul7zz）；正式站首頁載入的 15 個前端 JS 中 1 個含新文案「預約次數已達上限」、0 個含舊文案「太多筆待確認」；/login 200、入口按鈕仍在（demoEnabled=true）、/api/cron/demo-reset 無密鑰 401、首頁 200"
     ],
     "findings": [
       "錯誤代碼 BOOKING_LIMIT_EXCEEDED 的後端行為與整合測試（test:booking-limit、test:booking）不受影響，它們比對的是代碼而不是文案",
       "未在畫面上實際觸發這則 toast：要觸發需在正式庫用同一電話建立 3 筆預約；對應由單元測試涵蓋文案，BookingFlow 以 getBookingErrorMessage(code) 顯示 toast（app/_components/booking/BookingFlow.tsx:272）"
     ],
-    "residual": "尚未部署到正式站（待使用者同意合併 master）；電話額度 DoS 的取捨維持 TASK-120 的決定（手冊補解除程序＋本卡文案）。"
+    "residual": "未在畫面上實際觸發這則 toast（要在正式庫用同一電話建立 3 筆預約），文案由單元測試涵蓋；電話額度 DoS 的取捨維持 TASK-120 的決定。"
   },
   "id": "TASK-124",
   "title": "前台預約額度被擋的文案改為中性說法（TASK-120 審查）",
@@ -73,6 +74,11 @@
       "name": "Claude Code",
       "time": "2026-11-06",
       "text": "實作與測試完成，推到 verify；尚未部署，待使用者同意合併 master 並部署，再人工驗收後轉 Done。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者同意後已合併 master 並部署，正式站驗證新文案已上線；使用者人工驗收通過，轉 Done。"
     }
   ]
 }
