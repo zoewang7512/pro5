@@ -404,6 +404,7 @@ Demo 帳戶在 `audit_log` 的列數最多 500 筆（**只算 Demo 自己的列*
 - 測試期間正式庫會暫時多出 1～3 個 `is_demo` 的拋棄式帳號；此時每日還原與 `demo:disable` 會因為「Demo 帳戶不是剛好 1 個」而拒絕（安全方向）。**開啟排程還原後，請避開台北 03:00–04:00 跑 `test:*`**。
 - 測試被中途中斷、沒清掉拋棄式帳號時，`demo:disable` 會失敗：先到 Authentication → Users 刪除殘留帳號（同 §4 的辨認方式）。
 - `npm run test:demo-disable` 只能在正式庫**沒有真實 Demo 帳戶**時執行（它要求 `is_demo` 帳戶剛好 1 個）。真實 Demo 帳戶建立後，`demo:disable` 的回歸由單元測試 `tests/lib/demo-disable-script.test.ts` 擔任，真實帳戶的演練請照 §4 的預覽模式（沒有 `--yes` 不會寫入）。
+- 真實 Demo 帳戶存在後，其餘 Demo 整合測試的行為（TASK-112 還原後回歸、TASK-125）：`test:demo-lock` 跳過 2 項、`test:demo-reset` 跳過 3 項（測試內建條件式跳過，輸出標示 skipped 不是 passed）；`test:demo-seed-bucket` 會先查真實 Demo 是否登記在 `admins`，登記中時預期匯入腳本**被拒絕**、沒登記時預期允許，所以兩種狀態都是全綠。
 - 測試腳本不得對店長帳號做全域 `signOut()`（會踢掉你瀏覽器上的登入）；一律用 `scope: "local"`。
 
 ### 新增 migration 時

@@ -3,15 +3,15 @@
   "createdAt": "2026-11-02",
   "owner": "zoewang7512",
   "agent": "Claude Code",
-  "stage": "backlog",
+  "stage": "verify",
   "readiness": {
     "problem_clear": true,
     "non_goals_clear": true,
     "acceptance_testable": true,
     "files_known": true,
     "scope_defined": true,
-    "verification_contract": false,
-    "human_approval_recorded": false
+    "verification_contract": true,
+    "human_approval_recorded": true
   },
   "gates": {
     "product": false,
@@ -22,9 +22,17 @@
     "code_review": false
   },
   "evidence": {
-    "commands": [],
-    "findings": [],
-    "residual": ""
+    "commands": [
+      "tests/demo-seed-bucket.integration.test.ts：新增 realDemoRegisteredInAdmins()（與 upload-demo-images.mjs 守門一致：任何非本測試建立的 is_demo 帳戶登記在 admins），失敗案例的兩處「沒登記拋棄式帳號」斷言改為相對判斷：真實 Demo 登記中 → 預期結束碼 1 並含「Demo 上線中」；沒有或已停用 → 預期結束碼 0（維持原斷言）",
+      "npm run test:demo-seed-bucket → 14/14 通過（真實 Demo 登記在 admins 的狀態；先前同狀態是 13 過 1 失敗）；npx tsc --noEmit、eslint 該檔通過；測試後正式庫無殘留（auth.users 2、is_demo 1、admins 2）",
+      "docs/demo-account.md：補一行說明真實 Demo 存在後各 Demo 整合測試的行為"
+    ],
+    "findings": [
+      "只改測試與手冊，不改產品程式碼與 seed，不需要部署",
+      "沒有真實 Demo 或 Demo 已停用的分支（預期結束碼 0）沿用原斷言，無法在目前狀態再實跑；該分支在 TASK-112 基準線（尚無真實 Demo）14/14 通過",
+      "test:demo-lock 的 2 項與 test:demo-reset 的 3 項仍是內建條件式跳過（真實 Demo 存在時無法構造 0 個 Demo），維持不變"
+    ],
+    "residual": "test:demo-disable、test:seed-demo-account 在真實 Demo 存在時仍不能執行（既有限制，已記載於手冊）。"
   },
   "id": "TASK-125",
   "title": "整合測試相容真實 Demo 帳戶存在的情況（TASK-112 還原後回歸發現）",
@@ -54,6 +62,16 @@
       "name": "Claude Code",
       "time": "2026-11-02",
       "text": "由 TASK-112 還原後回歸衍生（任務卡規定測試依賴還原前資料時另開卡，不改 seed）。草稿，待使用者決定是否處理與核准。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "使用者下令動工，視為核准（human_approval_recorded 打勾、推到 implementing）。範圍：只改 tests/demo-seed-bucket.integration.test.ts（不改產品程式碼與 seed）。"
+    },
+    {
+      "name": "Claude Code",
+      "time": "2026-11-06",
+      "text": "實作與驗證完成（見證據），推到 verify；只改測試，不需要部署，待使用者人工驗收後轉 Done。"
     }
   ]
 }

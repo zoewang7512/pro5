@@ -53,6 +53,23 @@ let adminClient: SupabaseClient | null = null;
 let tmpDir: string | null = null;
 const uploaded: string[] = [];
 
+// 真實（非本測試建立的）Demo 帳戶目前是否登記在 admins：與 upload-demo-images.mjs 的守門判斷一致（任何 is_demo 帳戶登記在 admins）。
+async function realDemoRegisteredInAdmins(): Promise<boolean> {
+  const ids: string[] = [];
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw new Error(`列出使用者失敗：${error.message}`);
+    for (const u of data.users) {
+      if (u.app_metadata?.is_demo === true && u.app_metadata?.demoseedbucket_test !== true) ids.push(u.id);
+    }
+    if (data.users.length < 200) break;
+  }
+  if (ids.length === 0) return false;
+  const { count, error } = await admin.from("admins").select("user_id", { count: "exact", head: true }).in("user_id", ids);
+  if (error) throw new Error(`查詢 admins 失敗：${error.message}`);
+  return (count ?? 0) > 0;
+}
+
 async function listAll(prefix: string): Promise<string[]> {
   const { data, error } = await admin.storage.from(BUCKET).list(prefix, { limit: 1000 });
   if (error) throw new Error(`列出 ${BUCKET}/${prefix} 失敗：${error.message}`);
@@ -283,8 +300,18 @@ describe("scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不�
     demoLike = { id: created.data.user.id };
     const env = { ...process.env, DEMO_ENABLED: "false" };
 
-    // 帳戶存在但沒登記在 admins（Demo 已停用）→ 允許。
-    expect(runScript(["--from-public", "--base", empty], env).status).toBe(0);
+    // 正式庫若已有真實 Demo 帳戶且登記在 admins（上線後的常態），腳本的守門看的是「任何 is_demo 帳戶登記在 admins」，
+    // 所以「拋棄式帳號沒登記」時仍會被拒絕。預期值因此取決於真實 Demo 現在的狀態（TASK-125）：
+    // 登記中 → 一律拒絕（結束碼 1）；沒有真實 Demo，或已停用（不在 admins）→ 允許（結束碼 0）。
+    const realDemoLive = await realDemoRegisteredInAdmins();
+    const expectedWithoutThrowaway = realDemoLive ? 1 : 0;
+    const expectNoThrowawayRegistered = (result: ReturnType<typeof runScript>) => {
+      expect(result.status, realDemoLive ? "真實 Demo 登記在 admins：守門應拒絕" : "沒有登記中的 Demo：應允許").toBe(expectedWithoutThrowaway);
+      if (realDemoLive) expect(result.output).toContain("Demo 上線中");
+    };
+
+    // 拋棄式帳號存在但沒登記在 admins（Demo 已停用）→ 允許（有真實 Demo 登記時仍拒絕）。
+    expectNoThrowawayRegistered(runScript(["--from-public", "--base", empty], env));
 
     const registered = await admin.from("admins").insert({ user_id: demoLike.id, display_name: "__TEST__demoseedbucket" });
     expect(registered.error).toBeNull();
@@ -294,7 +321,7 @@ describe("scripts/upload-demo-images.mjs：Demo 上線中拒絕執行（用不�
     expect(runScript(["--from-public", "--base", empty, "--allow-while-demo-live"], env).status).toBe(0);
 
     expect((await admin.from("admins").delete().eq("user_id", demoLike.id)).error).toBeNull();
-    expect(runScript(["--from-public", "--base", empty], env).status).toBe(0);
+    expectNoThrowawayRegistered(runScript(["--from-public", "--base", empty], env));
   });
 });
 
