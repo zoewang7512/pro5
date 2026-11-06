@@ -98,6 +98,10 @@
 2. **登入頁入口標題**「面試官／訪客？」改為「體驗帳號」（`app/login/login-form.tsx`，同步更新 `login-form.test.tsx` 的 4 處斷言）；截圖 15。
 驗證：`tsc`、`lint` 通過；`login-form` 與 `appointment-detail-dialog` 元件測試 45/45（連跑兩次）。
 
+## 排程還原第一次自動執行（2026-11-06）
+
+使用者開啟 `DEMO_ENABLED` 與 `DEMO_RESET_ENABLED` 後，排程於台北 11/6 03:04 自動執行（Demo 帳戶 `last_sign_in` 19:04:02Z、`updated` 19:04:03Z）。agent 唯讀驗證：設計師名稱「艾莉絲Aliceee」回到「艾莉絲Alice」、11/2 建立的「TASK112 驗證」預約消失、預約與顧客帶 Email 皆 0、顧客 12／服務 4／設計師 4／請假 2／作品集 40／設計師服務 14；預約 434 筆（seed 日期相對今天產生，筆數隨星期對齊略有不同）。**使用者確認還原成功。** `designer001` 快照 `TASK-112-designer001-after-scheduled-reset.json`：雜湊、`admins` 列、MFA、頭像皆相同；`updated_at`／`last_sign_in_at` 變為 11/6 07:08:10Z（有人以 `designer001` 登入，待使用者確認是本人）；`audit_log` 261→298 為 11/2 還原後回歸套件所留。
+
 ## 尚待（使用者）
 
 - 上列 1（稽核紀錄）已決定先接受；上列 2（手機畫面）已修。
